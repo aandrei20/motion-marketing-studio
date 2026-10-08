@@ -29,6 +29,7 @@ import { DIRECTIONS } from "../creative/directions";
 import { draftScript, validateScript } from "../creative/script";
 import { buildStoryboard } from "../creative/storyboard";
 import { chooseTemplate, getTemplate } from "../creative/templates";
+import { selectedConcept } from "../creative/concepts";
 import { analyzeVideo } from "../renderer/node/analyze-video";
 import { closeBrowser, renderContactSheet, renderStills, renderTimelineStill, renderTimelineVideo } from "../renderer/node/render";
 import { extractFromPage, mergeIntoResearch } from "../research/extract";
@@ -143,9 +144,18 @@ export function stepStoryboard(projectId: string, opts: { force?: boolean; templ
   const brief = loadBrief(projectId);
   const v = writableVersion(projectId);
   if (hasFile(projectId, `versions/${v}/storyboard.json`) && !opts.force) return { versionId: v, rationale: loadStoryboard(projectId, v).rationale };
-  const tpl = opts.templateId ? { template: getTemplate(opts.templateId), why: "ales explicit" } : chooseTemplate({ category: project.product.category, direction: brief.direction, durationSec: brief.durationSec, objective: brief.objective });
+  // structura vine, în ordine: din alegerea explicită, din conceptul creativ ales, din potrivirea șablonului
+  const concept = selectedConcept(projectId);
+  const tpl = opts.templateId
+    ? { template: getTemplate(opts.templateId), why: "ales explicit" }
+    : concept
+      ? { template: getTemplate(concept.templateId), why: `conceptul creativ „${concept.title}” (${concept.total}/100)` }
+      : chooseTemplate({ category: project.product.category, direction: brief.direction, durationSec: brief.durationSec, objective: brief.objective });
   const sb = buildStoryboard({ template: tpl.template, script: loadScript(projectId, v), brief, research: loadResearch(projectId), assets: loadAssets(projectId).assets, productName: project.product.name });
+  // direcția conceptului se aplică doar dacă utilizatorul nu a ales una în brief
+  if (concept && !brief.direction) sb.direction = concept.direction;
   sb.rationale.unshift(`Șablonul „${tpl.template.id}”: ${tpl.why}.`);
+  if (concept) sb.rationale.unshift(`Concept: ${concept.title} – ${concept.bigIdea}`);
   saveStoryboard(projectId, v, sb);
   updateState(projectId, { step: "storyboard", note: `${sb.scenes.length} scene`, log: `Storyboard în ${v} din șablonul ${tpl.template.id}.` });
   return { versionId: v, rationale: sb.rationale };

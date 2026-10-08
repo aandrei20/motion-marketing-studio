@@ -11,6 +11,7 @@
  * rezultatul (sau la export, după „render final”).
  */
 import { MmsError } from "../core/errors";
+import { ensureConcepts } from "../creative/concepts";
 import type { Depth } from "../quality/checks";
 import { autoFixLoop, type AutoFixReport } from "../quality/autofix";
 import { runQuality, type QualityRun } from "../quality/run";
@@ -41,6 +42,11 @@ export async function produce(projectId: string, o: ProduceOptions = {}): Promis
   const stage = o.stage ?? (() => undefined);
   const p = loadProject(projectId);
   if (p.status === "intake") throw new MmsError("BRIEF_NOT_APPROVED", "Brief-ul nu e aprobat.", `Utilizatorul scrie „aprob”: npm run mms -- approve ${projectId} brief "aprob"`);
+  stage("concept");
+  const concepts = ensureConcepts(projectId);
+  const chosen = concepts.concepts.find((c) => c.id === concepts.selectedId);
+  if (chosen) log(`Concept: ${chosen.title} (${chosen.total}/100, ${chosen.origin === "user" ? "al tău" : "sugestie"}) – ${chosen.bigIdea}`);
+  for (const r of concepts.rationale.slice(0, 2)) log(`  ${r}`);
   stage("script");
   const s = stepScript(projectId);
   s.issues.filter((i) => i.severity === "critical").forEach((i) => log(`! script: ${i.message}`));

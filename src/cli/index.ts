@@ -14,6 +14,7 @@ import { readJsonLoose } from "../core/json";
 import { PATHS } from "../core/paths";
 import { Brief, type AssetRole, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
 import { intakeMarkdown } from "../creative/intake";
+import { inferIntake, intakeSummaryMarkdown } from "../creative/smart-intake";
 import { listTemplates } from "../creative/templates";
 import { addReview, hookVariants, iterate } from "../pipeline/iterate";
 import { produce } from "../pipeline/produce";
@@ -23,13 +24,14 @@ import { autoFixLoop } from "../quality/autofix";
 import type { Depth } from "../quality/checks";
 import { applyEdit, redo, undo } from "../editing/history";
 import { critiquePack } from "../critique/pack";
+import { chooseConcept, ensureConcepts } from "../creative/concepts";
 import { approve, demoUrl, shutdown, writePostPack, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
 import { createProject, createVersion, listProjects, listVersions, loadAssets, loadProject, loadResearch, projectDir, saveBrief } from "../projects/store";
 import { analyzeReference, saveReferenceProfile } from "../references/analyze";
 import { addUserClaim, setClaimStatus } from "../research/extract";
 import { ALL_CAPABILITIES } from "../motion/registry";
 import { RECIPES } from "../recipes/recipes";
-import { CaptureStep, interactiveLogin, type CaptureRequestInput } from "../capture/capture";
+import { CaptureStep, capture, interactiveLogin, type CaptureRequestInput } from "../capture/capture";
 import { z } from "zod";
 
 interface Args {
@@ -79,6 +81,8 @@ PROIECT
   list                                   proiectele existente
   new <id> --name "…" --product "…" --category saas [--url https://…]
           --format 9x16:tiktok:30:30 [--format 16x9:youtube:30:30] --text-lang ro --voice-lang ro
+  intake --url <u> --vision "…" --format 9x16 --lang ro [--duration 30] [--create <id>]
+                                         intake inteligent: deduce din site ce se poate, întreabă doar restul
   questions                              întrebările de început (A–H)
   brief <id> --file brief.json           salvează brief-ul (validat)
   approve <id> brief "aprob"             aprobă brief-ul (lucrul începe abia după)
@@ -102,6 +106,8 @@ MATERIALE ȘI RESEARCH
   brand <id> [--force]                   brand kit din captură și logo
 
 PRODUCȚIE
+  concepts <id> [--force]                conceptele creative (teritorii din dovezi, scor pe 10 criterii)
+  concept <id> <conceptId>               alege conceptul (al tău are prioritate implicit)
   script <id> [--force]                  schița de script (din fapte + cuvintele tale)
   storyboard <id> [--template saas] [--force]
   voices                                 vocile TTS disponibile
@@ -161,6 +167,26 @@ async function main(): Promise<void> {
         seed: Number(str(a.flags.seed) ?? 1),
       });
       log(`Proiect creat: ${path.relative(PATHS.root, projectDir(p.id))}`);
+      return;
+    }
+    case "intake": {
+      // intake inteligent: deduce din pagina reală tot ce se poate și întreabă doar ce e incert și important
+      const url = str(a.flags.url);
+      let page = null;
+      if (url) {
+        const dir = path.join(PATHS.cache, "intake", Buffer.from(url).toString("hex").slice(0, 24));
+        log(`Citesc pagina (captură reală, fără proiect): ${url}`);
+        page = (await capture({ id: "intake", url, viewport: "desktop", research: true }, dir)).page;
+      }
+      const r = inferIntake({ url, vision: str(a.flags.vision), formats: list(a.flags.format), textLanguage: str(a.flags.lang) ?? null, voiceLanguage: str(a.flags["voice-lang"]) ?? null, durationSec: a.flags.duration ? Number(str(a.flags.duration)) : undefined, voices: await listVoices() }, page);
+      console.log(intakeSummaryMarkdown(r));
+      const createId = str(a.flags.create);
+      if (createId) {
+        const p = createProject({ id: createId, name: r.project.name, product: { name: r.project.name, url: r.project.url, category: r.project.category }, formats: r.project.formats.map((x) => parseFormat(`${x}:${r.brief.platforms[0]}:${r.brief.durationSec}:30`)), language: r.project.language });
+        saveBrief(p.id, Brief.parse(r.brief));
+        log(`
+Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, projectDir(p.id))}. Răspunde la întrebări, apoi „aprob”.`);
+      }
       return;
     }
     case "questions":
@@ -401,6 +427,23 @@ async function main(): Promise<void> {
         const c = await stepCompile(pid, r.versionId, log);
         await stepAudio(pid, c.versionId, log);
       }
+      return;
+    }
+    case "concepts": {
+      const pid = need(id, "proiectul");
+      const c = ensureConcepts(pid, { force: !!a.flags.force });
+      for (const x of [...c.concepts].sort((p, q) => q.total - p.total)) {
+        log(`${x.id === c.selectedId ? "▶" : " "} ${x.id.padEnd(22)} ${String(x.total).padStart(5)}/100  ${x.origin === "user" ? "al tău   " : x.origin === "ai" ? "Claude   " : "sugestie "} ${x.title} · ${x.templateId} · ${x.direction}`);
+        log(`      ${x.bigIdea}`);
+        log(`      hook (${x.hook.origin}): „${x.hook.text}”${x.risks.length ? ` · riscuri: ${x.risks.join("; ")}` : ""}`);
+      }
+      for (const r of c.rationale) log(r);
+      return;
+    }
+    case "concept": {
+      const pid = need(id, "proiectul");
+      const c = chooseConcept(pid, need(a._[2], "id-ul conceptului"));
+      log(`Conceptul ales: ${c.selectedId}. Regenerează storyboard-ul: npm run mms -- storyboard ${pid} --force`);
       return;
     }
     case "critique-pack": {

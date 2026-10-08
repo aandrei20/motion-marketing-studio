@@ -23,6 +23,7 @@ import type { PlatformProfile } from "../platform/profiles";
 import type { VideoCheck } from "../renderer/node/analyze-video";
 import type { ValidationResult } from "../timeline/validate";
 import type { IssueDraft } from "./issues";
+import { loadConcepts } from "../creative/concepts";
 import { area, focusRects, holdFrame, overlapArea, screenRect } from "../timeline/geometry";
 import { boxAt, captionBoxes } from "../timeline/validate";
 import type { PixelMetrics } from "../critique/pixel";
@@ -287,6 +288,25 @@ export const CHECKS: CheckDef[] = [
       if (avg > hi * 1.15) return [{ frame: null, sceneId: null, formatId: fid, dimension: "pacing", severity: "medium", problem: `Ritm lent pentru ${prof.label}: ${avg.toFixed(1)} s pe scenă în medie (recomandat ${lo}–${hi} s).`, recommendation: "Împarte scenele lungi sau taie din hold-uri (vocea dictează minimul).", confidence: 0.6 }];
       if (avg < lo * 0.85) return [{ frame: null, sceneId: null, formatId: fid, dimension: "pacing", severity: "medium", problem: `Ritm foarte rapid: ${avg.toFixed(1)} s pe scenă (recomandat ${lo}–${hi} s).`, recommendation: "Lasă mesajele să respire: comasează scenele sau prelungește-le.", confidence: 0.6 }];
       return [];
+    },
+  },
+  {
+    id: "creative.concept",
+    version: 1,
+    pass: "story",
+    title: "Conceptul creativ: ales, susținut de dovezi, respectat de storyboard",
+    categories: ["creative"],
+    method: "static",
+    perFormat: false,
+    run: (ctx) => {
+      const concepts = loadConcepts(ctx.project.id);
+      const out: IssueDraft[] = [];
+      const c = concepts?.concepts.find((x) => x.id === concepts.selectedId);
+      if (!c) return [{ frame: null, sceneId: null, dimension: "creative", severity: "medium", problem: "Reclama nu are un concept creativ ales (concepts.json).", recommendation: "Generează și alege conceptul: npm run mms -- concepts <proiect>.", method: "static", confidence: 0.9 }];
+      if (c.total < 60) out.push({ frame: null, sceneId: null, dimension: "creative", severity: "medium", problem: `Conceptul ales („${c.title}”) are doar ${c.total}/100.`, recommendation: "Claude propune un concept mai puternic (origin „ai”) sau utilizatorul își rafinează ideea.", method: "static", confidence: 0.6 });
+      for (const r of c.risks) out.push({ frame: null, sceneId: null, dimension: "creative", severity: "low", problem: `Risc al conceptului „${c.title}”: ${r}.`, recommendation: "Adaugă materialul lipsă sau alege alt concept.", method: "static", confidence: 0.7 });
+      if (ctx.storyboard.templateId && ctx.storyboard.templateId !== c.templateId) out.push({ frame: null, sceneId: null, dimension: "creative", severity: "low", problem: `Storyboard-ul folosește structura „${ctx.storyboard.templateId}”, conceptul ales cere „${c.templateId}”.`, recommendation: "Regenerează storyboard-ul din concept sau alege conceptul care corespunde.", method: "static", confidence: 0.6 });
+      return out;
     },
   },
   // ─── PASS 2: vizual (pe pixeli)

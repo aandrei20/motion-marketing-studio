@@ -12,3 +12,4 @@ export * from "./edit";
 export * from "./critique";
 export * from "./version";
 export * from "./state";
+export * from "./concepts";
