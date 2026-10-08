@@ -23,6 +23,8 @@ import type { PlatformProfile } from "../platform/profiles";
 import type { VideoCheck } from "../renderer/node/analyze-video";
 import type { ValidationResult } from "../timeline/validate";
 import type { IssueDraft } from "./issues";
+import { area, focusRects, holdFrame, overlapArea, screenRect } from "../timeline/geometry";
+import { boxAt, captionBoxes } from "../timeline/validate";
 import type { PixelMetrics } from "../critique/pixel";
 
 export type Depth = "fast" | "standard" | "deep" | "final";
@@ -382,6 +384,54 @@ export const CHECKS: CheckDef[] = [
           const upscale = (l.box.w * zoom) / (visibleW || 1);
           if (upscale > 1.6) out.push({ frame: s.from, sceneId: s.id, layerId: l.id, formatId: fid, dimension: "assets", category: "ui", severity: "medium", problem: `Captura „${asset.originalName}” e mărită ${upscale.toFixed(1)}× peste rezoluția ei: va arăta neclar.`, recommendation: "Capturează din nou la rezoluție mai mare (deviceScaleFactor 2–3) sau reduce zoom-ul.", confidence: 0.8 });
         }
+      }
+      return out;
+    },
+  },
+  {
+    id: "ui.caption-occlusion",
+    version: 2,
+    pass: "ui",
+    title: "Subtitrările nu acoperă elementul demonstrat (zona țintită, pe ecran, cu decupaj, scroll și cameră)",
+    categories: ["ui", "typography"],
+    method: "timeline",
+    perFormat: true,
+    run: (ctx, fid) => {
+      const t = ctx.timelines[fid];
+      if (!t.captions) return [];
+      const segs = captionBoxes(t);
+      const out: IssueDraft[] = [];
+      t.scenes.forEach((s, i) => {
+        const local = holdFrame(t, i);
+        const words = t.captions!.words.filter((w) => w.from < s.from + s.durationInFrames && w.to > s.from);
+        if (!words.length) return;
+        const cap = boxAt(segs, words[0].from);
+        const focus = focusRects(t, s, local);
+        const hit = focus.map((r) => overlapArea(cap, r) / Math.max(1, area(r))).reduce((m, x) => Math.max(m, x), 0);
+        if (hit > 0.1) out.push({ frame: s.from + local, sceneId: s.id, formatId: fid, dimension: "composition", category: "ui", severity: ["feature", "demo", "solution"].includes(s.meta.narrativeRole) ? "high" : "medium", problem: `Subtitrările acoperă ${Math.round(hit * 100)}% din elementul demonstrat în ${s.id}.`, recommendation: "Recompilează (banda se mută automat dacă există loc în zona sigură); altfel mută materialul sau dezactivează subtitrările arse pe această scenă.", confidence: 0.8 });
+      });
+      return out;
+    },
+  },
+  {
+    id: "typography.caption-redundancy",
+    version: 1,
+    pass: "typography",
+    title: "Subtitrările nu repetă textul deja scris pe ecran",
+    categories: ["typography"],
+    method: "timeline",
+    perFormat: false,
+    run: (ctx, fid) => {
+      const t = ctx.timelines[fid];
+      if (!t.captions) return [];
+      const out: IssueDraft[] = [];
+      const norm = (x: string) => x.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter((w) => w.length > 1 || /\d/.test(w));
+      for (const s of t.scenes) {
+        const words = t.captions.words.filter((w) => w.from >= s.from && w.from < s.from + s.durationInFrames).map((w) => norm(w.text)).flat();
+        if (words.length < 2) continue;
+        const screen = new Set(norm(s.layers.filter((l) => READABLE_TEXT_CAPS.has(l.capability)).map((l) => String(l.params.text ?? "")).join(" ")));
+        const dup = words.filter((w) => screen.has(w)).length / words.length;
+        if (dup >= 0.7) out.push({ frame: s.from, sceneId: s.id, dimension: "clutter", category: "typography", severity: "medium", problem: `Subtitrările din ${s.id} repetă textul de pe ecran (${Math.round(dup * 100)}% din cuvinte).`, recommendation: "Nu arde subtitrarea pentru o replică deja scrisă pe ecran (recompilează: compilatorul o omite).", confidence: 0.8 });
       }
       return out;
     },

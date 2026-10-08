@@ -139,7 +139,13 @@ export const Timeline = z.object({
   /** straturi globale în cadre absolute (grain, vignetă, subtitrări) */
   overlays: z.array(TimelineLayer).default([]),
   captions: z
-    .object({ words: z.array(CaptionWord), box: Rect, params: z.record(z.string(), z.unknown()).default({}) })
+    .object({
+      words: z.array(CaptionWord),
+      box: Rect,
+      params: z.record(z.string(), z.unknown()).default({}),
+      /** poziția benzii pe intervale (de ex. pe o scenă unde poziția implicită ar acoperi interfața); goală = mereu `box` */
+      segments: z.array(z.object({ from: z.number().int().min(0), to: z.number().int().min(0), box: Rect })).default([]),
+    })
     .nullable()
     .default(null),
   audio: z.object({

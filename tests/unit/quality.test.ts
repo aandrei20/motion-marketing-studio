@@ -233,6 +233,52 @@ describe("profilurile de platformă", () => {
   });
 });
 
+describe("subtitrările în compilator", () => {
+  it("replica deja scrisă pe ecran nu se mai arde ca subtitrare", async () => {
+    const { coveredByScreen } = await import("../../src/timeline/compile");
+    expect(coveredByScreen("Cu Kolibri: Planifică săptămâna în 5 minute.", ["Planifică săptămâna în 5 minute"])).toBe(true);
+    expect(coveredByScreen("Găsești orice sarcină tastând câteva litere.", ["Căutare instantă"])).toBe(false);
+  });
+  it("banda nu acoperă elementul demonstrat; peste restul interfeței rămâne implicită", async () => {
+    const { captionSegments } = await import("../../src/timeline/compile");
+    const scene = (id: string, from: number, focus: boolean) =>
+      ({
+        id,
+        from,
+        durationInFrames: 90,
+        transitionIn: null,
+        camera: { keys: [{ at: 0, x: 540, y: 960, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" }], handheld: 0, shake: [], punches: [], perspective: 1600, motionBlur: true },
+        meta: {},
+        layers: [
+          {
+            id: `${id}-m`,
+            capability: "media.screen",
+            from: 0,
+            durationInFrames: 90,
+            box: { x: 60, y: 800, w: 960, h: 600 },
+            depth: 1,
+            params: { src: "x.png", kind: "image", imageWidth: 960, imageHeight: 600, frame: "none" },
+            children: focus ? [{ id: `${id}-f`, capability: "ui.spotlight", from: 0, durationInFrames: 90, box: { x: 100, y: 300, w: 400, h: 80 }, depth: 1, params: {}, children: [], modifiers: [], assets: [], role: "overlay", z: 1 }] : [],
+            modifiers: [],
+            assets: [],
+            role: "hero",
+            z: 1,
+          },
+        ],
+      }) as unknown as Timeline["scenes"][number];
+    const base = { x: 120, y: 1100, w: 840, h: 144 };
+    const safe = { x: 120, y: 240, w: 840, h: 1020 };
+    // elementul demonstrat ajunge pe ecran la y 1100–1180, exact sub bandă → banda urcă deasupra lui
+    const segs = captionSegments([scene("a", 0, true), scene("b", 90, false)], base, safe, { width: 1080, height: 1920, fps: 30 });
+    expect(segs.length).toBe(2);
+    expect(segs[0].box.y + segs[0].box.h).toBeLessThanOrEqual(1100);
+    expect(segs[0].box.y).toBeGreaterThanOrEqual(safe.y);
+    expect(segs[1].box.y).toBe(base.y);
+    // fără element demonstrat → nimic de mutat (poziția implicită)
+    expect(captionSegments([scene("b", 0, false)], base, safe, { width: 1080, height: 1920, fps: 30 })).toEqual([]);
+  });
+});
+
 /** O imagine sintetică: fundal plin + un dreptunghi de „text”. */
 function raster(w: number, h: number, bg: [number, number, number], fill?: { x: number; y: number; w: number; h: number; c: [number, number, number] }): Raster {
   const rgb = new Uint8Array(w * h * 3);

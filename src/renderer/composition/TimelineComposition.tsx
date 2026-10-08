@@ -211,24 +211,31 @@ export const TimelineComposition: React.FC<TimelineCompositionProps> = ({ timeli
                 {timeline.overlays.map((l) => (
                   <LayerNode key={l.id} layer={l} />
                 ))}
-                {timeline.captions ? (
-                  <LayerNode
-                    layer={{
-                      id: "captions",
-                      capability: "text.captions",
-                      from: 0,
-                      durationInFrames: timeline.durationInFrames,
-                      z: 0,
-                      box: timeline.captions.box,
-                      params: { ...timeline.captions.params, words: timeline.captions.words },
-                      depth: 0,
-                      role: "caption",
-                      modifiers: [],
-                      assets: [],
-                      children: [],
-                    }}
-                  />
-                ) : null}
+                {timeline.captions
+                  ? (timeline.captions.segments.length ? timeline.captions.segments : [{ from: 0, to: timeline.durationInFrames, box: timeline.captions.box }]).map((seg, i) => {
+                      // fiecare segment are poziția lui; cuvintele sunt relative la începutul segmentului
+                      const words = timeline.captions!.words.filter((w) => w.from >= seg.from && w.from < seg.to).map((w) => ({ ...w, from: w.from - seg.from, to: w.to - seg.from }));
+                      return words.length ? (
+                        <LayerNode
+                          key={`captions-${i}`}
+                          layer={{
+                            id: `captions-${i}`,
+                            capability: "text.captions",
+                            from: seg.from,
+                            durationInFrames: Math.max(1, Math.min(timeline.durationInFrames, seg.to) - seg.from),
+                            z: 0,
+                            box: seg.box,
+                            params: { ...timeline.captions!.params, words },
+                            depth: 0,
+                            role: "caption",
+                            modifiers: [],
+                            assets: [],
+                            children: [],
+                          }}
+                        />
+                      ) : null;
+                    })
+                  : null}
               </AbsoluteFill>
             </SceneIdContext.Provider>
             {timeline.concept ? <ConceptMark /> : null}

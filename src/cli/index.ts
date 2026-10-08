@@ -22,6 +22,7 @@ import { runQuality, type QualityRun } from "../quality/run";
 import { autoFixLoop } from "../quality/autofix";
 import type { Depth } from "../quality/checks";
 import { applyEdit, redo, undo } from "../editing/history";
+import { critiquePack } from "../critique/pack";
 import { approve, demoUrl, shutdown, writePostPack, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
 import { createProject, createVersion, listProjects, listVersions, loadAssets, loadProject, loadResearch, projectDir, saveBrief } from "../projects/store";
 import { analyzeReference, saveReferenceProfile } from "../references/analyze";
@@ -118,7 +119,9 @@ PRODUCȚIE
   impact <id> [--from v2] [--to v3]      ce s-a schimbat între versiuni și ce trebuie refăcut
   edit <id> --op '{"op":"scene-extend","sceneId":"s2-hook","deltaSec":0.5}' [--file ops.json] [--no-compile]
   undo <id> | redo <id>                  anulează / reface ultima editare din versiunea curentă
-  review <id> --file review.json         observațiile lui Claude / notele tale (vezi docs)
+  critique-pack <id> [--version v3] [--format 9x16]
+                                         cadre-cheie + foaie de contact + cerere de revizuire vizuală (Claude)
+  review <id> --file review.json         observațiile lui Claude / notele tale (secunda X: problema)
   iterate <id> "la 00:14 zoom pe câmpul de căutare"
   hook-variants <id> [--count 2] [--from v2]   câte o versiune pentru fiecare variantă de hook din script
   post-pack <id> [--version v3] [--format 9x16] copertă + text de postare (și automat la exportul final)
@@ -398,6 +401,14 @@ async function main(): Promise<void> {
         const c = await stepCompile(pid, r.versionId, log);
         await stepAudio(pid, c.versionId, log);
       }
+      return;
+    }
+    case "critique-pack": {
+      const pid = need(id, "proiectul");
+      const r = await critiquePack(pid, { versionId: str(a.flags.version), formatId: str(a.flags.format), log });
+      log("Pachet de revizuire: " + path.relative(PATHS.root, r.request));
+      log("Foaia de contact: " + path.relative(PATHS.root, r.contactSheet) + " (" + r.frames.length + " cadre-cheie, " + r.rendered + " randate acum)");
+      log("Schema răspunsului: " + path.relative(PATHS.root, r.schema));
       return;
     }
     case "review": {

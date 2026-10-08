@@ -17,6 +17,7 @@ import {
   type FormatSpec,
   type Palette,
   type Project,
+  type Rect,
   type Research,
   type Script,
   type Storyboard,
@@ -37,7 +38,8 @@ import { getCamera, getCapability, getLayer, getModifier, getTransition } from "
 import { getRecipe } from "../recipes/recipes";
 import type { RecipeContext, ResolvedAsset } from "../recipes/types";
 import { nodeMeasure } from "./measure-node";
-import { LAYOUT_TEXT_CAPS as TEXT_CAPS } from "../motion/text-caps";
+import { LAYOUT_TEXT_CAPS, LAYOUT_TEXT_CAPS as TEXT_CAPS } from "../motion/text-caps";
+import { focusRects, holdFrame, overlapArea } from "./geometry";
 
 export interface VoiceClipRef {
   lineId: string;
@@ -375,8 +377,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
       const v = input.voice[l.id];
       if (!v) continue;
       // dacă replica e deja scrisă pe ecran (același text), subtitrarea ar dubla-o: o omitem
-      const shown = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
-      const onScreenSame = !!l.onScreen && shown(l.onScreen) === shown(l.voiceover);
+      const onScreenSame = coveredByScreen(l.voiceover, [l.onScreen, sc.text.headline ?? "", sc.text.sub ?? ""]);
       voiceCues.push({ lineId: l.id, at: Math.max(0, vAt), src: v.src, durationSec: v.durationSec, words: onScreenSame ? [] : v.words });
       cues.push({ id: `vo-${l.id}`, kind: "voice", atFrame: Math.max(0, vAt), sound: v.src, gainDb: 0, pan: 0, sceneId: sc.id, reason: `vocea replicii ${l.id}` });
       vAt += Math.round((v.durationSec + l.pauseAfterMs / 1000) * fps);
@@ -431,7 +432,8 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const s = safe.rect;
     const h = orientation === "portrait" ? H * 0.075 : H * 0.11;
     const box = { x: s.x, y: s.y + s.h - h, w: s.w, h };
-    captions = { words, box, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: true } };
+    const segments = captionSegments(scenes, box, safe.rect, { width: W, height: H, fps });
+    captions = { words, box, segments, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: true } };
   }
 
   // 7. materiale fără drepturi confirmate → marcaj „concept”
@@ -472,6 +474,59 @@ export function compileTimeline(input: CompileInput): CompileResult {
     concept,
   });
   return { timeline, scenes: reports, warnings };
+}
+
+/**
+ * Replica rostită e deja pe ecran dacă cel puțin 70% din cuvintele ei apar în textul scenei: subtitrarea ar
+ * dubla mesajul (același lucru de două ori pe ecran).
+ */
+export function coveredByScreen(voice: string, screen: string[]): boolean {
+  const norm = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter((w) => w.length > 1 || /\d/.test(w));
+  const v = norm(voice);
+  if (!v.length) return false;
+  const pool = new Set(norm(screen.join(" ")));
+  return v.filter((w) => pool.has(w)).length / v.length >= 0.7;
+}
+
+/**
+ * Pozițiile benzii de subtitrări pe scene. Banda nu are voie să acopere elementul demonstrat (zona țintită
+ * de spotlight / callout / tastare / clic, dusă pe ecran prin decupaj, scroll și cameră). Unde poziția
+ * implicită l-ar acoperi la momentul de hold, banda se mută pe cea mai apropiată poziție din zona sigură care
+ * nu acoperă nici elementul, nici textul fix. Fără element demonstrat, banda peste interfață e acceptată (are
+ * fundal). Scenele consecutive cu aceeași poziție se comasează; fără nicio mutare, lista e goală.
+ */
+export function captionSegments(scenes: TimelineScene[], base: Rect, safeRect: Rect, t: { width: number; height: number; fps: number }): Array<{ from: number; to: number; box: Rect }> {
+  const out: Array<{ from: number; to: number; box: Rect }> = [];
+  let moved = false;
+  const pad = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + 2 * p, h: r.h + 2 * p });
+  scenes.forEach((s, i) => {
+    const local = holdFrame({ scenes }, i);
+    const focus = focusRects(t, s, local).map((r) => pad(r, Math.round(base.h * 0.15)));
+    const texts = s.layers.filter((l) => l.depth === 0 && LAYOUT_TEXT_CAPS.has(l.capability)).map((l) => l.box);
+    const hitsFocus = (b: Rect) => focus.some((r) => overlapArea(b, r) > 0);
+    const clashes = (b: Rect) => texts.some((r) => overlapArea(b, r) > 0);
+    let box = base;
+    if (hitsFocus(base)) {
+      // poziții candidate, de la cea mai apropiată de cea implicită: în sus și în jos, cu pas de jumătate de bandă
+      const step = Math.max(8, Math.round(base.h / 2));
+      const ys: number[] = [];
+      for (let d = step; d <= safeRect.h; d += step) ys.push(base.y - d, base.y + d);
+      const pick = ys
+        .map((y) => ({ ...base, y }))
+        .filter((b) => b.y >= safeRect.y && b.y + b.h <= safeRect.y + safeRect.h)
+        .find((b) => !hitsFocus(b) && !clashes(b));
+      if (pick) {
+        box = pick;
+        moved = true;
+      }
+    }
+    const from = s.from;
+    const to = i + 1 < scenes.length ? scenes[i + 1].from : s.from + s.durationInFrames;
+    const prev = out[out.length - 1];
+    if (prev && prev.box.y === box.y && prev.box.x === box.x) prev.to = to;
+    else out.push({ from, to, box });
+  });
+  return moved ? out : [];
 }
 
 export { getCapability };

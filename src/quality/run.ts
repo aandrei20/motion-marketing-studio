@@ -99,6 +99,41 @@ export function collectRounds(projectId: string): CritiqueRound[] {
   return out.sort((a, b) => a.n - b.n);
 }
 
+/**
+ * Cadrele-cheie ale unui timeline (unul pe scenă, în fereastra de hold), randate doar pentru scenele al căror
+ * conținut nu e deja în cache, plus analiza lor pe pixeli. Cheia: conținutul scenei + cadrul local + codul de randare.
+ */
+export async function keyStills(projectId: string, t: Timeline, o: { force?: boolean; log?: Log; scale?: number } = {}): Promise<{ stills: StillResult[]; rendered: number; reused: number }> {
+  const scale = o.scale ?? 0.4;
+  const code = renderCodeHash();
+  const samples = pickSamples(t);
+  const dir = path.join(projectDir(projectId), "cache", "quality", "stills");
+  fs.mkdirSync(dir, { recursive: true });
+  const keyed = samples.map((s) => ({ s, key: fingerprint({ v: 1, scene: sceneContentKey(t, t.scenes.find((x) => x.id === s.sceneId)!), local: s.local, scale, code }) }));
+  const missing = keyed.filter((k) => o.force || !fs.existsSync(path.join(dir, `${k.key}.json`)) || !fs.existsSync(path.join(dir, `${k.key}.jpg`)));
+  if (missing.length) {
+    o.log?.(`  cadre-cheie [${t.formatId}]: randez ${missing.length} (din ${samples.length}; restul din cache)`);
+    const tmp = path.join(dir, `tmp-${process.pid}`);
+    const files = await renderStills(t, missing.map((m) => m.s.frame), tmp, { format: "jpeg", scale, prefix: "q" });
+    for (let i = 0; i < missing.length; i++) {
+      const { s, key } = missing[i];
+      const jpg = path.join(dir, `${key}.jpg`);
+      fs.renameSync(files[i], jpg);
+      const img = await thumbnail(jpg, Math.round(t.width * scale), 0, Math.round(t.height * scale));
+      if (!img) throw new MmsError("STILL_READ", `Nu pot citi cadrul randat ${jpg}.`);
+      const a = analyzeSample(img, t, s);
+      // problemele se păstrează relativ la scenă: scena mutată în timp își refolosește analiza
+      writeJson(path.join(dir, `${key}.json`), { metrics: a.metrics, issues: a.issues.map((d) => ({ ...d, frame: null })), local: s.local });
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+  const stills = keyed.map(({ s, key }) => {
+    const c = JSON.parse(fs.readFileSync(path.join(dir, `${key}.json`), "utf8")) as { metrics: PixelMetrics; issues: IssueDraft[] };
+    return { sceneId: s.sceneId, frame: s.frame, local: s.local, file: path.join(dir, `${key}.jpg`), cached: !missing.some((m) => m.key === key), metrics: c.metrics, issues: c.issues.map((d) => ({ ...d, frame: s.frame, formatId: t.formatId })) };
+  });
+  return { stills, rendered: missing.length, reused: samples.length - missing.length };
+}
+
 export async function runQuality(projectId: string, o: QualityRunOptions = {}): Promise<{ run: QualityRun; round: CritiqueRound; decision: LoopDecision }> {
   const started = Date.now();
   const log = o.log ?? (() => undefined);
@@ -157,35 +192,10 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
   };
 
   async function computeStills(fid: string): Promise<StillResult[]> {
-    const t = timelines[fid];
-    const scale = 0.4;
-    const samples = pickSamples(t);
-    const dir = path.join(cacheDir, "stills");
-    fs.mkdirSync(dir, { recursive: true });
-    const keyed = samples.map((s) => ({ s, key: fingerprint({ v: 1, scene: sceneContentKey(t, t.scenes.find((x) => x.id === s.sceneId)!), local: s.local, scale, code }) }));
-    const missing = keyed.filter((k) => o.force || !fs.existsSync(path.join(dir, `${k.key}.json`)) || !fs.existsSync(path.join(dir, `${k.key}.jpg`)));
-    if (missing.length) {
-      log(`  cadre-cheie [${fid}]: randez ${missing.length} (din ${samples.length}; restul din cache)`);
-      const tmp = path.join(dir, `tmp-${process.pid}`);
-      const files = await renderStills(t, missing.map((m) => m.s.frame), tmp, { format: "jpeg", scale, prefix: "q" });
-      for (let i = 0; i < missing.length; i++) {
-        const { s, key } = missing[i];
-        const jpg = path.join(dir, `${key}.jpg`);
-        fs.renameSync(files[i], jpg);
-        const img = await thumbnail(jpg, Math.round(t.width * scale), 0, Math.round(t.height * scale));
-        if (!img) throw new MmsError("STILL_READ", `Nu pot citi cadrul randat ${jpg}.`);
-        const a = analyzeSample(img, t, s);
-        // problemele se păstrează relativ la scenă: scena mutată în timp își refolosește analiza
-        writeJson(path.join(dir, `${key}.json`), { metrics: a.metrics, issues: a.issues.map((d) => ({ ...d, frame: null })), local: s.local });
-      }
-      fs.rmSync(tmp, { recursive: true, force: true });
-      renders.stillsRendered += missing.length;
-    }
-    renders.stillsReused += samples.length - missing.length;
-    return keyed.map(({ s, key }) => {
-      const c = JSON.parse(fs.readFileSync(path.join(dir, `${key}.json`), "utf8")) as { metrics: PixelMetrics; issues: IssueDraft[] };
-      return { sceneId: s.sceneId, frame: s.frame, local: s.local, file: path.join(dir, `${key}.jpg`), cached: !missing.some((m) => m.key === key), metrics: c.metrics, issues: c.issues.map((d) => ({ ...d, frame: s.frame, formatId: fid })) };
-    });
+    const r = await keyStills(projectId, timelines[fid], { force: o.force, log });
+    renders.stillsRendered += r.rendered;
+    renders.stillsReused += r.reused;
+    return r.stills;
   }
 
   async function computeMotion(fid: string): Promise<MotionResult[]> {

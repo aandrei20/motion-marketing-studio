@@ -3,7 +3,7 @@
  * recomandare, ca să poată fi reparată local. Regulile dure din CLAUDE.md sunt „critical” (blochează exportul).
  */
 import { rectInside, rectsOverlap, resolveSafeZone } from "../core/formats";
-import { isClaimUsable, type AssetManifest, type Finding, type FormatSpec, type Research, type Timeline, type TimelineLayer } from "../core/schema";
+import { isClaimUsable, type AssetManifest, type Finding, type FormatSpec, type Rect, type Research, type Timeline, type TimelineLayer } from "../core/schema";
 import { getCapability } from "../motion/registry";
 import { readingSec } from "../editing/grammar";
 import { issueCollector, type IssueDraft } from "../quality/issues";
@@ -14,6 +14,16 @@ export interface ValidationResult {
   ok: boolean;
   findings: Finding[];
   stats: { flashes: number; maxFlashesPerSec: number; textLayers: number; minFontAt360: number | null };
+}
+
+/** Pozițiile benzii de subtitrări pe intervale (segmentele compilatorului sau poziția implicită). */
+export function captionBoxes(t: Timeline): Array<{ from: number; to: number; box: Rect }> {
+  if (!t.captions) return [];
+  return t.captions.segments.length ? t.captions.segments : [{ from: 0, to: t.durationInFrames, box: t.captions.box }];
+}
+
+export function boxAt(segs: Array<{ from: number; to: number; box: Rect }>, frame: number): Rect {
+  return (segs.find((x) => frame >= x.from && frame < x.to) ?? segs[segs.length - 1]).box;
 }
 
 export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; research: Research; format: FormatSpec }): ValidationResult {
@@ -115,16 +125,18 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
       if (s.camera.keys.some((k) => k.at > holdStart) || s.camera.handheld > 0) add({ frame: s.from + Math.max(0, holdStart), sceneId: s.id, dimension: "cta", severity: "medium", problem: "Camera încă se mișcă în timpul hold-ului de pe CTA.", recommendation: "Folosește camera.static pe cardul final.", suggestedFix: [{ op: "set-camera", sceneId: s.id, capability: "camera.static", params: {} }] });
     }
   }
-  // subtitrările: în zona sigură și fără suprapunere cu textul principal în același timp
+  // subtitrările: fiecare poziție a benzii în zona sigură și fără suprapunere cu textul principal în același timp
   if (t.captions) {
-    if (!rectInside(t.captions.box, safe.rect, 2)) add({ frame: 0, sceneId: null, dimension: "safe-zone", severity: "high", problem: "Subtitrările ies din zona de siguranță.", recommendation: "Recompilează cu formatul corect." });
+    const segs = captionBoxes(t);
+    for (const seg of segs) if (!rectInside(seg.box, safe.rect, 2)) add({ frame: seg.from, sceneId: null, dimension: "safe-zone", severity: "high", problem: "Subtitrările ies din zona de siguranță.", recommendation: "Recompilează cu formatul corect." });
     for (const s of t.scenes) {
       for (const l of s.layers) {
         if (!TEXT_CAPS.has(l.capability) || l.depth !== 0) continue;
         const a0 = s.from + l.from;
         const a1 = a0 + l.durationInFrames;
-        const wordsHere = t.captions.words.some((w) => w.from < a1 && w.to > a0);
-        if (wordsHere && rectsOverlap(l.box, t.captions.box)) add({ frame: a0, sceneId: s.id, dimension: "readability", severity: "high", problem: `Subtitrările se suprapun cu textul „${String(l.params.text ?? "").slice(0, 30)}”.`, recommendation: "Mută textul scenei mai sus sau dezactivează subtitrările arse." });
+        const wordsHere = t.captions.words.filter((w) => w.from < a1 && w.to > a0);
+        const clash = wordsHere.some((w) => rectsOverlap(l.box, boxAt(segs, w.from)));
+        if (clash) add({ frame: a0, sceneId: s.id, layerId: l.id, dimension: "readability", severity: "high", problem: `Subtitrările se suprapun cu textul „${String(l.params.text ?? "").slice(0, 30)}”.`, recommendation: "Mută textul scenei mai sus sau dezactivează subtitrările arse." });
       }
     }
   }
