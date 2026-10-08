@@ -41,8 +41,13 @@ Argumentele utilizatorului: $ARGUMENTS
 14. `npm run mms -- preview <id> --format <format>` pentru fiecare format. Citește foaia de contact (`versions/vN/renders/contact-<format>.png`) și cadrele din `stills-<format>/`.
 15. Critică: `npm run mms -- critique <id>` (rubrica fixă: hook, claritate, ritm, ierarhie, varietate, brand, CTA). Adaugă și revizuirea ta vizuală (fișier JSON, vezi docs/FLUX.md) cu `npm run mms -- review <id> --file …`.
 16. Corectează scenele sub 8/10 local (`npm run mms -- iterate <id> "…"` sau edită storyboard-ul într-o versiune nouă). La fiecare 3 runde arată progresul și întreabă dacă continui. Oprește-te după 2 runde fără îmbunătățire.
+    Respectă `brief.delivery.previews`: „one” = un singur preview predat, „two” = două, „until-threshold” = până trece pragul 8/10.
 
 ## 5. Predare
-17. Spune-i utilizatorului unde e preview-ul, ce s-a verificat și ce nu (sunetul îl judecă el: cere note pe timestamp).
+17. Livrare (grupa G din brief):
+    - `delivery.hookVariants` > 0: scrie variantele în `hooks` din script (origin „ai”, sugestii), apoi `npm run mms -- hook-variants <id>` (câte o versiune pentru fiecare, din aceeași versiune) și preview pentru fiecare; utilizatorul alege.
+    - `delivery.postPack`: coperta și textul se fac automat la exportul final; pentru o previzualizare: `npm run mms -- post-pack <id>`. Propune tu hashtag-urile în fișierul `-post.md`, marcate „sugestii”; nu adăuga afirmații noi.
+    - Vocea TTS a sistemului (Windows/say): spune-i utilizatorului că drepturile comerciale nu sunt clare (docs/LICENTE.md).
+    Spune-i utilizatorului unde e preview-ul, ce s-a verificat și ce nu (sunetul îl judecă el: cere note pe timestamp).
 18. Nu face exportul final. Doar când utilizatorul scrie exact „render final”: `npm run mms -- approve <id> render-final "render final" --version vN`, apoi `npm run render -- <id> --version vN --format <format>`.
 19. Actualizează STATE.md (se face automat la fiecare pas; verifică cu `npm run mms -- status <id>`).

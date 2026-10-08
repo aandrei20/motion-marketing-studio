@@ -17,6 +17,7 @@ export type Op =
   | { op: "music-level"; deltaDb: number }
   | { op: "music-off" }
   | { op: "use-original-hook" }
+  | { op: "use-hook"; hookId: string }
   | { op: "hook-energy"; style: "aggressive" | "calm" }
   | { op: "direction"; direction: CreativeDirection }
   | { op: "scene-length"; sec: number | null; sceneIndex: number | null; deltaSec: number }
@@ -56,6 +57,8 @@ export function parseCommand(input: string): Op[] {
   if (/(efecte(le)? sonore mai incet|less sfx|quieter (sound )?effects)/.test(t)) ops.push({ op: "sfx-level", deltaDb: -4 });
   if (/(efecte(le)? sonore mai tare|louder (sound )?effects|more sfx)/.test(t)) ops.push({ op: "sfx-level", deltaDb: 3 });
   if (/(fraza (mea )?(exacta|originala)|original phrase|exact phrase|ce ti-am dat|i gave you)/.test(t)) ops.push({ op: "use-original-hook" });
+  const useHook = t.match(/(?:foloseste|use|alege|pick)\s+(?:hook-ul|hookul|the hook|hook|varianta)\s+(hook-\d+)/);
+  if (useHook) ops.push({ op: "use-hook", hookId: useHook[1] });
   if (/hook/.test(t) && /(agresiv|aggressive|mai puternic|stronger|punchier)/.test(t)) ops.push({ op: "hook-energy", style: "aggressive" });
   if (/hook/.test(t) && /(mai calm|calmer|mai bland|softer)/.test(t)) ops.push({ op: "hook-energy", style: "calm" });
   const dirMap: Array<[RegExp, CreativeDirection]> = [
@@ -148,7 +151,8 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
           const tl = ctx.timeline.scenes.find((x) => x.id === s.id);
           const cur = tl?.transitionIn;
           if (!cur || cur.durationInFrames === 0) continue;
-          s.transitionIn = { capability: cur.capability, durationFrames: Math.max(2, Math.round(cur.durationInFrames * o.factor)), params: cur.params };
+          // storyboard-ul ține durata în cadre la 30 fps (referința compilatorului)
+          s.transitionIn = { capability: cur.capability, durationFrames: Math.min(60, Math.max(2, Math.round(((cur.durationInFrames * 30) / fps) * o.factor))), params: cur.params };
         }
         changes.push({ op: o.op, description: o.factor < 1 ? "Tranziții mai rapide (×0,6)." : "Tranziții mai lente (×1,4).", params: { factor: o.factor } });
         break;
@@ -181,6 +185,21 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
         const scene = sb.scenes.find((s) => s.lineIds.includes(hook.id));
         if (scene) scene.text = { ...scene.text, headline: original };
         changes.push({ op: o.op, description: `Hook-ul folosește exact fraza utilizatorului: „${original}”.`, params: { lineId: hook.id } });
+        break;
+      }
+      case "use-hook": {
+        const variant = script.hooks.find((h) => h.id === o.hookId);
+        if (!variant) throw new MmsError("HOOK_MISSING", `Scriptul nu are varianta de hook „${o.hookId}”.`, `Variante: ${script.hooks.map((h) => h.id).join(", ") || "niciuna"} (câmpul hooks din script.json).`);
+        const hook = script.lines.find((l) => l.isHook);
+        if (!hook) throw new MmsError("NO_HOOK", "Scriptul nu are replică de hook.");
+        hook.voiceover = variant.text;
+        hook.onScreen = variant.text;
+        hook.origin = variant.origin;
+        hook.claimIds = [];
+        script.hooks = script.hooks.map((h) => ({ ...h, selected: h.id === variant.id }));
+        const scene = sb.scenes.find((s) => s.lineIds.includes(hook.id));
+        if (scene) scene.text = { ...scene.text, headline: variant.text };
+        changes.push({ op: o.op, description: `Hook-ul devine varianta ${variant.id}${variant.origin === "ai" ? " (sugestie)" : ""}: „${variant.text}”.`, params: { lineId: hook.id, hookId: variant.id } });
         break;
       }
       case "hook-energy": {

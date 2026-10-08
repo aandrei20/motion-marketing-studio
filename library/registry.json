@@ -4751,6 +4751,10 @@
           "uppercase": {
             "default": false,
             "type": "boolean"
+          },
+          "backdrop": {
+            "default": false,
+            "type": "boolean"
           }
         },
         "required": [

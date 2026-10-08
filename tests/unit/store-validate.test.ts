@@ -125,3 +125,34 @@ describe("camera", () => {
     expect(rig.cameraMotionBlur(cam, 10, 30, "x")).toEqual([0, 0]);
   });
 });
+
+describe("livrare: copertă și variante de hook", () => {
+  it("coperta e în scena de prezentare, după tranziția de intrare", async () => {
+    const steps = await import("../../src/pipeline/steps");
+    const t = timeline([
+      { id: "h", from: 0, durationInFrames: 60, transitionIn: null, camera: cam, layers: [], meta: meta("hook") },
+      { id: "r", from: 50, durationInFrames: 70, transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} }, camera: cam, layers: [], meta: meta("reveal") },
+      { id: "c", from: 110, durationInFrames: 60, transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} }, camera: cam, layers: [], meta: meta("cta") },
+    ]);
+    const f = steps.coverFrame(t);
+    expect(f).toBeGreaterThanOrEqual(60);
+    expect(f).toBeLessThan(110);
+    // fără scenă de prezentare: hook-ul
+    expect(steps.coverFrame({ ...t, scenes: [t.scenes[0], t.scenes[2]] })).toBeLessThan(60);
+  });
+  it("„folosește hook-ul hook-2” înlocuiește hook-ul cu varianta, fără a atinge restul", async () => {
+    const { applyOps, parseCommand } = await import("../../src/iterate/intents");
+    const ops = parseCommand("folosește hook-ul hook-2");
+    expect(ops[0]).toMatchObject({ op: "use-hook", hookId: "hook-2" });
+    const script = { schemaVersion: 1 as const, textLanguage: "ro", voiceLanguage: "ro", hooks: [{ id: "hook-1", text: "Primul", origin: "user-verbatim" as const, selected: true }, { id: "hook-2", text: "Al doilea", origin: "ai" as const, selected: false }], lines: [{ id: "l1", origin: "user-verbatim" as const, isHook: true, isCta: false, voiceover: "Primul", onScreen: "Primul", emphasis: [], claimIds: [], mandatoryPhrase: false, emotion: "", visualIntent: "" }, { id: "l2", origin: "ai" as const, isHook: false, isCta: true, voiceover: "Încearcă", onScreen: "Încearcă", emphasis: [], claimIds: [], mandatoryPhrase: false, emotion: "", visualIntent: "" }] };
+    const sb = { schemaVersion: 1, scenes: [{ id: "s1", lineIds: ["l1"], text: { headline: "Primul" } }, { id: "s2", lineIds: ["l2"], text: { headline: "Încearcă" } }] };
+    const r = applyOps({ storyboard: sb as never, script: script as never, brief: {} as never, timeline: timeline([{ id: "s1", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [], meta: meta("hook") }]), assets: { schemaVersion: 1, assets: [] } }, ops);
+    expect(r.script.lines[0].onScreen).toBe("Al doilea");
+    expect(r.script.lines[0].origin).toBe("ai");
+    expect(r.script.hooks.find((h) => h.selected)?.id).toBe("hook-2");
+    expect(r.script.lines[1].onScreen).toBe("Încearcă");
+    expect((r.storyboard.scenes[0] as { text: { headline: string } }).text.headline).toBe("Al doilea");
+    expect(script.lines[0].onScreen).toBe("Primul");
+    expect(() => applyOps({ storyboard: sb as never, script: script as never, brief: {} as never, timeline: timeline([{ id: "s1", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [], meta: meta("hook") }]), assets: { schemaVersion: 1, assets: [] } }, [{ op: "use-hook", hookId: "hook-9" }])).toThrow(/hook-9/);
+  });
+});

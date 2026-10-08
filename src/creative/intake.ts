@@ -55,9 +55,9 @@ export const INTAKE_QUESTIONS: IntakeQuestion[] = [
   { id: "f3", group: "F", text: "Audio-ul tău: ce fișier, de la ce secundă, cum (întreg, tăiat, mai încet sub voce)?", field: "brief.audio", required: false },
   { id: "f4", group: "F", text: "Densitatea efectelor sonore?", options: ["none", "low", "medium", "high"], field: "brief.audio.sfxDensity", required: true },
   { id: "f5", group: "F", text: "Tăcere intenționată undeva?", options: ["nu", "da (spune unde)"], field: "brief.audio.intentionalSilence", required: false },
-  { id: "g1", group: "G", text: "Pachet de postare (copertă, titlu, descriere, hashtag-uri)?", options: ["da", "nu"], field: "delivery.postPack", required: false },
-  { id: "g2", group: "G", text: "Variante de hook?", options: ["0", "2", "3"], field: "delivery.hookVariants", required: false },
-  { id: "g3", group: "G", text: "Câte preview-uri și ce nivel de efort?", options: ["1 preview", "2 preview-uri", "până trece pragul 8/10"], field: "delivery.previews", required: false },
+  { id: "g1", group: "G", text: "Pachet de postare (copertă, titlu, descriere, hashtag-uri)?", options: ["da", "nu"], field: "brief.delivery.postPack", required: false },
+  { id: "g2", group: "G", text: "Variante de hook?", options: ["0", "2", "3"], field: "brief.delivery.hookVariants", required: false },
+  { id: "g3", group: "G", text: "Câte preview-uri și ce nivel de efort?", options: ["1 preview", "2 preview-uri", "până trece pragul 8/10"], field: "brief.delivery.previews", required: false },
   { id: "h1", group: "H", text: "Rezumatul planului e corect? Scrie „aprob” ca să încep.", field: "approvals", required: true },
 ];
 

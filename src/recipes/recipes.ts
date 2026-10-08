@@ -194,8 +194,10 @@ export const uiSpotlight = defineRecipe({
       children.push(layer(ctx, "ui.spotlight", full, { region: padRect(region.rect, 0), dim: 0.6, padding: 14 }, { from: t1 }));
       children.push(layer(ctx, "ui.highlight", region.rect, { shape: "rect", color: "accent", padding: 14 }, { from: t1 + 4 }));
       const label = ctx.text.items[0] ?? "";
-      // în cardul decupat (vertical) nu e loc lateral: callout-ul stă sub zonă, în interiorul cardului
-      const side = crop ? (region.rect.y + region.rect.h / 2 < crop.y + crop.h * 0.55 ? "bottom" : "top") : region.rect.x > a.w * 0.55 ? "left" : "right";
+      // în cardul decupat (vertical) nu e loc lateral: callout-ul stă sub sau deasupra zonei, în interiorul cardului;
+      // cu subtitrări, partea de jos a cardului e sub banda lor, deci callout-ul urcă deasupra zonei când are loc
+      const above = crop ? region.rect.y - crop.y : 0;
+      const side = crop ? (ctx.captions ? (above >= 150 ? "top" : "bottom") : region.rect.y + region.rect.h / 2 < crop.y + crop.h * 0.55 ? "bottom" : "top") : region.rect.x > a.w * 0.55 ? "left" : "right";
       if (p.callout && label) children.push(layer(ctx, "ui.callout", region.rect, { text: label, side, distance: crop ? 70 : 120 }, { from: t1 + 10 }));
     }
     const screenLayer = layer(ctx, "media.screen", z0.media, sp, { z: 20, role: "hero", children, modifiers: [{ capability: "mod.enter", params: { style: "rise", distance: 160, spring: "soft", exit: "none" } }] });

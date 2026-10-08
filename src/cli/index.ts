@@ -15,14 +15,15 @@ import { PATHS } from "../core/paths";
 import { Brief, type AssetRole, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
 import { intakeMarkdown } from "../creative/intake";
 import { listTemplates } from "../creative/templates";
-import { addReview, critiqueRound, iterate } from "../pipeline/iterate";
-import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
+import { addReview, critiqueRound, hookVariants, iterate } from "../pipeline/iterate";
+import { approve, demoUrl, shutdown, writePostPack, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
 import { createProject, createVersion, listProjects, listVersions, loadAssets, loadProject, loadResearch, projectDir, saveBrief } from "../projects/store";
 import { analyzeReference, saveReferenceProfile } from "../references/analyze";
 import { addUserClaim, setClaimStatus } from "../research/extract";
 import { ALL_CAPABILITIES } from "../motion/registry";
 import { RECIPES } from "../recipes/recipes";
-import { interactiveLogin, type CaptureRequestInput } from "../capture/capture";
+import { CaptureStep, interactiveLogin, type CaptureRequestInput } from "../capture/capture";
+import { z } from "zod";
 
 interface Args {
   _: string[];
@@ -78,7 +79,8 @@ PROIECT
 
 MATERIALE ȘI RESEARCH
   capture <id> --url <u> [--id nume] [--viewport desktop|laptop|tablet|mobile] [--full]
-          [--type "#selector=text"] [--record] [--profile nume] [--no-research]
+          [--wait 2000] [--click "#selector"] [--type "#selector=text"] [--hide "#cookie,.banner"]
+          [--steps pasi.json] [--record] [--profile nume] [--no-research]
   capture <id> --demo                    capturează produsul demo inclus (pentru test)
   login --url <u> --profile <nume>       deschide un browser; te autentifici tu, sesiunea rămâne local
   add-asset <id> <fișier> [--role logo|screenshot|music|…] [--tag nume] [--third-party] [--rights confirmed|not-confirmed|denied] [--origin user_provided|stock|generated]
@@ -103,6 +105,8 @@ PRODUCȚIE
   critique <id> [--format 9x16]          o rundă de critică automată (rubrica fixă)
   review <id> --file review.json         observațiile lui Claude / notele tale (vezi docs)
   iterate <id> "la 00:14 zoom pe câmpul de căutare"
+  hook-variants <id> [--count 2] [--from v2]   câte o versiune pentru fiecare variantă de hook din script
+  post-pack <id> [--version v3] [--format 9x16] copertă + text de postare (și automat la exportul final)
   new-version <id> [--label "…"]
   versions <id>
   approve <id> render-final "render final" --version v3
@@ -171,7 +175,17 @@ async function main(): Promise<void> {
         reqs.push({ id: "app-search", url: demoUrl("app.html"), viewport: "desktop", record: { steps: [{ action: "wait", ms: 900 }, { action: "type", selector: "#search", text: "raport", delayMs: 210 }, { action: "wait", ms: 2600 }], fps: 30, tailMs: 400 }, research: false });
       } else {
         const typeFlag = str(a.flags.type);
-        const before = typeFlag ? [{ action: "type" as const, selector: typeFlag.split("=")[0], text: typeFlag.split("=").slice(1).join("=") }] : [];
+        const clickFlag = str(a.flags.click);
+        const waitFlag = str(a.flags.wait);
+        const hideFlag = str(a.flags.hide);
+        const stepsFile = str(a.flags.steps);
+        const before: CaptureStep[] = stepsFile
+          ? z.array(CaptureStep).parse(readJsonLoose(path.resolve(stepsFile)))
+          : [
+              ...(waitFlag ? [{ action: "wait" as const, ms: Number(waitFlag) }] : []),
+              ...(clickFlag ? [{ action: "click" as const, selector: clickFlag }] : []),
+              ...(typeFlag ? [{ action: "type" as const, selector: typeFlag.split("=")[0], text: typeFlag.split("=").slice(1).join("="), delayMs: 110 }] : []),
+            ];
         reqs.push({
           id: str(a.flags.id) ?? `cap-${listCaptureCount(pid) + 1}`,
           url: need(str(a.flags.url), "--url"),
@@ -181,6 +195,7 @@ async function main(): Promise<void> {
           record: a.flags.record ? { steps: [{ action: "wait", ms: 600 }, ...before, { action: "wait", ms: 900 }], fps: 30, tailMs: 400 } : undefined,
           profile: str(a.flags.profile),
           research: !a.flags["no-research"],
+          css: hideFlag ? hideFlag.split(",").map((sel) => `${sel.trim()}{display:none!important}`).join("\n") : "",
         });
       }
       await stepCapture(pid, reqs, log, { headed: !!a.flags.headed });
@@ -335,6 +350,21 @@ async function main(): Promise<void> {
     case "iterate": {
       const r = await iterate(need(id, "proiectul"), need(a._[2], "comanda"), log);
       log(`Versiune nouă: ${r.versionId}`);
+      return;
+    }
+    case "hook-variants": {
+      const r = await hookVariants(need(id, "proiectul"), { from: str(a.flags.from), count: a.flags.count !== undefined ? Number(a.flags.count) : undefined }, log);
+      for (const v of r) log(`${v.versionId}: ${v.hookId} – „${v.text}”`);
+      return;
+    }
+    case "post-pack": {
+      const pid = need(id, "proiectul");
+      const p = loadProject(pid);
+      const v = str(a.flags.version) ?? p.currentVersion!;
+      const fmt = str(a.flags.format) ?? p.formats[0].id;
+      const r = await writePostPack(pid, v, fmt, path.join(projectDir(pid), "versions", v, "renders", `post-${fmt}`));
+      log(`Copertă: ${path.relative(PATHS.root, r.cover)}`);
+      log(`Text: ${path.relative(PATHS.root, r.text)}`);
       return;
     }
     case "new-version": {

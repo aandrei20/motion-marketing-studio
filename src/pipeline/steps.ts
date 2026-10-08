@@ -26,7 +26,7 @@ import { draftScript, validateScript } from "../creative/script";
 import { buildStoryboard } from "../creative/storyboard";
 import { chooseTemplate, getTemplate } from "../creative/templates";
 import { analyzeVideo } from "../renderer/node/analyze-video";
-import { closeBrowser, renderContactSheet, renderStills, renderTimelineVideo } from "../renderer/node/render";
+import { closeBrowser, renderContactSheet, renderStills, renderTimelineStill, renderTimelineVideo } from "../renderer/node/render";
 import { extractFromPage, mergeIntoResearch } from "../research/extract";
 import { compileTimeline, type VoiceClipRef } from "../timeline/compile";
 import { validateTimeline, type ValidationResult } from "../timeline/validate";
@@ -384,7 +384,7 @@ export async function stepFinalRender(projectId: string, versionId: string, form
   const fmt = formatId ?? project.formats[0].id;
   const approvals = loadApprovals(projectId).items.filter((a) => a.kind === "render-final" && a.versionId === versionId);
   if (!approvals.length)
-    throw new MmsError("FINAL_NOT_APPROVED", `Versiunea ${versionId} nu are aprobarea „render final”.`, `Utilizatorul trebuie să scrie exact „render final” (în Studio sau: npm run mms -- approve ${projectId} render-final --version ${versionId}).`);
+    throw new MmsError("FINAL_NOT_APPROVED", `Versiunea ${versionId} nu are aprobarea „render final”.`, `Utilizatorul trebuie să scrie exact „render final” (în Studio sau: npm run mms -- approve ${projectId} render-final "render final" --version ${versionId}).`);
   const t = loadTimeline(projectId, versionId, fmt);
   if (t.concept) throw new MmsError("FINAL_CONCEPT", "Timeline-ul folosește materiale fără drepturi confirmate (concept).", "Confirmă drepturile sau înlocuiește materialele, apoi recompilează.");
   const val = validateTimeline(t, { assets: loadAssets(projectId), research: loadResearch(projectId), format: project.formats.find((f) => f.id === fmt)! });
@@ -399,15 +399,74 @@ export async function stepFinalRender(projectId: string, versionId: string, form
   const out = path.join(exportsDir, name);
   if (fs.existsSync(out)) throw new MmsError("FINAL_EXISTS", `Exportul ${name} există deja și nu se suprascrie.`, "Creează o versiune nouă pentru un export nou.");
   log(`Render final ${fmt} → ${path.relative(PATHS.root, out)}`);
+  // atenționări care nu blochează, dar trebuie spuse (vezi docs/LICENTE.md)
+  const notes: string[] = [];
+  const vm = loadBrief(projectId).audio.voice;
+  if (vm.mode === "tts" && (vm.provider === "windows" || vm.provider === "say"))
+    notes.push(`Vocea e generată cu TTS-ul sistemului (${vm.provider}). Drepturile de folosire comercială nu sunt clare; pentru publicare comercială folosește vocea ta sau un furnizor cu termeni comerciali (docs/LICENTE.md).`);
+  for (const n of notes) log(`ATENȚIE: ${n}`);
   await renderTimelineVideo(t, { out, crf: 16 });
   const check = await analyzeVideo(out, t.fps);
-  writeJson(path.join(exportsDir, `${projectId}-${versionId}-${fmt}-final.check.json`), { check, mix: rep, validation: val.stats });
+  writeJson(path.join(exportsDir, `${projectId}-${versionId}-${fmt}-final.check.json`), { check, mix: rep, validation: val.stats, notes });
   if (fs.existsSync(versionFile(projectId, versionId, "audio/captions.srt"))) fs.copyFileSync(versionFile(projectId, versionId, "audio/captions.srt"), path.join(exportsDir, `${projectId}-${versionId}-${fmt}.srt`));
+  if (loadBrief(projectId).delivery.postPack) {
+    const pack = await writePostPack(projectId, versionId, fmt, path.join(exportsDir, `${projectId}-${versionId}-${fmt}`));
+    log(`Pachet de postare: ${path.relative(PATHS.root, pack.cover)}, ${path.relative(PATHS.root, pack.text)}`);
+  }
   setVersionStatus(projectId, versionId, "final");
   freezeVersion(projectId, versionId, "final");
   saveProject({ ...loadProject(projectId), status: "final" });
   updateState(projectId, { step: "final-render", note: name, log: `Export final ${name}.` });
   return out;
+}
+
+/** Cadrul pentru copertă: scena de prezentare (sau hook-ul), după tranziția de intrare, cu textul deja apărut. */
+export function coverFrame(t: Timeline): number {
+  const reveal = t.scenes.findIndex((s) => s.meta.narrativeRole === "reveal");
+  const pick = reveal >= 0 ? reveal : Math.max(0, t.scenes.findIndex((s) => s.meta.narrativeRole === "hook"));
+  const s = t.scenes[pick];
+  const start = s.from + (s.transitionIn?.durationInFrames ?? 0);
+  const end = Math.min(s.from + s.durationInFrames, t.scenes[pick + 1]?.from ?? Infinity);
+  return Math.min(t.durationInFrames - 1, start + Math.round(Math.max(0, end - start) * 0.7));
+}
+
+/**
+ * Pachetul de postare (livrare, grupa G): copertă randată din timeline + text de postare.
+ * Titlul și descrierea sunt doar replici deja aprobate din script (fără afirmații noi);
+ * hashtag-urile nu se inventează automat: rămân de propus de Claude și de aprobat de utilizator.
+ */
+export async function writePostPack(projectId: string, versionId: string, formatId: string, base: string): Promise<{ cover: string; text: string }> {
+  const t = loadTimeline(projectId, versionId, formatId);
+  const script = loadScript(projectId, versionId);
+  const brief = loadBrief(projectId);
+  const project = loadProject(projectId);
+  const frame = coverFrame(t);
+  // coperta nu are subtitrări arse (un fragment de frază nu are sens ca imagine statică)
+  const cover = await renderTimelineStill({ ...t, captions: null }, frame, `${base}-cover.png`, { format: "png" });
+  const hook = script.lines.find((l) => l.isHook);
+  const body = script.lines.filter((l) => !l.isHook && !l.isCta).map((l) => l.voiceover ?? l.onScreen).filter((x): x is string => !!x);
+  const cta = brief.cta.text + (brief.cta.url ? ` – ${brief.cta.url}` : "");
+  const md = [
+    `# Pachet de postare – ${project.name} (${versionId}, ${formatId})`,
+    "",
+    `Copertă: \`${path.basename(cover)}\` (cadrul ${frame}, ${formatTimecode(frame, t.fps)})`,
+    "",
+    "## Titlu (din hook)",
+    "",
+    hook?.onScreen ?? hook?.voiceover ?? "",
+    "",
+    "## Descriere (din replicile scriptului)",
+    "",
+    [...body, cta].join(" "),
+    "",
+    "## Hashtag-uri",
+    "",
+    "De completat: Claude propune, utilizatorul aprobă. Nu se generează automat, ca să nu apară afirmații sau mărci neverificate.",
+    "",
+  ].join("\n");
+  const text = `${base}-post.md`;
+  fs.writeFileSync(text, md);
+  return { cover, text };
 }
 
 export function approve(projectId: string, kind: "brief" | "render-final" | "version" | "claim", phrase: string, versionId?: string, subject?: string) {
