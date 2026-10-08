@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsx scripts/lint-rules.ts",
     "registry": "tsx scripts/build-registry.ts",
+    "e2e": "tsx scripts/e2e-demo.ts",
     "check": "npm run typecheck && npm run lint && npm test",
     "update": "git pull --ff-only && npm ci && tsx scripts/setup.ts && tsx scripts/doctor.ts"
   },

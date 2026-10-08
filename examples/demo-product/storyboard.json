@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "templateId": "feature-showcase",
+  "rationale": [
+    "Storyboard scris de directorul creativ (Claude) pe baza brief-ului, a afirmațiilor confirmate și a capturilor reale.",
+    "Hook-ul utilizatorului rămâne cuvânt cu cuvânt; fraza obligatorie apare pe ecran și în voce.",
+    "Fiecare funcție se arată pe interfața reală: înregistrare (căutare), spotlight (focus), drag & drop pe pixelii capturii (kanban)."
+  ],
+  "scenes": [
+    {
+      "id": "s1-hook",
+      "purpose": "Oprește scroll-ul: întrebarea pe care o recunoaște orice manager.",
+      "narrativeRole": "hook",
+      "emotionalRole": "curiosity",
+      "energy": 0.9,
+      "shot": "title",
+      "lineIds": [
+        "hook"
+      ],
+      "recipe": {
+        "id": "hook-kinetic",
+        "params": {}
+      },
+      "slots": {
+        "screen": "tag:landing"
+      },
+      "beat": {
+        "snap": "beat"
+      }
+    },
+    {
+      "id": "s2-durere",
+      "purpose": "Amplifică frustrarea în două lovituri scurte, pe ritm.",
+      "narrativeRole": "agitation",
+      "emotionalRole": "frustration",
+      "energy": 0.7,
+      "shot": "title",
+      "lineIds": [
+        "durere"
+      ],
+      "recipe": {
+        "id": "kinetic-sequence",
+        "params": {}
+      },
+      "text": {
+        "items": [
+          "Tabele pierdute.",
+          "Mesaje „ai văzut?”."
+        ]
+      }
+    },
+    {
+      "id": "s3-promisiune",
+      "purpose": "Revelarea: produsul și promisiunea lui oficială (confirmată).",
+      "narrativeRole": "reveal",
+      "emotionalRole": "relief",
+      "energy": 0.9,
+      "shot": "hero",
+      "lineIds": [
+        "promisiune"
+      ],
+      "recipe": {
+        "id": "product-reveal",
+        "params": {
+          "style": "particles"
+        }
+      },
+      "slots": {
+        "logo": "tag:logo"
+      },
+      "text": {
+        "headline": "Planifică săptămâna în 5 minute"
+      },
+      "transitionIn": {
+        "capability": "tr.zoom-through",
+        "durationFrames": null,
+        "params": {}
+      },
+      "composition": "center",
+      "cta": "setup"
+    },
+    {
+      "id": "s4-cautare",
+      "purpose": "Demonstrează căutarea instantă pe înregistrarea reală a produsului.",
+      "narrativeRole": "demo",
+      "emotionalRole": "confidence",
+      "energy": 0.65,
+      "shot": "detail",
+      "lineIds": [
+        "cautare"
+      ],
+      "recipe": {
+        "id": "ui-walkthrough",
+        "params": {}
+      },
+      "slots": {
+        "screen": "tag:app-search+recording"
+      },
+      "focus": {
+        "assetId": "tag:app",
+        "region": "input-cauta-sarcini-oameni-fisiere"
+      }
+    },
+    {
+      "id": "s5-focus",
+      "purpose": "Arată panoul „Focusul zilei” pe captura reală, restul se întunecă.",
+      "narrativeRole": "feature",
+      "emotionalRole": "confidence",
+      "energy": 0.6,
+      "shot": "close-up",
+      "lineIds": [
+        "focus"
+      ],
+      "recipe": {
+        "id": "ui-spotlight",
+        "params": {}
+      },
+      "slots": {
+        "screen": "tag:app"
+      },
+      "focus": {
+        "assetId": "tag:app",
+        "region": "custom-focusul-zilei-trimite-brief-ul-la"
+      },
+      "text": {
+        "items": [
+          "Ce contează azi"
+        ]
+      },
+      "composition": "thirds-right"
+    },
+    {
+      "id": "s6-kanban",
+      "purpose": "Drag & drop real: un card trece din „De făcut” în „În lucru”.",
+      "narrativeRole": "feature",
+      "emotionalRole": "delight",
+      "energy": 0.75,
+      "shot": "detail",
+      "lineIds": [
+        "kanban"
+      ],
+      "recipe": {
+        "id": "ui-walkthrough",
+        "params": {
+          "drag": {
+            "from": "custom-brief-campanie-toamna-marketing-a",
+            "to": "custom-in-lucru-2-pagina-de-preturi-v2-w"
+          }
+        }
+      },
+      "slots": {
+        "screen": "tag:app"
+      }
+    },
+    {
+      "id": "s7-cta",
+      "purpose": "Cere acțiunea și ține cadrul nemișcat destul cât să fie citit.",
+      "narrativeRole": "cta",
+      "emotionalRole": "urgency",
+      "energy": 0.5,
+      "shot": "title",
+      "lineIds": [
+        "cta"
+      ],
+      "recipe": {
+        "id": "cta-end",
+        "params": {
+          "url": "kolibri.example"
+        }
+      },
+      "slots": {
+        "logo": "tag:logo",
+        "screen": "tag:app"
+      },
+      "text": {
+        "headline": "Kolibri",
+        "sub": "Încearcă gratuit"
+      },
+      "beat": {
+        "snap": "bar"
+      },
+      "composition": "center",
+      "cta": "hold"
+    }
+  ]
+}

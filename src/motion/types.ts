@@ -105,6 +105,8 @@ export interface CameraBuildContext {
   focus: { x: number; y: number } | null;
   /** zoom-ul la care punctul de interes umple cadrul confortabil */
   focusZoom: number;
+  /** unde pe ecran trebuie să ajungă punctul de interes (implicit centrul cadrului), de ex. centrul zonei media */
+  target?: { x: number; y: number };
   energy: number;
 }
 

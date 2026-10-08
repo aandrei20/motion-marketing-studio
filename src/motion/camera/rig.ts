@@ -102,11 +102,13 @@ export function cameraMotionBlur(cam: TimelineCamera, frame: number, fps: number
   const b = sampleCamera(cam, frame + 0.5, fps, seed);
   const vx = Math.abs((b.fx - a.fx) * b.zoom + (b.ox - a.ox)) * d;
   const vy = Math.abs((b.fy - a.fy) * b.zoom + (b.oy - a.oy)) * d;
-  const vz = Math.abs(Math.log(b.zoom / a.zoom)) * 900 * d;
-  const k = 0.32;
-  const bx = clamp(vx * k - 1.5 + vz * 0.25, 0, 28);
-  const by = clamp(vy * k - 1.5 + vz * 0.25, 0, 28);
-  return [bx < 0.3 ? 0 : bx, by < 0.3 ? 0 : by];
+  // zoom: deplasarea radială medie (~1/4 din lățimea cadrului) pe cadru
+  const vz = Math.abs(Math.log(b.zoom / a.zoom)) * 480 * d;
+  // obturator 180°: dâra = jumătate din deplasare; sigma gaussian ≈ 0,29 × dâra ≈ 0,144 × deplasare
+  const k = 0.144;
+  const bx = clamp((vx + vz) * k - 0.8, 0, 24);
+  const by = clamp((vy + vz) * k - 0.8, 0, 24);
+  return [bx < 0.4 ? 0 : bx, by < 0.4 ? 0 : by];
 }
 
 /** Profunzimea de câmp: blur pentru un strat la adâncimea d. */

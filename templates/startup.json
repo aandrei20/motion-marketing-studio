@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "id": "startup",
+  "title": "Problemă și soluție (30–45 s)",
+  "description": "Hook, problemă, agitare, soluția, cum funcționează în 3 pași, dovadă, CTA.",
+  "durationSec": [
+    28,
+    50
+  ],
+  "directions": [
+    "emotional",
+    "energetic",
+    "aggressive",
+    "minimal"
+  ],
+  "products": [
+    "startup",
+    "saas",
+    "digital-service",
+    "ecommerce",
+    "productivity"
+  ],
+  "scenes": [
+    {
+      "role": "hook",
+      "recipe": "hook-kinetic",
+      "energy": 0.8,
+      "emotion": "curiosity",
+      "shot": "title",
+      "line": "hook",
+      "weight": 1
+    },
+    {
+      "role": "problem",
+      "recipe": "problem-statement",
+      "energy": 0.45,
+      "emotion": "frustration",
+      "shot": "close-up",
+      "line": "problem",
+      "weight": 1.1
+    },
+    {
+      "role": "agitation",
+      "recipe": "kinetic-sequence",
+      "energy": 0.7,
+      "emotion": "tension",
+      "shot": "title",
+      "line": "problem",
+      "weight": 1,
+      "optional": true
+    },
+    {
+      "role": "reveal",
+      "recipe": "product-reveal",
+      "energy": 0.8,
+      "emotion": "relief",
+      "shot": "hero",
+      "line": "reveal",
+      "weight": 1
+    },
+    {
+      "role": "demo",
+      "recipe": "steps",
+      "energy": 0.6,
+      "emotion": "confidence",
+      "shot": "wide",
+      "line": "feature",
+      "weight": 1.4
+    },
+    {
+      "role": "feature",
+      "recipe": "ui-spotlight",
+      "energy": 0.65,
+      "emotion": "delight",
+      "shot": "close-up",
+      "line": "feature",
+      "weight": 1.2
+    },
+    {
+      "role": "proof",
+      "recipe": "proof-metric",
+      "energy": 0.55,
+      "emotion": "trust",
+      "shot": "title",
+      "line": "proof",
+      "weight": 1,
+      "optional": true
+    },
+    {
+      "role": "cta",
+      "recipe": "cta-end",
+      "energy": 0.5,
+      "emotion": "urgency",
+      "shot": "title",
+      "line": "cta",
+      "weight": 1.2
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "objective": "signups",
+  "objectiveNote": "Funcții de arătat, în ordine: căutarea instantă, focusul zilei, tabla kanban.",
+  "audience": {
+    "description": "Manageri de echipe mici (5–30 de oameni) care planifică săptămâna în tabele și ședințe lungi.",
+    "painPoints": ["Încă o ședință de o oră doar ca să afli ce faceți săptămâna asta?"],
+    "sophistication": "mixed"
+  },
+  "userVision": {
+    "story": "Managerul care pierde lunea în ședințe descoperă că poate planifica săptămâna în câteva minute.",
+    "hooks": ["Încă o ședință de o oră?"],
+    "mandatoryPhrases": [{ "id": "promisiune", "text": "Planifică săptămâna în 5 minute", "channel": "any" }],
+    "roughScript": "",
+    "concept": ""
+  },
+  "tone": ["energic", "clar", "prietenos"],
+  "desiredEmotion": "ușurare",
+  "pacing": "fast",
+  "direction": "energetic",
+  "visual": { "effectsLevel": "medium", "forbiddenCapabilities": [], "allow3d": true, "faces": false, "notes": "" },
+  "cta": { "text": "Încearcă gratuit", "url": "https://kolibri.example", "claimIds": [] },
+  "doNotSay": ["cel mai bun din lume"],
+  "doNotShow": [],
+  "platforms": ["tiktok", "youtube"],
+  "durationSec": 24,
+  "audio": {
+    "voice": { "mode": "tts", "provider": "windows", "voiceId": "Microsoft Andrei", "rate": 1.05 },
+    "music": { "mode": "synth", "mood": "playful" },
+    "sfxDensity": "medium",
+    "intentionalSilence": false
+  },
+  "references": [],
+  "captions": { "burnIn": true, "srt": true },
+  "approvedAt": null
+}

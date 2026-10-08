@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "teaser-15",
+  "title": "Teaser (15 s)",
+  "description": "Hook, revelare, montaj, CTA. Pentru reclame scurte pe social.",
+  "durationSec": [
+    10,
+    18
+  ],
+  "directions": [
+    "aggressive",
+    "energetic",
+    "premium"
+  ],
+  "products": [
+    "saas",
+    "mobile-app",
+    "ai-product",
+    "startup",
+    "website",
+    "ecommerce",
+    "digital-service"
+  ],
+  "scenes": [
+    {
+      "role": "hook",
+      "recipe": "hook-kinetic",
+      "energy": 0.9,
+      "emotion": "curiosity",
+      "shot": "title",
+      "line": "hook",
+      "weight": 1
+    },
+    {
+      "role": "reveal",
+      "recipe": "product-reveal",
+      "energy": 0.75,
+      "emotion": "aspiration",
+      "shot": "hero",
+      "line": "reveal",
+      "weight": 1
+    },
+    {
+      "role": "feature",
+      "recipe": "feature-montage",
+      "energy": 0.9,
+      "emotion": "delight",
+      "shot": "montage",
+      "line": "feature",
+      "weight": 1.2
+    },
+    {
+      "role": "cta",
+      "recipe": "cta-end",
+      "energy": 0.5,
+      "emotion": "urgency",
+      "shot": "title",
+      "line": "cta",
+      "weight": 1
+    }
+  ]
+}

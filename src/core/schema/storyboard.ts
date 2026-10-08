@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NormPoint, Slug } from "./common";
+import { CreativeDirection } from "./brief";
 
 export const NarrativeRole = z.enum([
   "hook",
@@ -71,8 +72,8 @@ export const StoryboardScene = z.object({
   durationSec: z.number().positive().max(60).nullable().default(null),
   lineIds: z.array(Slug).default([]),
   recipe: z.object({ id: z.string().min(1), params: z.record(z.string(), z.unknown()).default({}) }),
-  /** asset-urile legate de sloturile rețetei (de ex. screen, logo, before, after) */
-  slots: z.record(z.string(), z.union([Slug, z.array(Slug)])).default({}),
+  /** asset-urile legate de sloturile rețetei (de ex. screen, logo): id de asset sau „tag:<eticheta capturii>” */
+  slots: z.record(z.string(), z.union([z.string(), z.array(z.string())])).default({}),
   /** textul de pe ecran, dacă diferă de liniile de script */
   text: z
     .object({
@@ -82,7 +83,7 @@ export const StoryboardScene = z.object({
     })
     .default({}),
   focus: z
-    .object({ assetId: Slug, region: Slug.optional(), point: NormPoint.optional() })
+    .object({ assetId: z.string(), region: Slug.optional(), point: NormPoint.optional() })
     .optional(),
   camera: CapabilityUse.optional(),
   overrides: z.array(CapabilityUse.extend({ slot: z.string() })).default([]),
@@ -109,6 +110,17 @@ export const Storyboard = z.object({
   schemaVersion: z.literal(1),
   /** șablonul de structură din care a pornit (templates/) */
   templateId: z.string().optional(),
+  /** suprascrie direcția din brief doar pentru această versiune (de ex. „mai premium”) */
+  direction: CreativeDirection.optional(),
+  /** ajustări de mix pentru această versiune */
+  audio: z
+    .object({
+      duckDb: z.number().min(-30).max(0).default(-10),
+      musicGainDb: z.number().min(-30).max(12).default(0),
+      sfxGainDb: z.number().min(-30).max(12).default(0),
+      music: z.boolean().default(true),
+    })
+    .default({ duckDb: -10, musicGainDb: 0, sfxGainDb: 0, music: true }),
   rationale: z.array(z.string()).default([]),
   scenes: z.array(StoryboardScene).min(1),
 });

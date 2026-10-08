@@ -3,6 +3,7 @@ import { Composition, staticFile, type CalculateMetadataFunction } from "remotio
 import type { Timeline } from "../../core/schema";
 import { buildCatalogTimeline } from "../../motion/catalog";
 import { TimelineComposition } from "../composition/TimelineComposition";
+import { ContactSheet, contactSheetSize, type ContactSheetProps } from "../composition/ContactSheet";
 
 type Props = {
   timeline?: Timeline | null;
@@ -33,8 +34,14 @@ const catalogCalc: CalculateMetadataFunction<Props> = async ({ props }) => {
   return { durationInFrames: t.durationInFrames, fps: t.fps, width: t.width, height: t.height, props: { ...props, timeline: t } };
 };
 
+const sheetCalc: CalculateMetadataFunction<ContactSheetProps> = async ({ props }) => {
+  const { width, height } = contactSheetSize(props.images.length, props.cols, props.cellWidth, props.cellHeight);
+  return { width, height, durationInFrames: 1, fps: 30 };
+};
+
 export const Root: React.FC = () => (
   <>
+    <Composition id="ContactSheet" component={ContactSheet} defaultProps={{ images: [], labels: [], cols: 6, cellWidth: 320, cellHeight: 180, title: "" } as ContactSheetProps} calculateMetadata={sheetCalc} durationInFrames={1} fps={30} width={1920} height={1080} />
     <Composition id="Timeline" component={Render} defaultProps={{ timeline: null, timelinePath: null, quality: "full", muted: false } as Props} calculateMetadata={calc} durationInFrames={1} fps={30} width={1920} height={1080} />
     <Composition id="Catalog" component={Render} defaultProps={{ timeline: null, quality: "full", muted: true } as Props} calculateMetadata={catalogCalc} durationInFrames={1} fps={30} width={1920} height={1080} />
   </>

@@ -40,6 +40,8 @@ export const CaptureRequest = z.object({
   css: z.string().default(""),
   /** profil persistent pentru pagini cu autentificare (sesiunea rămâne doar local) */
   profile: z.string().optional(),
+  /** textul paginii intră în research (false pentru ecrane de aplicație cu date de test/personale) */
+  research: z.boolean().default(true),
 });
 export type CaptureRequest = z.infer<typeof CaptureRequest>;
 export type CaptureRequestInput = z.input<typeof CaptureRequest>;
@@ -63,6 +65,7 @@ export interface PageData {
 
 export interface CaptureResult {
   id: string;
+  research: boolean;
   url: string;
   viewport: { width: number; height: number };
   deviceScaleFactor: number;
@@ -123,15 +126,16 @@ async function extractRegions(page: Page, fullPage: boolean): Promise<{ regions:
     };
     const labelOf = (el: Element) =>
       (el.getAttribute("aria-label") || (el as HTMLInputElement).placeholder || el.getAttribute("title") || (el as HTMLElement).innerText || el.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 80);
-    const push = (el: Element, kind: string, target = out) => {
+    const push = (el: Element, kind: string, target = out, labelFrom?: Element) => {
       if (!visible(el)) return;
       const r = el.getBoundingClientRect();
-      const label = labelOf(el);
+      const label = labelOf(labelFrom ?? el) || labelOf(el);
       target.push({ idHint: `${kind}-${label || el.tagName.toLowerCase()}`, label: label || el.tagName.toLowerCase(), kind, rect: { x: r.left + sx, y: r.top + sy, w: r.width, h: r.height }, text: label, selector: selectorOf(el) });
     };
     document.querySelectorAll("input, textarea, select, [contenteditable=true]").forEach((el) => {
+      // cutia vine de la eticheta care înconjoară câmpul (arată ca un câmp), textul de la câmpul însuși
       const lbl = el.closest("label");
-      push(lbl && lbl.getBoundingClientRect().height < 120 ? lbl : el, "input");
+      push(lbl && lbl.getBoundingClientRect().height < 120 ? lbl : el, "input", out, el);
     });
     document.querySelectorAll("button, [role=button], a.btn, .btn").forEach((el) => push(el, "button"));
     document.querySelectorAll("h1, h2, h3").forEach((el) => push(el, "heading"));
@@ -179,6 +183,11 @@ async function extractPageData(page: Page): Promise<PageData> {
     const top = (m: Map<string, number>, n: number) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n) as Array<[string, number]>;
     const cssVars: Record<string, string> = {};
     const rootStyle = getComputedStyle(document.documentElement);
+    // variabilele CSS din stilul calculat (merge și când foile de stil nu se pot citi, de ex. file://)
+    for (let i = 0; i < rootStyle.length; i++) {
+      const name = rootStyle.item(i);
+      if (name.startsWith("--")) cssVars[name] = rootStyle.getPropertyValue(name).trim();
+    }
     for (const sheet of Array.from(document.styleSheets)) {
       try {
         for (const rule of Array.from(sheet.cssRules)) {
@@ -355,6 +364,7 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
     };
     const result: CaptureResult = {
       id: req.id,
+      research: req.research,
       url: req.url,
       viewport: { width: vp.width, height: vp.height },
       deviceScaleFactor: vp.dpr,
