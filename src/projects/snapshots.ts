@@ -10,7 +10,7 @@ import { readJsonLoose, writeJson } from "../core/json";
 import { MmsError } from "../core/errors";
 import { projectFile } from "./store";
 
-export type SnapshotKind = "brief" | "research" | "brand" | "assets" | "storyboard" | "script" | "quality";
+export type SnapshotKind = "brief" | "research" | "brand" | "assets" | "references" | "storyboard" | "script" | "quality";
 
 function snapshotPath(projectId: string, kind: SnapshotKind, hash: string): string {
   return projectFile(projectId, path.join("snapshots", `${kind}-${hash}.json`));
@@ -39,6 +39,12 @@ export function snapshotProjectInputs(projectId: string): Record<string, string>
   for (const k of ["brief", "research", "brand", "assets"] as const) {
     const f = projectFile(projectId, `${k}.json`);
     if (fs.existsSync(f)) out[k] = saveSnapshot(projectId, k, readJsonLoose(f));
+  }
+  // profilurile referințelor (Reference DNA) influențează montajul: și ele au snapshot
+  const refDir = projectFile(projectId, "references");
+  if (fs.existsSync(refDir)) {
+    const profiles = fs.readdirSync(refDir).filter((x) => x.endsWith(".json")).sort().map((x) => readJsonLoose(path.join(refDir, x)));
+    if (profiles.length) out.references = saveSnapshot(projectId, "references", profiles);
   }
   return out;
 }

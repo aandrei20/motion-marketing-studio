@@ -6,6 +6,7 @@
  * (voce, mix, cadre randate, video). Acestea se refac doar pentru ce s-a schimbat efectiv.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { fileFingerprint, fingerprint } from "../core/hash";
 import { readJsonLoose } from "../core/json";
 import type { Brief, Script, Storyboard, Timeline, TimelineScene } from "../core/schema";
@@ -108,6 +109,11 @@ export function currentInputs(projectId: string): Record<string, string> {
     const f = projectFile(projectId, `${k}.json`);
     if (fs.existsSync(f)) out[k] = fingerprint(readJsonLoose(f));
   }
+  const refDir = projectFile(projectId, "references");
+  if (fs.existsSync(refDir)) {
+    const profiles = fs.readdirSync(refDir).filter((x) => x.endsWith(".json")).sort().map((x) => readJsonLoose(path.join(refDir, x)));
+    if (profiles.length) out.references = fingerprint(profiles);
+  }
   return out;
 }
 
@@ -130,7 +136,7 @@ function keysDiff(a: Record<string, string>, b: Record<string, string>) {
 
 export function diffFingerprints(a: VersionFingerprint, b: VersionFingerprint): ChangeSet {
   const artifacts = new Set<ArtifactId>();
-  for (const k of ["brief", "research", "brand", "assets"] as const) if (a.inputs[k] !== b.inputs[k]) artifacts.add(k);
+  for (const k of ["brief", "research", "brand", "assets", "references"] as const) if (a.inputs[k] !== b.inputs[k]) artifacts.add(k);
   if (a.script?.voice !== b.script?.voice) (artifacts.add("script"), artifacts.add("voice"));
   else if (a.script?.text !== b.script?.text) artifacts.add("script");
   const sbA = a.storyboard;

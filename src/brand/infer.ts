@@ -38,6 +38,38 @@ export function matchLibraryFont(family: string | undefined, role: "display" | "
   return { id: pick.id, family: pick.family, note: family ? `Fontul „${family}” nu e în bibliotecă; folosesc alternativa liberă „${pick.family}”.` : "Font ales după personalitatea brandului." };
 }
 
+/** Forma brandului (rază, umbră, spațiere, gradiente) din CSS-ul real al paginii; null = fără date. */
+export function brandShape(page: PageData | null): { radius: number | null; shadow: "none" | "soft" | "deep" | null; spacing: number | null; gradients: Array<{ from: string; to: string; angle: number }>; notes: string[] } {
+  const notes: string[] = [];
+  const sh = page?.shapes;
+  if (!sh) return { radius: null, shadow: null, spacing: null, gradients: [], notes: ["Captura nu are datele de formă (captură veche): raze și umbre implicite."] };
+  const numeric = sh.radii.filter(([r]) => r !== "pill").map(([r, n]) => [Number(r), n] as const).filter(([r]) => r > 0);
+  const pill = sh.radii.find(([r]) => r === "pill")?.[1] ?? 0;
+  const topRadius = numeric.sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const radius = topRadius !== null ? Math.min(80, Math.round(topRadius)) : pill ? 40 : sh.radii.length ? 0 : null;
+  if (radius !== null) notes.push(`Raza colțurilor din site: ${radius} px${pill ? " (butoane rotunjite complet)" : ""}.`);
+  const blur = (s: string) => Math.max(0, ...[...s.matchAll(/(-?\d+(?:\.\d+)?)px/g)].map((m) => Number(m[1])).filter((_, i) => i % 4 === 2));
+  const total = sh.shadows.reduce((a, [, n]) => a + n, 0);
+  const deep = sh.shadows.some(([s]) => blur(s) >= 24);
+  const shadow = total === 0 ? "none" : deep ? "deep" : "soft";
+  notes.push(total ? `Umbre pe ${total} elemente (${shadow === "deep" ? "adânci" : "discrete"}).` : "Site-ul nu folosește umbre.");
+  const gapsSorted = sh.gaps.map(([g, n]) => [Number(g), n] as const).sort((a, b) => b[1] - a[1]);
+  const spacing = gapsSorted.length ? Math.max(2, Math.min(64, gapsSorted[0][0])) : null;
+  if (spacing !== null) notes.push(`Spațierea tipică: ${spacing} px.`);
+  const gradients: Array<{ from: string; to: string; angle: number }> = [];
+  for (const [g] of sh.gradients) {
+    const colors = [...g.matchAll(/rgba?\([^)]+\)|#[0-9a-f]{3,8}\b/gi)].map((m) => cssToHex(m[0])).filter((c): c is string => !!c);
+    if (colors.length < 2 || colors[0] === colors[1]) continue;
+    const deg = g.match(/(-?\d+(?:\.\d+)?)deg/);
+    const dirWord = g.match(/to (right|left|bottom|top)/)?.[1];
+    const angle = deg ? Number(deg[1]) : dirWord === "right" ? 90 : dirWord === "left" ? 270 : dirWord === "top" ? 0 : 180;
+    gradients.push({ from: colors[0], to: colors[colors.length - 1], angle });
+    if (gradients.length >= 3) break;
+  }
+  if (gradients.length) notes.push(`${gradients.length} gradiente reale din CSS.`);
+  return { radius, shadow, spacing, gradients, notes };
+}
+
 export function inferBrand(name: string, page: PageData | null, logo: Asset | null, personality: string[] = []): { brand: BrandInput; notes: string[] } {
   const notes: string[] = [];
   const vars = page ? Object.entries(page.cssVars).map(([k, v]) => [k, cssToHex(v)] as const).filter((x): x is readonly [string, string] => !!x[1]) : [];
@@ -64,6 +96,8 @@ export function inferBrand(name: string, page: PageData | null, logo: Asset | nu
   const body = matchLibraryFont(fonts[0], "body", personality);
   const mono = matchLibraryFont("JetBrains Mono", "mono");
   notes.push(display.note, body.note);
+  const shape = brandShape(page);
+  notes.push(...shape.notes);
   const brand: BrandInput = {
     schemaVersion: 1,
     name,
@@ -75,8 +109,8 @@ export function inferBrand(name: string, page: PageData | null, logo: Asset | nu
       mono: { family: mono.family, source: "library", ref: mono.id, weight: 500, displayWeight: 700, tracking: 0, uppercase: false },
       origin: page ? "extracted" : "inferred",
     },
-    shape: { radius: 16, spacing: 8, shadow: "soft" },
-    gradients: [{ from: primary, to: accent, angle: 135 }],
+    shape: { radius: shape.radius ?? 16, spacing: shape.spacing ?? 8, shadow: shape.shadow ?? "soft" },
+    gradients: shape.gradients.length ? shape.gradients : [{ from: primary, to: accent, angle: 135 }],
     personality: { keywords: personality, density: "balanced", motion: "smooth" },
   };
   return { brand, notes };

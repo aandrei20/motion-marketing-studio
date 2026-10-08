@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ingestCapture } from "../assets/ingest";
-import { detectBeatGrid } from "../audio/beat";
+import { detectBeatGrid, musicStructure } from "../audio/beat";
 import { decodeAudio } from "../audio/decode";
 import { mix } from "../audio/mixer";
 import { composeMusic } from "../audio/music";
@@ -22,6 +22,7 @@ import { PATHS, projectPublicPath, publicToAbs } from "../core/paths";
 import { fileFingerprint } from "../core/hash";
 import { audioKey, timelineRenderKey } from "./impact";
 import { snapshotProjectInputs } from "../projects/snapshots";
+import { applyDna, loadReferenceDnas } from "../references/dna";
 import { formatTimecode } from "../core/time";
 import type { BeatGrid, MixReport, Timeline } from "../core/schema";
 import { MixReport as MixReportSchema } from "../core/schema";
@@ -107,7 +108,10 @@ export function stepBrand(projectId: string, opts: { force?: boolean; personalit
       .readdirSync(capDir)
       .filter((f) => f.endsWith(".json"))
       .map((f) => readJsonLoose<CaptureResult>(path.join(capDir, f)));
-    page = (caps.find((c) => !c.fullPage) ?? caps[0])?.page ?? null;
+    // pagina de prezentare (cu research), cea mai recentă și cu datele de formă; aplicația și paginile întregi după
+    const rank = (c: CaptureResult) => (c.research ? 4 : 0) + (c.page?.shapes ? 5 : 0) + (c.fullPage ? 0 : 2);
+    const best = [...caps].filter((c) => c.page).sort((a, b) => rank(b) - rank(a) || String(b.capturedAt).localeCompare(String(a.capturedAt)))[0];
+    page = best?.page ?? null;
   }
   const logo = assets.assets.find((a) => a.role === "logo") ?? null;
   const { brand, notes } = inferBrand(project.product.name, page, logo, opts.personality ?? []);
@@ -220,12 +224,15 @@ export async function planBeatGrid(projectId: string, versionId: string): Promis
   if (brief.audio.music.mode === "user-file") {
     const a = loadAssets(projectId).assets.find((x) => x.id === brief.audio.music.assetId);
     if (!a) throw new MmsError("MUSIC_MISSING", "Brief-ul cere muzica utilizatorului, dar fișierul nu e în materiale.");
-    const g = detectBeatGrid(await decodeAudio(path.join(projectDir(projectId), a.file)));
-    return brief.audio.music.bpm ? { ...g, bpm: brief.audio.music.bpm, source: "user" } : g;
+    const audio = await decodeAudio(path.join(projectDir(projectId), a.file));
+    const detected = detectBeatGrid(audio);
+    // tempo-ul dat de utilizator e sigur; cel detectat își păstrează încrederea (sub 0,35 nu se aliniază nimic pe el)
+    const g: BeatGrid = brief.audio.music.bpm ? { ...detected, bpm: brief.audio.music.bpm, source: "user", confidence: 1 } : detected;
+    return { ...g, ...musicStructure(audio, g) };
   }
-  const dir = DIRECTIONS[sb.direction ?? brief.direction ?? "technical"];
+  const dir = applyDna(DIRECTIONS[sb.direction ?? brief.direction ?? "technical"], loadReferenceDnas(projectDir(projectId), brief.references).refs).dir;
   const bpm = brief.audio.music.bpm ?? Math.round((dir.bpm[0] + dir.bpm[1]) / 2);
-  return { bpm, offsetSec: 0, beatsPerBar: 4, source: "synth", confidence: 1, sections: [] };
+  return { bpm, offsetSec: 0, beatsPerBar: 4, source: "synth", confidence: 1, sections: [], drops: [] };
 }
 
 export interface CompileStepResult {
@@ -251,7 +258,9 @@ export async function stepCompile(projectId: string, requestedVersion: string, l
   if (!fresh && fs.existsSync(voicePath)) log("Scriptul sau setările vocii s-au schimbat: refac vocea.");
   const voice = fresh ? (JSON.parse(fs.readFileSync(voicePath, "utf8")) as Record<string, VoiceClipRef>) : await stepVoice(projectId, versionId, log);
   const beatGrid = await planBeatGrid(projectId, versionId);
-  const base = { project, versionId, brief: loadBrief(projectId), brand: loadBrand(projectId), research: loadResearch(projectId), assets: loadAssets(projectId), script: loadScript(projectId, versionId), storyboard: loadStoryboard(projectId, versionId), voice, beatGrid };
+  const refs = loadReferenceDnas(projectDir(projectId), loadBrief(projectId).references);
+  for (const m of refs.missing) log(`Referința ${m} nu e analizată încă (mms reference): nu influențează montajul.`);
+  const base = { references: refs.refs, project, versionId, brief: loadBrief(projectId), brand: loadBrand(projectId), research: loadResearch(projectId), assets: loadAssets(projectId), script: loadScript(projectId, versionId), storyboard: loadStoryboard(projectId, versionId), voice, beatGrid };
   const timelines: Record<string, Timeline> = {};
   const validation: Record<string, ValidationResult> = {};
   const warnings: string[] = [];

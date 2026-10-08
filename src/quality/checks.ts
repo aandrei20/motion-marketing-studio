@@ -24,6 +24,7 @@ import type { VideoCheck } from "../renderer/node/analyze-video";
 import type { ValidationResult } from "../timeline/validate";
 import type { IssueDraft } from "./issues";
 import { loadConcepts } from "../creative/concepts";
+import { claimGraph } from "../research/graph";
 import { area, focusRects, holdFrame, overlapArea, screenRect } from "../timeline/geometry";
 import { boxAt, captionBoxes } from "../timeline/validate";
 import type { PixelMetrics } from "../critique/pixel";
@@ -171,12 +172,16 @@ export const CHECKS: CheckDef[] = [
     perFormat: false,
     run: (ctx) => {
       const out: IssueDraft[] = [];
-      const claims = new Map(ctx.research.claims.map((c) => [c.id, c]));
+      // graful de afirmații: încrederea după coroborare, conflictele între surse, afirmațiile despre concurenți
+      const graph = new Map(claimGraph(ctx.research).nodes.map((n) => [n.claim.id, n]));
       for (const l of ctx.script.lines) {
+        const sceneId = ctx.storyboard.scenes.find((s) => s.lineIds.includes(l.id))?.id ?? null;
         for (const id of l.claimIds) {
-          const c = claims.get(id);
-          if (c && isClaimUsable(c) && c.confidence === "low" && c.status !== "approved-by-user")
-            out.push({ frame: null, sceneId: ctx.storyboard.scenes.find((s) => s.lineIds.includes(l.id))?.id ?? null, dimension: "claims", severity: "medium", problem: `Replica „${l.id}” se sprijină pe o afirmație cu încredere mică (${c.id}).`, recommendation: "Cere confirmarea utilizatorului sau o sursă mai bună.", method: "static", confidence: 0.9 });
+          const n = graph.get(id);
+          if (!n) continue;
+          if (n.conflictsWith.length && n.claim.status !== "approved-by-user") out.push({ frame: null, sceneId, dimension: "claims", severity: "critical", problem: `Replica „${l.id}” folosește o afirmație în conflict cu alte surse (${id} ≠ ${n.conflictsWith.join(", ")}).`, recommendation: "Utilizatorul confirmă valoarea corectă (mms claim … approved) sau scoate replica.", method: "static" });
+          else if (n.aboutCompetitor && n.claim.status !== "approved-by-user") out.push({ frame: null, sceneId, dimension: "claims", severity: "critical", problem: `Replica „${l.id}” folosește o afirmație luată de pe pagina unui concurent (${id}).`, recommendation: "Afirmațiile despre concurenți nu intră în video fără aprobarea utilizatorului.", method: "static" });
+          else if (isClaimUsable(n.claim) && n.confidence === "low" && n.claim.status !== "approved-by-user") out.push({ frame: null, sceneId, dimension: "claims", severity: "medium", problem: `Replica „${l.id}” se sprijină pe o afirmație cu încredere mică (${id}).`, recommendation: "Cere confirmarea utilizatorului sau o sursă mai bună.", method: "static", confidence: 0.9 });
         }
       }
       return out;
@@ -512,7 +517,7 @@ export const CHECKS: CheckDef[] = [
     method: "static",
     perFormat: false,
     run: (ctx) => {
-      const changed = (["brief", "brand", "assets", "research"] as const).filter((k) => ctx.inputsAtCompile[k] && ctx.inputsNow[k] && ctx.inputsAtCompile[k] !== ctx.inputsNow[k]);
+      const changed = (["brief", "brand", "assets", "research", "references"] as const).filter((k) => ctx.inputsAtCompile[k] && ctx.inputsNow[k] && ctx.inputsAtCompile[k] !== ctx.inputsNow[k]);
       if (!changed.length) return [];
       return [{ frame: null, sceneId: null, dimension: "stale", category: changed.includes("brand") ? "brand" : "technical", severity: "high", problem: `Timeline-ul a fost compilat înainte de schimbări în: ${changed.join(", ")}.`, recommendation: "Recompilează (se creează versiunea următoare).", suggestedFix: [{ op: "recompile" }], method: "static", confidence: 1 }];
     },
@@ -601,7 +606,7 @@ export const CHECKS: CheckDef[] = [
       const saved = ctx.timelines[fid];
       const norm = (t: Timeline) => JSON.stringify({ ...t, audio: { ...t.audio, src: null } });
       if (norm(fresh) === norm(saved)) return [];
-      const inputsChanged = (["brief", "brand", "assets", "research"] as const).some((k) => ctx.inputsAtCompile[k] && ctx.inputsNow[k] !== ctx.inputsAtCompile[k]);
+      const inputsChanged = (["brief", "brand", "assets", "research", "references"] as const).some((k) => ctx.inputsAtCompile[k] && ctx.inputsNow[k] !== ctx.inputsAtCompile[k]);
       if (inputsChanged) return []; // raportat deja de brand.stale
       return [{ frame: null, sceneId: null, formatId: fid, dimension: "determinism", severity: "critical", method: "static", problem: "Recompilarea din aceleași date dă alt timeline (determinism încălcat).", recommendation: "Caută aleator nefixat sau timp real în compilator/rețete; nu exporta până nu e reparat." }];
     },

@@ -9,6 +9,7 @@ import { detectBeatGrid, onsetEnvelope } from "../audio/beat";
 import { rmsDb } from "../audio/loudness";
 import { palette, probe } from "../assets/analyze";
 import { frameDiff, frameLuma, frameSaturation, readFrames } from "../assets/frames";
+import { cameraMotion, referenceDna, type ReferenceDNA } from "./dna";
 
 export interface ReferenceProfile {
   assetId: string;
@@ -22,6 +23,8 @@ export interface ReferenceProfile {
   /** recomandări derivate (ritm, tranziții, densitate) pentru direcția creativă */
   guidance: string[];
   limitations: string[];
+  /** structura transformată în parametri de producție (src/references/dna.ts) */
+  dna?: ReferenceDNA;
 }
 
 export async function analyzeReference(assetId: string, file: string): Promise<ReferenceProfile> {
@@ -92,7 +95,11 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
   if (audio.bpm && (audio.bpmConfidence ?? 0) >= 0.25) guidance.push(`Muzică în jur de ${audio.bpm} BPM; tăieturile pot cădea pe bătăi.`);
   else if (audio.bpm) guidance.push(`Tempo nesigur (încredere ${audio.bpmConfidence}): probabil voce sau efecte peste muzică. Nu folosi tempo-ul ca fapt; întreabă-l pe utilizator sau ascultă.`);
   guidance.push(meanSat < 0.2 ? "Culoare reținută (aproape monocromă)." : meanSat > 0.5 ? "Culori saturate, contrast puternic." : "Saturație medie.");
-  return {
+  // tăieturi simple vs. tranziții: o tăietură simplă e un salt pe un singur cadru, o tranziție se întinde pe mai multe
+  const hard = cuts.map((c) => Math.round(c * fps)).filter((i) => i > 0 && i < diffs.length - 1).map((i) => Math.max(diffs[i - 1], diffs[i + 1]) < diffs[i] * 0.35);
+  const hardCutShare = hard.length ? Math.round((hard.filter(Boolean).length / hard.length) * 100) / 100 : null;
+  const camera = cameraMotion(seq.frames, seq.w, seq.h, fps, cuts);
+  const profile: ReferenceProfile = {
     assetId,
     analyzedAt: new Date().toISOString(),
     durationSec: dur,
@@ -114,8 +121,13 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
       "Fără OCR: densitatea și stilul textului din referință nu se măsoară automat; se descriu de om sau de Claude din cadre.",
       "Tăieturile se detectează din salturi de imagine la 10 cadre/s; dizolvările lente pot fi ratate.",
       "Tempo-ul se detectează din tot sunetul; cu voce și efecte peste muzică poate ieși greșit (vezi bpmConfidence).",
+      "Mișcarea camerei se estimează din deplasarea globală a imaginii (pan/zoom); rotațiile și parallax-ul nu se separă.",
     ],
   };
+  profile.dna = referenceDna(profile, { camera, hardCutShare });
+  if (camera) profile.guidance.push(camera.dominant === "static" ? "Camera e în mare parte fixă." : `Camera: ${camera.dominant} (pan ${camera.panPerSec}/s, zoom ${camera.zoomPerSec}/s).`);
+  if (hardCutShare !== null) profile.guidance.push(`${Math.round(hardCutShare * 100)}% din schimbările de cadru sunt tăieturi simple.`);
+  return profile;
 }
 
 export function saveReferenceProfile(projectDirPath: string, profile: ReferenceProfile): string {

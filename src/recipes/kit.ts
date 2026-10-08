@@ -312,6 +312,22 @@ export function portraitCrop(ctx: RecipeContext, a: ResolvedAsset, zone: Rect, r
 }
 
 /** O casetă puțin mai mare decât zona, în pixelii capturii. */
+/**
+ * Raza colțurilor unui card în video, după forma brandului: raza CSS a site-ului (capturată 2×) scalată la
+ * format; fără brand: 36 px la 1080. k < 1 pentru elemente mai mici.
+ */
+export function cardRadius(ctx: RecipeContext, k = 1): number {
+  const scale = Math.min(ctx.W, ctx.H) / 1080;
+  const r = ctx.shape ? ctx.shape.radius * 2.2 * scale : 36 * scale;
+  return Math.round(Math.max(0, Math.min(72 * scale, r * k)));
+}
+
+/** Raza butonului: pastilă dacă brandul are colțuri mari, altfel raza brandului. */
+export function buttonRadius(ctx: RecipeContext, h: number): number {
+  if (!ctx.shape) return h / 2;
+  return Math.min(h / 2, Math.round(ctx.shape.radius * 2.2 * (Math.min(ctx.W, ctx.H) / 1080)));
+}
+
 export function padRect(rect: Rect, pad: number): Rect {
   return { x: rect.x - pad, y: rect.y - pad, w: rect.w + pad * 2, h: rect.h + pad * 2 };
 }

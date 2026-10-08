@@ -6,8 +6,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 155 | 83 | 43 | 25 | 4 |
-| PARTIAL | 29 | 2 | 13 | 9 | 5 |
+| IMPLEMENTED | 159 | 83 | 46 | 26 | 4 |
+| PARTIAL | 25 | 2 | 10 | 8 | 5 |
 | MISSING | 13 | 0 | 0 | 10 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
@@ -187,11 +187,11 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Voce (TTS offline / cheie API / fișierul utilizatorului) | P0 | IMPLEMENTED | `module:src/pipeline/steps.ts#stepVoice` | — |
 | Muzică originală pe structura reclamei sau muzica utilizatorului | P0 | IMPLEMENTED | `module:src/audio/music.ts#composeMusic` | — |
 | Beat grid: tempo, fază, măsuri, încredere | P0 | IMPLEMENTED | `module:src/audio/beat.ts#detectBeatGrid`, `check:audio.mix` | — |
-| Secțiuni muzicale, curbă de energie, drop-uri | P1 | PARTIAL | `module:src/audio/beat.ts#detectBeatGrid` | Schema are secțiuni; detecția lor din muzica utilizatorului nu există. **Următorul pas:** Secțiuni din energie pe măsuri (RMS + noutate), drop-ul aliniat cu dezvăluirea. |
+| Secțiuni muzicale, energie pe măsuri, drop-uri (dezvăluirea pe drop) | P1 | IMPLEMENTED | `module:src/audio/beat.ts#musicStructure` | — |
 | Efecte sonore originale (impact, whoosh, riser, click, UI, notificare) | P0 | IMPLEMENTED | `sfx:impact`, `sfx:whoosh`, `sfx:riser`, `sfx:click`, `sfx:notification` | — |
 | Ambianță (room tone) | P2 | MISSING | — | **Următorul pas:** Strat de ambianță sintetizat discret, opțional în brief. |
 | Ducking al muzicii sub voce (rampă 500 ms) | P0 | IMPLEMENTED | `module:src/audio/mixer.ts#duckEnvelope` | — |
-| Efectele sub voce | P1 | PARTIAL | `module:src/audio/mixer.ts#mix` | Ducking-ul se aplică muzicii; efectele rămân la nivelul lor sub voce. **Următorul pas:** Atenuare ușoară a efectelor peste replici. |
+| Efectele sub voce (−4 dB, rampă scurtă) | P1 | IMPLEMENTED | `module:src/audio/mixer.ts#mix` | — |
 | EQ / filtre | P2 | IMPLEMENTED | `module:src/audio/dsp.ts#eq`, `module:src/audio/dsp.ts#band` | — |
 | Compresie pe voce | P2 | MISSING | — | **Următorul pas:** Compresor simplu pe stem-ul de voce înainte de mix. |
 | Loudness −14 LUFS, true peak ≤ −1 dBTP, limitator | P0 | IMPLEMENTED | `module:src/audio/dsp.ts#limit`, `check:audio.mix` | — |
@@ -221,8 +221,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Logo (doar scară uniformă; reguli de brand) | P0 | IMPLEMENTED | `cap:logo.reveal`, `cap:logo.lockup`, `check:brand.rules` | — |
 | Culori din CSS și logo | P0 | IMPLEMENTED | `module:src/brand/infer.ts#inferBrand`, `check:brand.color-presence` | — |
 | Fonturi (biblioteca OFL sau fontul utilizatorului cu drepturi) | P0 | IMPLEMENTED | `module:src/brand/infer.ts#matchLibraryFont` | — |
-| Raze de colț, umbre, spațiere din site | P1 | PARTIAL | `module:src/brand/infer.ts#inferBrand` | Valori implicite (16 px, umbră „soft”), nu extrase din CSS. **Următorul pas:** Extragerea border-radius / box-shadow / gap din elementele interactive la captură. |
-| Gradiente de brand | P2 | PARTIAL | `module:src/brand/infer.ts#inferBrand` | Gradientul e construit din primar → accent, nu citit din CSS. **Următorul pas:** Citirea background-image: linear-gradient din captură. |
+| Raze de colț, umbre, spațiere din CSS-ul real, folosite de cardurile și butoanele rețetelor | P1 | IMPLEMENTED | `module:src/brand/infer.ts#brandShape`, `module:src/recipes/kit.ts#cardRadius` | — |
+| Gradiente de brand (citite din CSS; altfel primar → accent) | P2 | IMPLEMENTED | `module:src/brand/infer.ts#brandShape` | — |
 | Consecvența brandului în reclamă (paletă, logo, date la zi) | P0 | IMPLEMENTED | `check:brand.rules`, `check:brand.stale` | — |
 | Stilul imaginilor / ilustrațiilor / iconițelor | P3 | MISSING | — | **Următorul pas:** Descriere în brand.json, completată de Claude din capturi. |
 | Limbajul de mișcare al brandului | P1 | PARTIAL | `module:src/creative/directions.ts#DIRECTIONS` | Direcțiile A–F definesc mișcarea; brand.personality.motion nu ajustează încă direcția. **Următorul pas:** brand.personality.motion să moduleze viteza și tranzițiile direcției. |

@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { PageData } from "../capture/capture";
 import type { Claim, Research, Source, SourceKind } from "../core/schema";
+import { MmsError } from "../core/errors";
 import { loadResearch, now, projectDir, saveResearch, updateState } from "../projects/store";
 
 const slug = (s: string, max = 40) =>
@@ -129,8 +130,20 @@ export function mergeIntoResearch(projectId: string, r: ExtractResult, pageText:
   const existing = res.sources.find((s) => s.id === r.source.id);
   if (existing && existing.contentHash === r.source.contentHash) return res;
   res.sources = [...res.sources.filter((s) => s.id !== r.source.id), { ...r.source, textFile }];
-  const known = new Set(res.claims.map((c) => c.quote ?? c.text));
-  for (const c of r.claims) if (!known.has(c.quote ?? c.text)) res.claims.push(c);
+  // aceeași afirmație (același citat) găsită în altă sursă: se adaugă sursa (coroborare), nu se dublează
+  const byQuote = new Map(res.claims.map((c) => [c.quote ?? c.text, c]));
+  const ids = new Set(res.claims.map((c) => c.id));
+  for (const c of r.claims) {
+    const same = byQuote.get(c.quote ?? c.text);
+    if (same) {
+      same.sourceIds = [...new Set([...same.sourceIds, ...c.sourceIds])];
+      continue;
+    }
+    let id = c.id;
+    for (let k = 2; ids.has(id); k++) id = `${c.id}-${k}`;
+    ids.add(id);
+    res.claims.push({ ...c, id });
+  }
   if (!res.productSummary) res.productSummary = r.summary;
   const pending = res.claims.filter((c) => c.status === "needs-confirmation").length;
   res.openQuestions = pending ? [`Confirmă ${pending} afirmații cu prețuri sau cifre înainte să intre în video.`] : [];
@@ -143,7 +156,7 @@ export function mergeIntoResearch(projectId: string, r: ExtractResult, pageText:
 export function setClaimStatus(projectId: string, claimId: string, status: Claim["status"], note = ""): Claim {
   const res = loadResearch(projectId);
   const c = res.claims.find((x) => x.id === claimId);
-  if (!c) throw new Error(`Nu există afirmația ${claimId}`);
+  if (!c) throw new MmsError("CLAIM_MISSING", `Nu există afirmația ${claimId}.`, "Vezi afirmațiile: npm run mms -- research <proiect>");
   c.status = status;
   c.checkedAt = now();
   if (note) c.notes = `${c.notes} ${note}`.trim();

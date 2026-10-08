@@ -29,6 +29,8 @@ import { approve, demoUrl, shutdown, writePostPack, stepAudio, stepBrand, stepCa
 import { createProject, createVersion, listProjects, listVersions, loadAssets, loadProject, loadResearch, projectDir, saveBrief } from "../projects/store";
 import { analyzeReference, saveReferenceProfile } from "../references/analyze";
 import { addUserClaim, setClaimStatus } from "../research/extract";
+import { crawlSite } from "../research/crawl";
+import { claimGraph } from "../research/graph";
 import { ALL_CAPABILITIES } from "../motion/registry";
 import { RECIPES } from "../recipes/recipes";
 import { CaptureStep, capture, interactiveLogin, type CaptureRequestInput } from "../capture/capture";
@@ -101,6 +103,8 @@ MATERIALE ȘI RESEARCH
   blur-ok <id> <assetId>                 acord pentru estomparea datelor personale
   reference <id> <assetId>               profilul unui video de referință
   research <id>                          sursele și afirmațiile
+  research-crawl <id> [--url u] [--max 6] [--competitor u]   citește paginile relevante ale site-ului
+  claims <id>                            graful de afirmații: dovadă, sursă, încredere, coroborare, conflicte
   claim <id> <claimId> approved|rejected|verified
   add-claim <id> "text" --category feature --source "titlul sursei"
   brand <id> [--force]                   brand kit din captură și logo
@@ -301,6 +305,25 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
       log(`Rezumat: ${r.productSummary}\nSurse: ${r.sources.length}`);
       for (const s of r.sources) log(`  [${s.kind}] ${s.title} – ${s.url ?? s.assetId} (${s.fetchedAt.slice(0, 10)})`);
       for (const c of r.claims) log(`  ${c.status.padEnd(20)} ${c.id}: ${c.text.slice(0, 90)}`);
+      return;
+    }
+    case "research-crawl": {
+      const pid = need(id, "proiectul");
+      const url = str(a.flags.url) ?? loadProject(pid).product.url;
+      if (!url) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului (--url).");
+      const r = await crawlSite(pid, url, { max: a.flags.max ? Number(str(a.flags.max)) : undefined, competitors: list(a.flags.competitor), log });
+      for (const p of r.pages) log(`  ${p.kind.padEnd(14)} ${String(p.claims).padStart(3)} afirmații  ${p.url}`);
+      for (const sk of r.skipped) log(`! ${sk}`);
+      const g = claimGraph(r.research);
+      log(`${g.stats.sources} surse, ${g.stats.claims} afirmații (${g.stats.usable} utilizabile, ${g.stats.needsConfirmation} de confirmat, ${g.stats.corroborated} coroborate, ${g.stats.conflicts} în conflict)`);
+      return;
+    }
+    case "claims": {
+      const g = claimGraph(loadResearch(need(id, "proiectul")));
+      log(`${g.stats.sources} surse · ${g.stats.claims} afirmații · ${g.stats.usable} utilizabile · ${g.stats.needsConfirmation} de confirmat · ${g.stats.corroborated} coroborate · ${g.stats.conflicts} în conflict`);
+      for (const n of g.nodes) log(`  ${(n.usable ? "✓" : "·")} ${n.confidence.padEnd(6)} ${n.claim.status.padEnd(18)} ${n.claim.id}: ${n.claim.text.slice(0, 80)}${n.sources.length ? ` [${n.sources.map((x) => x.kind).join(", ")}]` : ""}${n.conflictsWith.length ? ` ⚠ conflict cu ${n.conflictsWith.join(", ")}` : ""}${n.aboutCompetitor ? " (concurent)" : ""}`);
+      if (g.toConfirm.length) log(`
+De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}`);
       return;
     }
     case "claim": {

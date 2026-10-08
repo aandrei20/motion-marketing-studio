@@ -58,6 +58,8 @@ export interface PageData {
   buttons: string[];
   colors: { backgrounds: Array<[string, number]>; texts: Array<[string, number]>; accents: Array<[string, number]> };
   fonts: Array<[string, number]>;
+  /** forma brandului din CSS (capturile vechi nu o au) */
+  shapes?: { radii: Array<[string, number]>; shadows: Array<[string, number]>; gradients: Array<[string, number]>; gaps: Array<[string, number]> };
   cssVars: Record<string, string>;
   times: Array<{ datetime: string; text: string }>;
   fullText: string;
@@ -199,6 +201,30 @@ async function extractPageData(page: Page): Promise<PageData> {
         /* foi de stil din alt domeniu */
       }
     }
+    // forma brandului din CSS-ul real: raze de colț, umbre, gradiente, spațiere (pentru brand kit)
+    const radii = new Map<string, number>();
+    const shadows = new Map<string, number>();
+    const grads = new Map<string, number>();
+    const gaps = new Map<string, number>();
+    document.querySelectorAll("button, .btn, a.btn, [role=button], input, textarea, .card, [class*=card], article, aside, nav").forEach((el) => {
+      const st = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) return;
+      const rad = parseFloat(st.borderTopLeftRadius);
+      if (!Number.isNaN(rad)) count(radii, String(rad >= r.height / 2 - 1 ? "pill" : Math.round(rad)), 1);
+      if (st.boxShadow && st.boxShadow !== "none") count(shadows, st.boxShadow, 1);
+    });
+    document.querySelectorAll("body *").forEach((el) => {
+      const st = getComputedStyle(el);
+      if (st.backgroundImage && st.backgroundImage.includes("gradient(")) {
+        const r = el.getBoundingClientRect();
+        count(grads, st.backgroundImage.slice(0, 400), Math.max(1, r.width * r.height));
+      }
+      if ((st.display.includes("flex") || st.display.includes("grid")) && st.gap && st.gap !== "normal") {
+        const g = parseFloat(st.gap);
+        if (!Number.isNaN(g) && g > 0) count(gaps, String(Math.round(g)), 1);
+      }
+    });
     const og: Record<string, string> = {};
     document.querySelectorAll("meta[property^='og:']").forEach((m) => (og[m.getAttribute("property") ?? ""] = m.getAttribute("content") ?? ""));
     return {
@@ -213,6 +239,7 @@ async function extractPageData(page: Page): Promise<PageData> {
       buttons: Array.from(document.querySelectorAll("button, .btn, [role=button]")).map(txt).filter(Boolean).slice(0, 40),
       colors: { backgrounds: top(bgs, 8), texts: top(fgs, 6), accents: top(acc, 6) },
       fonts: top(fonts, 5),
+      shapes: { radii: top(radii, 5), shadows: top(shadows, 4), gradients: top(grads, 4), gaps: top(gaps, 5) },
       cssVars,
       times: Array.from(document.querySelectorAll("time")).map((t) => ({ datetime: t.getAttribute("datetime") ?? "", text: txt(t) })),
       fullText: (document.body.innerText || "").slice(0, 60000),

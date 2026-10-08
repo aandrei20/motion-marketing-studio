@@ -24,7 +24,8 @@ export interface MixInput {
   music?: { audio: Stereo; gainDb?: number; startSec?: number; fadeInSec?: number; fadeOutSec?: number; loop?: boolean };
   voice: MixVoice[];
   sfx: MixSfx[];
-  duck: { amountDb: number; rampMs: number; padMs: number };
+  /** ducking-ul muzicii sub voce; sfxAmountDb = atenuarea efectelor sonore peste replici (implicit −4 dB) */
+  duck: { amountDb: number; rampMs: number; padMs: number; sfxAmountDb?: number };
   intentionalSilences: Array<{ startSec: number; endSec: number }>;
   targetLufs: number;
   truePeakCeiling: number;
@@ -72,6 +73,16 @@ export function mix(input: MixInput): MixOutput {
   const sg = input.stemGainsDb ?? {};
   for (const v of input.voice) place(voice, v.audio, v.atSec, dbToGain((v.gainDb ?? 0) + (sg.voice ?? 0)));
   for (const s of input.sfx) place(sfx, s.audio, s.atSec, dbToGain((s.gainDb ?? 0) + (sg.sfx ?? -8)));
+  const voiceIv = input.voice.map((v) => ({ startSec: v.atSec, endSec: v.atSec + v.audio.L.length / v.audio.sr }));
+  // vocea are prioritate: efectele sonore scad ușor peste replici (rampă scurtă, ca impacturile să rămână)
+  const sfxDuckDb = input.duck.sfxAmountDb ?? -4;
+  if (sfxDuckDb < 0 && voiceIv.length) {
+    const sd = duckEnvelope(n, voiceIv, sfxDuckDb, 250, 60);
+    for (let i = 0; i < n; i++) {
+      sfx.L[i] *= sd[i];
+      sfx.R[i] *= sd[i];
+    }
+  }
   if (input.music) {
     const m = input.music;
     const start = samples(m.startSec ?? 0);
@@ -97,7 +108,6 @@ export function mix(input: MixInput): MixOutput {
       music.L[n - 1 - i] *= k;
       music.R[n - 1 - i] *= k;
     }
-    const voiceIv = input.voice.map((v) => ({ startSec: v.atSec, endSec: v.atSec + v.audio.L.length / v.audio.sr }));
     const duck = duckEnvelope(n, voiceIv, input.duck.amountDb, input.duck.rampMs, input.duck.padMs);
     for (let i = 0; i < n; i++) {
       music.L[i] *= duck[i];

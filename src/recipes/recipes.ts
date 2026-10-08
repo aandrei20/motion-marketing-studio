@@ -3,7 +3,7 @@ import { readableOn } from "../motion/core/color";
 import { readingSec } from "../editing/grammar";
 import { screenPointToBox } from "../motion/media/media";
 import type { Rect, TimelineLayer } from "../core/schema";
-import { afterPush, bestRegion, calloutSide, clearOfText, directionBase, frameFor, intersect, layer, limitZoomForText, mediaBounds, norm, padRect, portraitCrop, regionFocus, revealRegion, screenParams, screenRectInScene, textParams, zones } from "./kit";
+import { afterPush, bestRegion, buttonRadius, calloutSide, cardRadius, clearOfText, directionBase, frameFor, intersect, layer, limitZoomForText, mediaBounds, norm, padRect, portraitCrop, regionFocus, revealRegion, screenParams, screenRectInScene, textParams, zones } from "./kit";
 import { defineRecipe, type RecipeContext, type RecipeCue, type RecipeOutput } from "./types";
 
 const cam = (capability: string, params: Record<string, unknown> = {}) => ({ capability, params });
@@ -115,7 +115,7 @@ export const problemStatement = defineRecipe({
     const z0 = zones(ctx);
     const layers = directionBase(ctx);
     const before = ctx.slot("before");
-    if (before) layers.push(layer(ctx, "media.image", z0.media, { src: before.src, fit: "cover", radius: 28 }, { z: 20, modifiers: [{ capability: "mod.color-grade", params: { preset: "mono" } }, { capability: "mod.enter", params: { style: "rise" } }] }));
+    if (before) layers.push(layer(ctx, "media.image", z0.media, { src: before.src, fit: "cover", radius: cardRadius(ctx, 0.8) }, { z: 20, modifiers: [{ capability: "mod.color-grade", params: { preset: "mono" } }, { capability: "mod.enter", params: { style: "rise" } }] }));
     layers.push(layer(ctx, "fx.vignette", { x: 0, y: 0, w: ctx.W, h: ctx.H }, { strength: 0.6 }, { z: 80, depth: 0, role: "overlay" }));
     const box = before ? z0.text : ctx.orientation === "landscape" ? { ...z0.text, w: ctx.safe.rect.w * 0.8 } : { ...z0.text, h: z0.text.h * 1.6 };
     layers.push(layer(ctx, "text.highlight", box, textParams(ctx, ctx.text.headline, { style: p.mark, markAt: Math.round(ctx.fps * 0.7), markColor: "accent", maxSize: 120, minSize: 34 }), { z: 50, depth: 0, role: "hero" }));
@@ -187,7 +187,7 @@ export const uiSpotlight = defineRecipe({
     const a = ctx.slot("screen")!;
     const region = ctx.focusRegion ?? bestRegion(a.regions, `${ctx.text.headline} ${ctx.text.sub}`);
     const crop = portraitCrop(ctx, a, z0.media, region);
-    const sp = screenParams(a, crop ? { shadow: true, crop, frame: "none", radius: 36 } : { shadow: true });
+    const sp = screenParams(a, crop ? { shadow: true, crop, frame: "none", radius: cardRadius(ctx) } : { shadow: true });
     Object.assign(sp, revealRegion(sp, region, z0.media));
     const children: TimelineLayer[] = [];
     const t1 = Math.round(ctx.duration * 0.28);
@@ -264,7 +264,7 @@ export const uiWalkthrough = defineRecipe({
     if (a.kind === "video") {
       // regiunile vin din captura statică a aceleiași pagini (scene.focus), la aceeași rezoluție
       const crop = portraitCrop(ctx, a, z0.media, ctx.focusRegion);
-      if (crop) Object.assign(sp, { crop, frame: "none", radius: 36 });
+      if (crop) Object.assign(sp, { crop, frame: "none", radius: cardRadius(ctx) });
       else Object.assign(sp, revealRegion(sp, ctx.focusRegion, z0.media));
       const screenLayer = layer(ctx, "media.screen", z0.media, sp, { z: 20, role: "hero", modifiers: [{ capability: "mod.enter", params: { style: "scale", spring: "soft", exit: "none" } }] });
       layers.push(screenLayer);
@@ -280,7 +280,7 @@ export const uiWalkthrough = defineRecipe({
       if (from && to) {
         const union = { id: "union", label: "", kind: "custom" as const, rect: { x: Math.min(from.rect.x, to.rect.x), y: Math.min(from.rect.y, to.rect.y), w: Math.max(from.rect.x + from.rect.w, to.rect.x + to.rect.w) - Math.min(from.rect.x, to.rect.x), h: Math.max(from.rect.y + from.rect.h, to.rect.y + to.rect.h) - Math.min(from.rect.y, to.rect.y) } };
         const crop = portraitCrop(ctx, a, z0.media, union);
-        if (crop) Object.assign(sp, { crop, frame: "none", radius: 36 });
+        if (crop) Object.assign(sp, { crop, frame: "none", radius: cardRadius(ctx) });
         else Object.assign(sp, revealRegion(sp, union, z0.media));
         const pick = Math.round(ctx.fps * 0.5);
         const drop = Math.round(ctx.duration * 0.62);
@@ -307,7 +307,7 @@ export const uiWalkthrough = defineRecipe({
       const ys = picks.flatMap((r) => [r.rect.y, r.rect.y + r.rect.h]);
       const union = { id: "union", label: "", kind: "custom" as const, rect: { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) } };
       const crop = portraitCrop(ctx, a, z0.media, union);
-      if (crop) Object.assign(sp, { crop, frame: "none", radius: 36 });
+      if (crop) Object.assign(sp, { crop, frame: "none", radius: cardRadius(ctx) });
     }
     if (picks.length && !sp.crop) {
       const ys = picks.flatMap((r) => [r.rect.y, r.rect.y + r.rect.h]);
@@ -387,7 +387,7 @@ export const featureMontage = defineRecipe({
       const crop = r ? padRect(r.rect, Math.max(r.rect.w, r.rect.h) * 0.35) : undefined;
       const from = starts[i];
       const dur = (starts[i + 1] ?? ctx.duration) - from;
-      layers.push(layer(ctx, "media.screen", z0.media, screenParams(a, { crop, frame: "none", radius: 28 }), { from, duration: dur, z: 20, role: "hero", modifiers: [{ capability: "mod.enter", params: { style: "scale", spring: "pop", exit: "none", motionBlur: true } }] }));
+      layers.push(layer(ctx, "media.screen", z0.media, screenParams(a, { crop, frame: "none", radius: cardRadius(ctx, 0.8) }), { from, duration: dur, z: 20, role: "hero", modifiers: [{ capability: "mod.enter", params: { style: "scale", spring: "pop", exit: "none", motionBlur: true } }] }));
       if (items[i]) layers.push(layer(ctx, pick(ctx, ctx.dir.text.list, "text.word-reveal"), z0.text, { text: items[i], emphasis: ctx.text.emphasis, maxSize: 110, minSize: 34, align: "left", exitFrames: 3 }, { from, duration: dur, z: 50, depth: 0, role: "hero" }));
       if (i > 0) cues.push({ at: from, sound: "whoosh-fast", gainDb: -6, reason: "tăietură în montaj" });
     }
@@ -637,7 +637,7 @@ export const ctaEnd = defineRecipe({
       const bw = Math.min(s.w * (portrait ? 0.9 : 0.5), 960);
       const bh = Math.min(s.h * (portrait ? 0.13 : 0.12), 180);
       const btn: Rect = { x: ctx.W / 2 - bw / 2, y: headBox.y + headBox.h + s.h * 0.05, w: bw, h: bh };
-      layers.push(layer(ctx, "shape.panel", btn, { color: "primary", radius: bh / 2, from: "scale" }, { from: 12, z: 45, depth: 0, role: "hero" }));
+      layers.push(layer(ctx, "shape.panel", btn, { color: "primary", radius: buttonRadius(ctx, bh), from: "scale" }, { from: 12, z: 45, depth: 0, role: "hero" }));
       layers.push(layer(ctx, "text.body", { x: btn.x + bh * 0.4, y: btn.y, w: btn.w - bh * 0.8, h: btn.h }, { text: cta, emphasis: [], font: "display", color: readableOn(ctx.palette.primary), align: "center", maxSize: Math.round(bh * 0.5), minSize: 28, exit: "none", delay: 4 }, { from: 14, z: 46, depth: 0, role: "hero" }));
       if (!ctx.forbidden.includes("fx.light-sweep")) layers.push(layer(ctx, "fx.light-sweep", btn, { start: 0, end: 0.9, intensity: 0.5 }, { from: 26, duration: 24, z: 47, depth: 0 }));
       if (p.url) layers.push(layer(ctx, "text.body", { x: s.x, y: btn.y + btn.h + s.h * 0.03, w: s.w, h: s.h * 0.06 }, { text: p.url, emphasis: [], color: "textMuted", align: "center", maxSize: 44, minSize: 28, exit: "none" }, { from: 20, z: 46, depth: 0 }));

@@ -121,7 +121,7 @@ export function detectBeatGrid(s: Stereo, minBpm = 70, maxBpm = 180): BeatGrid {
   const best = sorted[0];
   const rival = sorted.find((x) => Math.abs(x.bpm - best.bpm) > 3 && Math.abs(x.bpm - best.bpm * 2) > 3 && Math.abs(x.bpm - best.bpm / 2) > 3);
   const confidence = rival && best.score > 0 ? Math.max(0, Math.min(1, 1 - rival.score / best.score)) : 1;
-  return { bpm: Math.round(best.bpm * 4) / 4, offsetSec: lowBandPhase(s, best.bpm) ?? best.phase * frameSec, beatsPerBar: 4, source: "detected", confidence, sections: [] };
+  return { bpm: Math.round(best.bpm * 4) / 4, offsetSec: lowBandPhase(s, best.bpm) ?? best.phase * frameSec, beatsPerBar: 4, source: "detected", confidence, sections: [], drops: [] };
 }
 
 /**
@@ -182,4 +182,38 @@ export function snapToGrid(g: BeatGrid, sec: number, unit: "beat" | "bar" = "bea
   const step = (60 / g.bpm) * (unit === "bar" ? g.beatsPerBar : 1);
   const k = Math.round((sec - g.offsetSec) / step);
   return Math.max(0, g.offsetSec + k * step);
+}
+
+/**
+ * Structura muzicii pe măsuri: energia (RMS) pe fiecare măsură, secțiuni (unde energia se schimbă clar)
+ * și drop-uri (salt mare de energie după o zonă mai calmă). Folosită pentru alinierea dezvăluirii pe drop.
+ * Încrederea vine din tempo: cu beat grid nesigur, structura nu se calculează.
+ */
+export function musicStructure(s: Stereo, g: BeatGrid): { sections: BeatGrid["sections"]; drops: number[] } {
+  if (g.confidence < 0.35) return { sections: [], drops: [] };
+  const bar = (60 / g.bpm) * g.beatsPerBar;
+  const dur = s.L.length / s.sr;
+  const rms: Array<{ t: number; e: number }> = [];
+  for (let t = g.offsetSec; t + bar <= dur + 1e-6; t += bar) {
+    const a = Math.floor(t * s.sr);
+    const b = Math.min(s.L.length, Math.floor((t + bar) * s.sr));
+    let sum = 0;
+    for (let i = a; i < b; i++) sum += (s.L[i] * s.L[i] + s.R[i] * s.R[i]) / 2;
+    rms.push({ t, e: Math.sqrt(sum / Math.max(1, b - a)) });
+  }
+  if (rms.length < 2) return { sections: [], drops: [] };
+  const max = Math.max(...rms.map((x) => x.e));
+  const min = Math.min(...rms.map((x) => x.e));
+  const norm = rms.map((x) => ({ t: x.t, e: max > min ? (x.e - min) / (max - min) : 0.5 }));
+  const sections: BeatGrid["sections"] = [];
+  let start = 0;
+  for (let i = 1; i <= norm.length; i++) {
+    const change = i === norm.length || Math.abs(norm[i].e - norm[i - 1].e) > 0.25 || i - start >= 8;
+    if (!change) continue;
+    const slice = norm.slice(start, i);
+    sections.push({ name: `s${sections.length + 1}`, startSec: Math.round(norm[start].t * 1000) / 1000, endSec: Math.round(Math.min(dur, norm[i - 1].t + bar) * 1000) / 1000, energy: Math.round((slice.reduce((a, x) => a + x.e, 0) / slice.length) * 100) / 100 });
+    start = i;
+  }
+  const drops = norm.filter((x, i) => i > 0 && x.e >= 0.7 && x.e - norm[i - 1].e >= 0.35).map((x) => Math.round(x.t * 1000) / 1000);
+  return { sections, drops };
 }

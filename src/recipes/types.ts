@@ -37,6 +37,8 @@ export interface RecipeContext {
   focusAsset: ResolvedAsset | null;
   effectsLevel: "subtle" | "medium" | "bold";
   palette: Palette;
+  /** forma brandului (rază, umbră, spațiere în px CSS ai site-ului), pentru cardurile și butoanele din rețete */
+  shape?: { radius: number; spacing: number; shadow: "none" | "soft" | "deep" };
   /** subtitrările arse ocupă banda de jos a zonei sigure: materialul vizual se oprește deasupra */
   captions: boolean;
   forbidden: string[];

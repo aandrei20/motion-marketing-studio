@@ -11,6 +11,8 @@ export const BeatGrid = z.object({
   sections: z
     .array(z.object({ name: z.string(), startSec: z.number(), endSec: z.number(), energy: z.number().min(0).max(1) }))
     .default([]),
+  /** momentele de „drop” (salt de energie după o zonă calmă), secunde; doar pentru muzica analizată */
+  drops: z.array(z.number().min(0)).default([]),
 });
 export type BeatGrid = z.infer<typeof BeatGrid>;
 

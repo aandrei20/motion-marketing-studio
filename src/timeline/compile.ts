@@ -38,6 +38,7 @@ import { getCamera, getCapability, getLayer, getModifier, getTransition } from "
 import { getRecipe } from "../recipes/recipes";
 import type { RecipeContext, ResolvedAsset } from "../recipes/types";
 import { nodeMeasure } from "./measure-node";
+import { applyDna, type DnaAspect, type ReferenceDNA } from "../references/dna";
 import { LAYOUT_TEXT_CAPS, LAYOUT_TEXT_CAPS as TEXT_CAPS } from "../motion/text-caps";
 import { focusRects, holdFrame, overlapArea } from "./geometry";
 
@@ -61,6 +62,8 @@ export interface CompileInput {
   storyboard: Storyboard;
   voice: Record<string, VoiceClipRef>;
   beatGrid: BeatGrid | null;
+  /** referințele analizate (Reference DNA) și aspectele preluate din ele */
+  references?: Array<{ dna: ReferenceDNA; aspects: Set<DnaAspect> }>;
 }
 
 export interface SceneReport {
@@ -160,7 +163,11 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const fps = format.fps;
   const orientation = orientationOf(W, H);
   const safe = resolveSafeZone(format);
-  const dir: DirectionProfile = DIRECTIONS[storyboard.direction ?? brief.direction ?? "technical"];
+  // direcția, ajustată de structura referințelor (ritm, tranziții, cameră, tempo)
+  const dna = applyDna(DIRECTIONS[storyboard.direction ?? brief.direction ?? "technical"], input.references ?? []);
+  const dir: DirectionProfile = dna.dir;
+  const pacing = dna.pacing ?? brief.pacing;
+  warnings.push(...dna.notes.map((n) => `Referință: ${n}`));
   if (!storyboard.direction && !brief.direction) warnings.push("Brief-ul nu are direcție aleasă; folosesc „technical” până alegi una.");
   const palette = paletteOf(brand);
   const { fonts, typography, warnings: fw } = fontsAndTypography(brand, project.id, assets);
@@ -178,7 +185,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const onScreen = sc.text.headline ?? lines.map((l) => l.onScreen).join(" ");
     const recipe = getRecipe(sc.recipe.id);
     const recipeMin = Math.max(recipe.minSec, recipe.minSecFor?.({ headline: sc.text.headline, sub: sc.text.sub, items: sc.text.items ?? [] }) ?? 0);
-    const d = sceneDuration({ voSec, onScreen: [onScreen, sc.text.sub ?? ""].join(" ").trim(), shot: sc.shot, energy: sc.energy, role: sc.narrativeRole, recipeMinSec: recipeMin, explicitSec: sc.durationSec, dir, pacing: brief.pacing });
+    const d = sceneDuration({ voSec, onScreen: [onScreen, sc.text.sub ?? ""].join(" ").trim(), shot: sc.shot, energy: sc.energy, role: sc.narrativeRole, recipeMinSec: recipeMin, explicitSec: sc.durationSec, dir, pacing });
     return { sc, lines, d, recipe };
   });
   // 2. potrivire cu durata cerută: timpul în plus se împarte scenelor fără voce care pot crește
@@ -199,10 +206,15 @@ export function compileTimeline(input: CompileInput): CompileResult {
   //    Așa toate formatele au aceleași tăieturi (±1 cadru), iar mixul audio comun rămâne sincron.
   const R = REF_FPS;
   const beatRef: number[] = [];
-  if (input.beatGrid) {
+  // tăieturile se aliniază pe bătăi doar dacă tempo-ul e sigur (detectat cu încredere mică = fără aliniere, nu aliniere greșită)
+  const reliable = !!input.beatGrid && (input.beatGrid.source !== "detected" || input.beatGrid.confidence >= 0.35);
+  if (input.beatGrid && !reliable) warnings.push(`Tempo-ul muzicii e detectat cu încredere mică (${input.beatGrid.confidence.toFixed(2)}): tăieturile nu se aliniază pe bătăi. Fixează tempo-ul în brief (audio.music.bpm) dacă îl știi.`);
+  if (input.beatGrid && reliable) {
     const step = (60 / input.beatGrid.bpm) * R;
     for (let f = input.beatGrid.offsetSec * R; f < (target + 20) * R; f += step) beatRef.push(Math.round(f));
   }
+  // drop-urile muzicii: tăietura spre dezvăluire / punctul culminant cade pe drop, dacă e aproape
+  const dropRef = reliable ? (input.beatGrid?.drops ?? []).map((sec) => Math.round(sec * R)) : [];
   const durRef = plans.map((p) => Math.round(p.d.sec * R));
   const minRef = plans.map((p) => Math.ceil(p.d.minSec * R));
   let previousTransition: string | null = null;
@@ -213,7 +225,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     previousTransition = chosen;
     const tr = getTransition(chosen);
     const params = tr.params.parse(p.sc.transitionIn?.params ?? {}) as Record<string, unknown>;
-    const frames = p.sc.transitionIn?.durationFrames ?? transitionFrames(tr.defaultDuration, brief.pacing, durRef[i - 1], durRef[i]);
+    const frames = p.sc.transitionIn?.durationFrames ?? transitionFrames(tr.defaultDuration, pacing, durRef[i - 1], durRef[i]);
     return { capability: chosen, frames: Math.min(frames, Math.floor(Math.min(durRef[i - 1], durRef[i]) * 0.45)), params };
   });
   const startsRef: number[] = [];
@@ -225,10 +237,17 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const snap = plans[i].sc.beat.snap;
     if (beatRef.length && snap !== "none" && i < plans.length - 1) {
       const cut = end - d / 2;
-      const grid = snap === "bar" ? beatRef.filter((_, k) => k % (input.beatGrid?.beatsPerBar ?? 4) === 0) : beatRef;
-      const nearest = grid.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), grid[0]);
-      const newEnd = Math.round(nearest + d / 2);
-      if (newEnd - cursor >= minRef[i] && Math.abs(newEnd - end) <= Math.max(4, durRef[i] * 0.25)) end = newEnd;
+      const nextRole = plans[i + 1].sc.narrativeRole;
+      const toReveal = (nextRole === "reveal" || nextRole === "solution" || nextRole === "transformation") && dropRef.length > 0;
+      const drop = toReveal ? dropRef.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), dropRef[0]) : null;
+      const dropEnd = drop !== null ? Math.round(drop + d / 2) : null;
+      if (dropEnd !== null && dropEnd - cursor >= minRef[i] && Math.abs(dropEnd - end) <= Math.max(6, durRef[i] * 0.35)) end = dropEnd;
+      else {
+        const grid = snap === "bar" ? beatRef.filter((_, k) => k % (input.beatGrid?.beatsPerBar ?? 4) === 0) : beatRef;
+        const nearest = grid.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), grid[0]);
+        const newEnd = Math.round(nearest + d / 2);
+        if (newEnd - cursor >= minRef[i] && Math.abs(newEnd - end) <= Math.max(4, durRef[i] * 0.25)) end = newEnd;
+      }
     }
     durRef[i] = end - cursor;
     cursor = end - d;
@@ -241,7 +260,8 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const durFrames = starts.map((st, i) => ends[i] - st);
   const transitions = trRef.map((t, i) => (t && i > 0 ? { ...t, frames: Math.max(0, ends[i - 1] - starts[i]) } : t));
   const beatFrames: number[] = [];
-  if (input.beatGrid) {
+  // bătăile pentru punch-uri și accente: doar pe tempo sigur
+  if (input.beatGrid && reliable) {
     const step = (60 / input.beatGrid.bpm) * fps;
     for (let f = input.beatGrid.offsetSec * fps; f < (target + 20) * fps; f += step) beatFrames.push(Math.round(f));
   }
@@ -299,6 +319,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
       focusAsset,
       effectsLevel: brief.visual.effectsLevel,
       palette,
+      shape: brand.shape,
       captions: brief.captions.burnIn && Object.keys(input.voice).length > 0,
       forbidden,
       uid: (hint) => `${sc.id}-${hint}-${++uidCounter}`,
