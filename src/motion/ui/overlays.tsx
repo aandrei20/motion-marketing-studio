@@ -2,7 +2,7 @@ import React from "react";
 import { Img } from "remotion";
 import { z } from "zod";
 import { withAlpha } from "../core/color";
-import { resolveColor, useAssetUrl, useOverlayScale } from "../core/context";
+import { resolveColor, useAssetUrl, useCameraZoom, useOverlayScale } from "../core/context";
 import { EASE, SPRINGS, clamp, prog, sp } from "../core/easing";
 import { ORIGINAL, defineLayer } from "../types";
 
@@ -222,7 +222,7 @@ export const uiCallout = defineLayer({
   ...base,
   id: "ui.callout",
   title: "Callout cu linie spre element",
-  description: "O etichetă scurtă legată printr-o linie de o zonă din captură. Textul rămâne lizibil la orice zoom.",
+  description: "O etichetă scurtă legată printr-o linie de o zonă din captură. Eticheta și linia păstrează aceeași mărime pe ecran la orice zoom (al capturii sau al camerei).",
   tags: ["callout", "label", "annotation", "pointer", "explain", "feature"],
   sfx: [{ sound: "pop", at: "start", gainDb: -8 }],
   params: z.object({
@@ -234,7 +234,8 @@ export const uiCallout = defineLayer({
     size: z.number().min(12).max(120).default(38),
   }),
   Component: ({ params: p, frame, duration, box, env }) => {
-    const k = useOverlayScale();
+    // scara capturii × zoom-ul camerei: eticheta rămâne la `size` pixeli pe ecran
+    const k = useOverlayScale() * useCameraZoom();
     const s = sp(frame, env.fps, 4, SPRINGS.pop);
     const line = prog(frame, 0, 8, EASE.out);
     const fade = 1 - prog(frame, duration - 5, duration, EASE.in);

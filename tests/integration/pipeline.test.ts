@@ -97,4 +97,26 @@ describe("lanțul de producție pe produsul demo", () => {
     expect(store.loadVersionMeta(id, variants[0].versionId).parent).toBe(v1);
     expect(store.loadScript(id, v1).lines.find((l) => l.isHook)!.onScreen).not.toBe(variants[0].text);
   }, 300_000);
+
+  it("compilarea pe o versiune înghețată merge în versiunea următoare; textul schimbat reface vocea", async () => {
+    const store = await import("../../src/projects/store");
+    const steps = await import("../../src/pipeline/steps");
+    const id = "it-e2e";
+    const v = store.loadProject(id).currentVersion!;
+    store.freezeVersion(id, v, "preview");
+    const before = fs.readFileSync(path.join(tmp, id, "versions", v, "timeline-9x16.json"), "utf8");
+    const r = await steps.stepCompile(id, v);
+    expect(r.versionId).not.toBe(v);
+    expect(store.loadVersionMeta(id, r.versionId).parent).toBe(v);
+    expect(store.loadVersionMeta(id, r.versionId).changes.some((c) => c.op === "recompile")).toBe(true);
+    expect(fs.readFileSync(path.join(tmp, id, "versions", v, "timeline-9x16.json"), "utf8")).toBe(before);
+    // textul unei replici se schimbă direct în script: vocea și subtitrările urmează textul nou
+    const script = store.loadScript(id, r.versionId);
+    const line = script.lines.find((l) => !l.isHook && !l.isCta && l.voiceover)!;
+    const text = "Găsești orice sarcină în câteva secunde.";
+    store.saveScript(id, r.versionId, { ...script, lines: script.lines.map((l) => (l.id === line.id ? { ...l, voiceover: text, onScreen: l.onScreen } : l)) });
+    await steps.stepCompile(id, r.versionId);
+    const voice = JSON.parse(fs.readFileSync(path.join(tmp, id, "versions", r.versionId, "audio", "voice.json"), "utf8"));
+    expect(voice[line.id].words.map((w: { text: string }) => w.text).join(" ")).toBe(text);
+  }, 300_000);
 });

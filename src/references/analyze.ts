@@ -35,7 +35,10 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
   for (let i = 1; i < diffs.length; i++) {
     const local = diffs.slice(Math.max(1, i - 5), i).concat(diffs.slice(i + 1, i + 6));
     const med = local.length ? [...local].sort((a, b) => a - b)[Math.floor(local.length / 2)] : 0;
-    if (diffs[i] > 0.12 && diffs[i] > med * 3 + 0.03) cuts.push(i / fps);
+    if (!(diffs[i] > 0.12 && diffs[i] > med * 3 + 0.03)) continue;
+    // o tranziție rapidă (whip, sweep) dă două salturi apropiate: e o singură tăietură
+    if (cuts.length && i / fps - cuts[cuts.length - 1] < 0.35) continue;
+    cuts.push(i / fps);
   }
   const bounds = [0, ...cuts, dur || seq.frames.length / fps];
   const shots = bounds.slice(1).map((b, i) => b - bounds[i]).filter((s) => s > 0.05);
@@ -85,7 +88,9 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
   guidance.push(`Durata medie a unui cadru: ${avgShot.toFixed(2)} s (${cutsPerSec.toFixed(2)} tăieturi/s).`);
   guidance.push(avgShot < 1 ? "Ritm foarte alert: tăieturi pe bătăi, tranziții scurte (whip, cut, glitch)." : avgShot < 2.2 ? "Ritm alert: 1–2 s pe cadru, tranziții push/zoom-through." : "Ritm calm: cadre lungi, mișcări de cameră lente, tranziții lungi (parallax, light leak).");
   guidance.push(label === "calm" ? "Mișcare discretă: push-in lent, handheld fin." : label === "frantic" ? "Mișcare intensă: shake pe impacturi, punch pe ritm." : "Mișcare moderată: zoom pe detalii, pan-uri scurte.");
-  if (audio.bpm) guidance.push(`Muzică în jur de ${audio.bpm} BPM; tăieturile pot cădea pe bătăi.`);
+  // tempo-ul se dă ca indicație doar când detecția e sigură (vocea și efectele peste muzică o încurcă)
+  if (audio.bpm && (audio.bpmConfidence ?? 0) >= 0.25) guidance.push(`Muzică în jur de ${audio.bpm} BPM; tăieturile pot cădea pe bătăi.`);
+  else if (audio.bpm) guidance.push(`Tempo nesigur (încredere ${audio.bpmConfidence}): probabil voce sau efecte peste muzică. Nu folosi tempo-ul ca fapt; întreabă-l pe utilizator sau ascultă.`);
   guidance.push(meanSat < 0.2 ? "Culoare reținută (aproape monocromă)." : meanSat > 0.5 ? "Culori saturate, contrast puternic." : "Saturație medie.");
   return {
     assetId,
@@ -108,6 +113,7 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
     limitations: [
       "Fără OCR: densitatea și stilul textului din referință nu se măsoară automat; se descriu de om sau de Claude din cadre.",
       "Tăieturile se detectează din salturi de imagine la 10 cadre/s; dizolvările lente pot fi ratate.",
+      "Tempo-ul se detectează din tot sunetul; cu voce și efecte peste muzică poate ieși greșit (vezi bpmConfidence).",
     ],
   };
 }

@@ -85,6 +85,7 @@ MATERIALE ȘI RESEARCH
   login --url <u> --profile <nume>       deschide un browser; te autentifici tu, sesiunea rămâne local
   add-asset <id> <fișier> [--role logo|screenshot|music|…] [--tag nume] [--third-party] [--rights confirmed|not-confirmed|denied] [--origin user_provided|stock|generated]
   rights <id> <assetId> confirmed|not-confirmed|denied
+  pii <id> <assetId> blur|keep           datele personale din captură: estompează sau lasă vizibile
   focus <id> <assetId> <x> <y>           punct focal (0..1)
   blur-ok <id> <assetId>                 acord pentru estomparea datelor personale
   reference <id> <assetId>               profilul unui video de referință
@@ -205,6 +206,13 @@ async function main(): Promise<void> {
       log("Se deschide un browser. Autentifică-te, apoi închide fereastra. Sesiunea rămâne doar pe acest calculator (.browser-profiles/).");
       await interactiveLogin(need(str(a.flags.url), "--url"), need(str(a.flags.profile), "--profile"));
       return;
+    case "pii": {
+      const choice = need(a._[3], "blur|keep");
+      if (choice !== "blur" && choice !== "keep") throw new MmsError("ARG_MISSING", "Alege „blur” (estompează) sau „keep” (lasă vizibile).");
+      const r = updateAsset(need(id, "proiectul"), need(a._[2], "assetId"), choice === "blur" ? { blurApproved: true } : { keepApproved: true });
+      log(`${r.id}: ${r.pii.regions.length} zone cu date personale → ${choice === "blur" ? "se estompează" : "rămân vizibile"}.`);
+      return;
+    }
     case "add-asset": {
       const pid = need(id, "proiectul");
       const file = need(a._[2], "fișierul");
@@ -290,6 +298,7 @@ async function main(): Promise<void> {
     case "compile": {
       const pid = need(id, "proiectul");
       const r = await stepCompile(pid, str(a.flags.version) ?? loadProject(pid).currentVersion!, log);
+      log(`Versiunea compilată: ${r.versionId}`);
       r.warnings.forEach((w) => log(`! ${w}`));
       for (const [f, v] of Object.entries(r.validation)) for (const x of v.findings) log(`  [${f}] ${x.timecode ?? "--:--"} ${x.severity.padEnd(7)} ${x.problem}`);
       return;
@@ -316,9 +325,9 @@ async function main(): Promise<void> {
       const s = stepScript(pid);
       s.issues.filter((i) => i.severity === "blocker").forEach((i) => log(`! script: ${i.message}`));
       stepStoryboard(pid).rationale.forEach((x) => log(`• ${x}`));
-      const v = loadProject(pid).currentVersion!;
-      await stepVoice(pid, v, log);
-      const c = await stepCompile(pid, v, log);
+      await stepVoice(pid, loadProject(pid).currentVersion!, log);
+      const c = await stepCompile(pid, loadProject(pid).currentVersion!, log);
+      const v = c.versionId;
       c.warnings.forEach((w) => log(`! ${w}`));
       const mixR = await stepAudio(pid, v, log);
       log(`Audio: ${mixR.integratedLufs} LUFS, TP ${mixR.truePeakDbtp} dBTP`);

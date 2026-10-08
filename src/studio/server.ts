@@ -222,7 +222,7 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "compile": {
           // timeline-ul nou schimbă momentele: mixul se reface imediat, ca preview-ul să aibă sunet
           const r = await stepCompile(id, v!, log);
-          await stepAudio(id, v!, log);
+          await stepAudio(id, r.versionId, log);
           return r;
         }
         case "audio":
@@ -234,9 +234,8 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "make": {
           stepScript(id);
           stepStoryboard(id);
-          const vv = loadProject(id).currentVersion!;
-          await stepVoice(id, vv, log);
-          await stepCompile(id, vv, log);
+          await stepVoice(id, loadProject(id).currentVersion!, log);
+          const vv = (await stepCompile(id, loadProject(id).currentVersion!, log)).versionId;
           await stepAudio(id, vv, log);
           await stepPreview(id, vv, fmt, log, { onProgress: progress });
           return critiqueRound(id, vv);
@@ -316,9 +315,9 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
           return send(res, 201, r);
         }
         if (sub === "assets" && parts[4] && m === "PATCH") {
-          const b = await json<{ role?: AssetRole; focalPoint?: { x: number; y: number }; rights?: RightsStatus; blurApproved?: boolean; notes?: string }>(req);
+          const b = await json<{ role?: AssetRole; focalPoint?: { x: number; y: number }; rights?: RightsStatus; blurApproved?: boolean; keepApproved?: boolean; notes?: string }>(req);
           if (b.rights) setRights(id, parts[4], b.rights);
-          return send(res, 200, updateAsset(id, parts[4], { role: b.role, focalPoint: b.focalPoint, blurApproved: b.blurApproved, notes: b.notes }));
+          return send(res, 200, updateAsset(id, parts[4], { role: b.role, focalPoint: b.focalPoint, blurApproved: b.blurApproved, keepApproved: b.keepApproved, notes: b.notes }));
         }
         if (sub === "versions" && !parts[4] && m === "POST") {
           const b = await json<{ from?: string; label?: string }>(req);

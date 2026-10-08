@@ -43,7 +43,7 @@ export async function iterate(projectId: string, command: string, log: (m: strin
   if (scriptChanged || !fs.existsSync(versionFile(projectId, from, "audio/voice.json"))) await stepVoice(projectId, v.id, log);
   else {
     fs.mkdirSync(path.dirname(versionFile(projectId, v.id, "audio/voice.json")), { recursive: true });
-    fs.copyFileSync(versionFile(projectId, from, "audio/voice.json"), versionFile(projectId, v.id, "audio/voice.json"));
+    for (const f of ["audio/voice.json", "audio/voice-key.json"]) if (fs.existsSync(versionFile(projectId, from, f))) fs.copyFileSync(versionFile(projectId, from, f), versionFile(projectId, v.id, f));
   }
   await stepCompile(projectId, v.id, log);
   await stepAudio(projectId, v.id, log);

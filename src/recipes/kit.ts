@@ -86,6 +86,98 @@ export function avoidExclusions(ctx: RecipeContext, box: Rect): Rect {
   return b;
 }
 
+export type CalloutSide = "top" | "bottom" | "left" | "right";
+
+/**
+ * Mută centrul camerei (punctul din scenă pus în mijlocul cadrului) cât e nevoie ca materialul, mărit cu `zoom`,
+ * să nu intre peste textul fix: textul din stânga/dreapta limitează orizontal, cel de sus/jos vertical.
+ */
+export function clearOfText(c: { x: number; y: number }, zoom: number, material: Rect, text: Rect[], W: number, H: number, tol = 24): { x: number; y: number } {
+  let { x, y } = c;
+  for (const t of text) {
+    if (t.x + t.w <= material.x + tol) x = Math.min(x, material.x + (W / 2 - (t.x + t.w) + tol) / zoom);
+    else if (t.x >= material.x + material.w - tol) x = Math.max(x, material.x + material.w - (t.x + tol - W / 2) / zoom);
+    else if (t.y + t.h <= material.y + tol) y = Math.min(y, material.y + (H / 2 - (t.y + t.h) + tol) / zoom);
+    else if (t.y >= material.y + material.h - tol) y = Math.max(y, material.y + material.h - (t.y + tol - H / 2) / zoom);
+  }
+  return { x, y };
+}
+
+/** Unde ajunge pe ecran un dreptunghi din scenă la finalul unui push: punctul de interes ajunge în țintă, totul mărit cu `zoom`. */
+export function afterPush(rect: Rect, focus: { x: number; y: number }, target: { x: number; y: number }, zoom: number): Rect {
+  return { x: target.x + (rect.x - focus.x) * zoom, y: target.y + (rect.y - focus.y) * zoom, w: rect.w * zoom, h: rect.h * zoom };
+}
+
+export function intersect(a: Rect, b: Rect): Rect | null {
+  const x = Math.max(a.x, b.x);
+  const y = Math.max(a.y, b.y);
+  const w = Math.min(a.x + a.w, b.x + b.w) - x;
+  const h = Math.min(a.y + a.h, b.y + b.h) - y;
+  return w > 0 && h > 0 ? { x, y, w, h } : null;
+}
+
+/** Ecranul vizibil al unui media.screen (fără ramă), în pixeli de compoziție, înainte de mișcarea camerei. */
+export function screenRectInScene(params: Record<string, unknown>, box: Rect): Rect {
+  const s = screenMapping(params as unknown as Parameters<typeof screenMapping>[0], box).geo.screen;
+  return { x: box.x + s.x, y: box.y + s.y, w: s.w, h: s.h };
+}
+
+/**
+ * Cel mai mare zoom (până la `max`) la care materialul mărit nu intră peste textul fix (titlu, subtitlu),
+ * cu o toleranță mică. Fără soluție: zoom 1 (camera doar se apropie de țintă).
+ */
+export function limitZoomForText(material: Rect, focus: { x: number; y: number }, target: { x: number; y: number }, max: number, text: Rect[], tol = 24): number {
+  const clash = (z: number) => {
+    const m = afterPush(material, focus, target, z);
+    return text.some((t) => m.x < t.x + t.w - tol && m.x + m.w > t.x + tol && m.y < t.y + t.h - tol && m.y + m.h > t.y + tol);
+  };
+  for (let z = max; z > 1; z -= 0.02) if (!clash(z)) return Math.round(z * 1000) / 1000;
+  return 1;
+}
+
+/**
+ * Unde poate sta materialul vizual fără să atingă titlul, subtitrările sau zonele excluse ale platformei:
+ * zona media intersectată cu zona sigură, fără banda subtitrărilor.
+ */
+export function mediaBounds(ctx: RecipeContext, z: Zones): Rect {
+  const s = ctx.safe.rect;
+  const band = ctx.captions ? (ctx.orientation === "portrait" ? ctx.H * 0.085 : ctx.H * 0.12) : 0;
+  const x0 = Math.max(s.x, z.media.x);
+  const y0 = Math.max(s.y, z.media.y);
+  const y1 = Math.min(s.y + s.h - band, z.media.y + z.media.h);
+  let x1 = Math.min(s.x + s.w, z.media.x + z.media.w);
+  for (const ex of ctx.safe.exclusions) if (ex.y < y1 && ex.y + ex.h > y0 && ex.x + ex.w >= ctx.W - 1) x1 = Math.min(x1, ex.x - 8);
+  return r(x0, y0, Math.max(40, x1 - x0), Math.max(40, y1 - y0));
+}
+
+/**
+ * Partea pe care încape un callout lângă o zonă, judecată pe ecran la finalul mișcării camerei:
+ * `onScreen` = dreptunghiul zonei în pixeli de compoziție, `scale` = zoom-ul camerei atunci.
+ * Prima parte din `prefer` care încape (pe lungime și pe lățime); altfel cea cu cel mai mult loc.
+ */
+export function calloutSide(onScreen: Rect, scale: number, label: string, o: { distance: number; size: number; bounds: Rect; prefer?: CalloutSide[] }): CalloutSide {
+  const prefer = o.prefer ?? ["right", "left", "top", "bottom"];
+  const lw = (label.length * 0.56 + 1.2) * o.size * scale;
+  const lh = 1.75 * o.size * scale;
+  const d = o.distance * scale;
+  const b = o.bounds;
+  const cx = onScreen.x + onScreen.w / 2;
+  const cy = onScreen.y + onScreen.h / 2;
+  const room: Record<CalloutSide, number> = { left: onScreen.x - b.x, right: b.x + b.w - (onScreen.x + onScreen.w), top: onScreen.y - b.y, bottom: b.y + b.h - (onScreen.y + onScreen.h) };
+  const need: Record<CalloutSide, number> = { left: d + lw, right: d + lw, top: d + lh, bottom: d + lh };
+  const across: Record<CalloutSide, boolean> = {
+    top: cx - lw / 2 >= b.x && cx + lw / 2 <= b.x + b.w,
+    bottom: cx - lw / 2 >= b.x && cx + lw / 2 <= b.x + b.w,
+    left: cy - lh / 2 >= b.y && cy + lh / 2 <= b.y + b.h,
+    right: cy - lh / 2 >= b.y && cy + lh / 2 <= b.y + b.h,
+  };
+  const fit = prefer.find((s) => room[s] >= need[s] && across[s]);
+  if (fit) return fit;
+  // nimic nu încape complet: o etichetă tăiată pe lățime e mai rea decât una puțin prea aproape de margine
+  const score = (s: CalloutSide) => Math.min(1.5, room[s] / need[s]) * (across[s] ? 1 : 0.3);
+  return prefer.reduce((best, s) => (score(s) > score(best) ? s : best), prefer[0]);
+}
+
 export function layer(ctx: RecipeContext, capability: string, box: Rect, params: Record<string, unknown>, o: LayerOpts = {}): TimelineLayer {
   if (capability.startsWith("text.") && (o.depth ?? 1) === 0) box = avoidExclusions(ctx, box);
   const assets = new Set<string>();
@@ -148,6 +240,23 @@ export function screenParams(a: ResolvedAsset, extra: Record<string, unknown> = 
     videoFrames: a.kind === "video" && a.asset.media.durationSec ? Math.floor(a.asset.media.durationSec * fps) : undefined,
     ...extra,
   };
+}
+
+/**
+ * Pe o captură mai înaltă decât ecranul (pagină întreagă), fără decupaj, ecranul arată implicit partea de sus.
+ * Dacă zona țintită e mai jos, întoarce o derulare fixă care o aduce în mijlocul ecranului; altfel {}.
+ */
+export function revealRegion(params: Record<string, unknown>, region: Region | null | undefined, box: Rect): { scroll?: { from: number; to: number; start: number; end: number; ease: "linear" } } {
+  if (!region || params.crop || params.scroll) return {};
+  const p = params as unknown as Parameters<typeof screenMapping>[0];
+  const m = screenMapping(p, box);
+  const visibleH = m.geo.screen.h / m.k;
+  if (visibleH >= p.imageHeight) return {};
+  const top = region.rect.y;
+  const bottom = region.rect.y + region.rect.h;
+  if (top >= visibleH * 0.08 && bottom <= visibleH * 0.85) return {};
+  const oy = Math.max(0, Math.min(p.imageHeight - visibleH, region.rect.y + region.rect.h / 2 - visibleH / 2));
+  return { scroll: { from: oy, to: oy, start: 0, end: 1, ease: "linear" } };
 }
 
 /** Centrul unei zone din captură, în pixeli de compoziție, plus zoom-ul care o încadrează. */

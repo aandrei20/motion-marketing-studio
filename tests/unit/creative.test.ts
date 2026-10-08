@@ -137,3 +137,29 @@ describe("comenzi în limbaj natural", () => {
     expect(() => parseCommand("bla bla")).toThrow(/Nu recunosc/);
   });
 });
+
+describe("așezarea elementelor peste capturi", () => {
+  it("callout-ul alege o parte unde încape întreg (și pe lățime)", async () => {
+    const { calloutSide } = await import("../../src/recipes/kit");
+    const bounds = { x: 0, y: 0, w: 1000, h: 1000 };
+    // zona lângă marginea din dreapta: nu încape la dreapta, încape la stânga
+    expect(calloutSide({ x: 850, y: 450, w: 100, h: 40 }, 1, "Ce contează azi", { distance: 100, size: 38, bounds })).toBe("left");
+    // zona lată, sus-jos e loc: deasupra, dacă e preferat
+    expect(calloutSide({ x: 100, y: 500, w: 800, h: 60 }, 1, "Ce contează azi", { distance: 70, size: 38, bounds, prefer: ["top", "bottom", "right", "left"] })).toBe("top");
+    // eticheta centrată deasupra ar ieși pe lățime: nu alege sus/jos
+    expect(calloutSide({ x: 940, y: 500, w: 50, h: 40 }, 1, "O etichetă destul de lungă", { distance: 70, size: 38, bounds, prefer: ["top", "bottom", "left", "right"] })).toBe("left");
+  });
+  it("zoom-ul camerei se limitează ca materialul să nu intre peste titlu", async () => {
+    const { afterPush, limitZoomForText } = await import("../../src/recipes/kit");
+    const material = { x: 100, y: 600, w: 880, h: 800 };
+    const title = { x: 100, y: 240, w: 880, h: 250 };
+    // punctul de interes e deja în țintă: doar zoom-ul poate împinge materialul peste titlu
+    const focus = { x: 540, y: 1100 };
+    const target = { x: 540, y: 1100 };
+    const z = limitZoomForText(material, focus, target, 2.5, [title]);
+    expect(z).toBeGreaterThan(1);
+    expect(z).toBeLessThan(2.5);
+    const m = afterPush(material, focus, target, z);
+    expect(m.y).toBeGreaterThanOrEqual(title.y + title.h - 24);
+  });
+});

@@ -83,11 +83,17 @@ export function sampleCamera(cam: TimelineCamera, frame: number, fps: number, se
 }
 
 /** Transformarea CSS (origine 0 0) pentru un strat la adâncimea `d`. d = 0 → fix pe ecran. */
+/** Zoom-ul efectiv al camerei pe un strat cu adâncimea d (0 = fix pe ecran). */
+export function layerZoom(s: CamState, d: number): number {
+  if (d === 0) return 1;
+  return d <= 1 ? 1 + (s.zoom - 1) * d : s.zoom ** d;
+}
+
 export function layerTransform(s: CamState, d: number, W: number, H: number, perspective: number): string {
   if (d === 0) return "none";
   const fx = W / 2 + (s.fx - W / 2) * d;
   const fy = H / 2 + (s.fy - H / 2) * d;
-  const z = d <= 1 ? 1 + (s.zoom - 1) * d : s.zoom ** d;
+  const z = layerZoom(s, d);
   const parts = [`translate(${(W / 2 + s.ox * d).toFixed(3)}px, ${(H / 2 + s.oy * d).toFixed(3)}px)`];
   if (s.rotateX || s.rotateY) parts.push(`perspective(${perspective}px)`, `rotateX(${(s.rotateX * d).toFixed(3)}deg)`, `rotateY(${(s.rotateY * d).toFixed(3)}deg)`);
   if (s.rotate || s.or) parts.push(`rotate(${((s.rotate + s.or) * d).toFixed(3)}deg)`);

@@ -2,6 +2,7 @@
  * Pașii de producție, fiecare idempotent și cu STATE.md actualizat. Îi folosesc CLI-ul (mms),
  * Studio-ul (serverul local) și comenzile din Claude Code.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -32,6 +33,7 @@ import { compileTimeline, type VoiceClipRef } from "../timeline/compile";
 import { validateTimeline, type ValidationResult } from "../timeline/validate";
 import {
   addApproval,
+  createVersion,
   freezeVersion,
   hasFile,
   loadApprovals,
@@ -146,6 +148,12 @@ export function stepStoryboard(projectId: string, opts: { force?: boolean; templ
 
 // ─── voce ───────────────────────────────────────────────────────────────────
 
+/** Amprenta vocii: setările din brief + textul rostit al fiecărei replici. Altă amprentă = vocea trebuie refăcută. */
+export function voiceKey(brief: ReturnType<typeof loadBrief>, script: ReturnType<typeof loadScript>): string {
+  const lines = script.lines.map((l) => [l.id, l.voiceover, l.pronunciation]);
+  return crypto.createHash("sha1").update(JSON.stringify([brief.audio.voice, lines])).digest("hex");
+}
+
 export async function stepVoice(projectId: string, versionId: string, log: Log = noop): Promise<Record<string, VoiceClipRef>> {
   const brief = loadBrief(projectId);
   const script = loadScript(projectId, versionId);
@@ -153,6 +161,7 @@ export async function stepVoice(projectId: string, versionId: string, log: Log =
   const vm = brief.audio.voice;
   if (vm.mode === "none") {
     writeVersionJson(projectId, versionId, "audio/voice.json", out);
+    writeVersionJson(projectId, versionId, "audio/voice-key.json", { key: voiceKey(brief, script) });
     return out;
   }
   const cacheDir = path.join(projectDir(projectId), "cache", "tts");
@@ -181,6 +190,7 @@ export async function stepVoice(projectId: string, versionId: string, log: Log =
     }
   }
   writeVersionJson(projectId, versionId, "audio/voice.json", out);
+  writeVersionJson(projectId, versionId, "audio/voice-key.json", { key: voiceKey(brief, script) });
   updateState(projectId, { log: `Voce: ${Object.keys(out).length} clipuri (${vm.mode}).` });
   return out;
 }
@@ -211,10 +221,20 @@ export interface CompileStepResult {
   report: unknown;
 }
 
-export async function stepCompile(projectId: string, versionId: string, log: Log = noop): Promise<CompileStepResult> {
+export async function stepCompile(projectId: string, requestedVersion: string, log: Log = noop): Promise<CompileStepResult> {
+  let versionId = requestedVersion;
+  // o versiune înghețată nu se rescrie: recompilarea merge în versiunea următoare (regula 9)
+  if (loadVersionMeta(projectId, versionId).frozen) {
+    versionId = createVersion(projectId, { from: versionId, label: "recompilare", changes: [{ at: new Date().toISOString(), op: "recompile", description: `Recompilare din ${requestedVersion}, care e înghețată și rămâne neatinsă.`, params: {} }] }).id;
+    log(`${requestedVersion} e înghețată: recompilez în ${versionId}.`);
+  }
   const project = loadProject(projectId);
+  // vocea se refolosește doar dacă a fost sintetizată din același text și cu aceleași setări
   const voicePath = versionFile(projectId, versionId, "audio/voice.json");
-  const voice = fs.existsSync(voicePath) ? (JSON.parse(fs.readFileSync(voicePath, "utf8")) as Record<string, VoiceClipRef>) : await stepVoice(projectId, versionId, log);
+  const keyPath = versionFile(projectId, versionId, "audio/voice-key.json");
+  const fresh = fs.existsSync(voicePath) && fs.existsSync(keyPath) && (JSON.parse(fs.readFileSync(keyPath, "utf8")) as { key: string }).key === voiceKey(loadBrief(projectId), loadScript(projectId, versionId));
+  if (!fresh && fs.existsSync(voicePath)) log("Scriptul sau setările vocii s-au schimbat: refac vocea.");
+  const voice = fresh ? (JSON.parse(fs.readFileSync(voicePath, "utf8")) as Record<string, VoiceClipRef>) : await stepVoice(projectId, versionId, log);
   const beatGrid = await planBeatGrid(projectId, versionId);
   const base = { project, versionId, brief: loadBrief(projectId), brand: loadBrand(projectId), research: loadResearch(projectId), assets: loadAssets(projectId), script: loadScript(projectId, versionId), storyboard: loadStoryboard(projectId, versionId), voice, beatGrid };
   const timelines: Record<string, Timeline> = {};

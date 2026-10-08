@@ -166,6 +166,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const measure = nodeMeasure(fonts);
   const logo = brand.logo.primary ? resolveAsset(project.id, assets, brand.logo.primary) : null;
   const usableClaims = research.claims.filter(isClaimUsable);
+  const assetByPublicPath = new Map(assets.assets.map((a) => [projectPublicPath(project.id, a.file), a] as const));
   const forbidden = brief.visual.forbiddenCapabilities;
 
   // 1. durate (secunde) din gramatica de montaj
@@ -264,7 +265,9 @@ export function compileTimeline(input: CompileInput): CompileResult {
       return (Array.isArray(v) ? v : v ? [v] : []).map((id) => resolveAsset(project.id, assets, id));
     };
     const focusAsset = sc.focus ? resolveAsset(project.id, assets, sc.focus.assetId) : null;
-    const focusRegion = sc.focus?.region && focusAsset ? (focusAsset.regions.find((r) => r.id === sc.focus!.region) ?? null) : null;
+    // zona cerută poate fi și una cu date personale (de ex. ca să arăți că e estompată)
+    const focusRegion = sc.focus?.region && focusAsset ? (focusAsset.regions.find((r) => r.id === sc.focus!.region) ?? focusAsset.asset.pii.regions.find((r) => r.id === sc.focus!.region) ?? null) : null;
+    if (sc.focus?.region && focusAsset && !focusRegion) warnings.push(`Zona „${sc.focus.region}” din scena ${sc.id} nu există în ${focusAsset.asset.id}; rețeta alege zona cea mai potrivită textului. Zonele disponibile: captures/<id>.json → regions.`);
     const lines = plan.lines;
     const sceneBeats = beatFrames.filter((f) => f >= from && f < from + duration).map((f) => f - from);
     const ctx: RecipeContext = {
@@ -323,7 +326,16 @@ export function compileTimeline(input: CompileInput): CompileResult {
       }
       return { ...l, children: l.children.map(layoutLayer) };
     };
-    const layers = out.layers.map(layoutLayer).map((l) => parseLayer(l, sc.id));
+    // date personale: estomparea aprobată de utilizator se pune automat peste zonele lor (în pixelii capturii)
+    const blurPii = (l: TimelineLayer): TimelineLayer => {
+      const children = l.children.map(blurPii);
+      if (l.capability !== "media.screen") return { ...l, children };
+      const a = l.assets.map((p) => assetByPublicPath.get(p)).find((x) => x && x.pii.blurApproved && x.pii.regions.length);
+      if (!a) return { ...l, children };
+      const blur = a.pii.regions.map((r, k) => ({ id: `${l.id}-pii-${k + 1}`, capability: "ui.blur-region", from: 0, durationInFrames: l.durationInFrames, z: 900, box: { x: r.rect.x - 6, y: r.rect.y - 4, w: r.rect.w + 12, h: r.rect.h + 8 }, params: { amount: 18 }, depth: 1, role: "support" as const, modifiers: [], assets: [], children: [] }));
+      return { ...l, children: [...children, ...blur] };
+    };
+    const layers = out.layers.map(layoutLayer).map(blurPii).map((l) => parseLayer(l, sc.id));
     // camera
     const camCap = getCamera(sc.camera?.capability ?? out.camera.capability);
     const camParams = camCap.params.parse(sc.camera?.params ?? out.camera.params);
@@ -411,7 +423,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const s = safe.rect;
     const h = orientation === "portrait" ? H * 0.075 : H * 0.11;
     const box = { x: s.x, y: s.y + s.h - h, w: s.w, h };
-    captions = { words, box, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: orientation === "portrait" } };
+    captions = { words, box, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: true } };
   }
 
   // 7. materiale fără drepturi confirmate → marcaj „concept”

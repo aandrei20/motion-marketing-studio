@@ -166,7 +166,7 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
           regions: opts.captureRecording ? [] : cap.regions,
         }
       : undefined,
-    pii: { regions: cap && !opts.captureRecording ? cap.pii : [], blurApproved: false },
+    pii: { regions: cap && !opts.captureRecording ? cap.pii : [], blurApproved: false, keepApproved: false },
     tags: opts.tags ?? [],
     notes: opts.notes ?? "",
     addedAt: now(),
@@ -196,7 +196,7 @@ export function setRights(projectId: string, assetId: string, status: RightsStat
   return a;
 }
 
-export function updateAsset(projectId: string, assetId: string, patch: Partial<Pick<Asset, "role" | "notes" | "tags" | "showsProductUI">> & { focalPoint?: { x: number; y: number }; blurApproved?: boolean }): Asset {
+export function updateAsset(projectId: string, assetId: string, patch: Partial<Pick<Asset, "role" | "notes" | "tags" | "showsProductUI">> & { focalPoint?: { x: number; y: number }; blurApproved?: boolean; keepApproved?: boolean }): Asset {
   const m = loadAssets(projectId);
   const a = m.assets.find((x) => x.id === assetId);
   if (!a) throw new MmsError("ASSET_MISSING", `Nu există materialul ${assetId}`);
@@ -213,7 +213,15 @@ export function updateAsset(projectId: string, assetId: string, patch: Partial<P
     a.analysis.focalPoint = patch.focalPoint;
     a.analysis.focalSource = "user";
   }
-  if (patch.blurApproved !== undefined) a.pii.blurApproved = patch.blurApproved;
+  // cele două decizii se exclud: estompare sau păstrare vizibilă
+  if (patch.blurApproved !== undefined) {
+    a.pii.blurApproved = patch.blurApproved;
+    if (patch.blurApproved) a.pii.keepApproved = false;
+  }
+  if (patch.keepApproved !== undefined) {
+    a.pii.keepApproved = patch.keepApproved;
+    if (patch.keepApproved) a.pii.blurApproved = false;
+  }
   saveAssets(projectId, m);
   return a;
 }

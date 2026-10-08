@@ -105,9 +105,11 @@ export const Asset = z.object({
     })
     .optional(),
   /** date personale vizibile (email, nume de cont); se estompează doar cu acordul utilizatorului */
-  pii: z.object({ regions: z.array(Region).default([]), blurApproved: z.boolean().default(false) }).default({
+  /** date personale găsite la captură; decizia utilizatorului: estompează (blurApproved) sau lasă vizibile (keepApproved) */
+  pii: z.object({ regions: z.array(Region).default([]), blurApproved: z.boolean().default(false), keepApproved: z.boolean().default(false) }).default({
     regions: [],
     blurApproved: false,
+    keepApproved: false,
   }),
   tags: z.array(z.string()).default([]),
   notes: z.string().default(""),
