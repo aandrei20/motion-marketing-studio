@@ -453,7 +453,9 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
         {a.pii.regions.length ? (
           <div className="warn small">
             {a.pii.regions.length} zone cu date personale.{" "}
-            {a.pii.blurApproved ? "Estomparea e aprobată." : <button className="btn tiny" onClick={() => patch({ blurApproved: true })}>Aprob estomparea</button>}
+            {a.pii.blurApproved ? "Se estompează în video." : a.pii.keepApproved ? "Rămân vizibile (decizia ta)." : "Decide:"}{" "}
+            {!a.pii.blurApproved ? <button className="btn tiny" onClick={() => patch({ blurApproved: true })}>Estompează</button> : null}{" "}
+            {!a.pii.keepApproved ? <button className="btn tiny" onClick={() => patch({ keepApproved: true })}>Lasă-le vizibile</button> : null}
           </div>
         ) : null}
       </div>

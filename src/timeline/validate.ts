@@ -68,6 +68,12 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
       }
       if (a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned") add({ frame: sceneFrom + l.from, sceneId, dimension: "rights", severity: t.concept ? "major" : "blocker", problem: `„${a.originalName}” aparține unui terț și nu are drepturi confirmate.`, recommendation: "Întreabă utilizatorul „Ai dreptul să-l folosești?” și notează răspunsul (mms rights)." });
       if (SCREEN_CAPS.has(l.capability) && a.showsProductUI !== true && a.role !== "screenshot" && a.role !== "screen-recording") add({ frame: sceneFrom + l.from, sceneId, dimension: "real-footage", severity: "major", problem: `${l.capability} afișează „${a.originalName}”, care nu e marcat ca interfață reală.`, recommendation: "Folosește o captură reală sau un fișier dat de utilizator cu rolul screenshot." });
+      if (SCREEN_CAPS.has(l.capability) && a.pii.regions.length) {
+        if (!a.pii.blurApproved && !a.pii.keepApproved)
+          add({ frame: sceneFrom + l.from, sceneId, dimension: "assets", severity: "blocker", problem: `„${a.originalName}” conține ${a.pii.regions.length} zone cu date personale, fără decizia utilizatorului.`, recommendation: "Întreabă utilizatorul: estompez datele personale sau le las vizibile? (Studio → Materiale sau mms pii)" });
+        else if (a.pii.blurApproved && (l.capability !== "media.screen" || !l.children.some((c) => c.capability === "ui.blur-region")))
+          add({ frame: sceneFrom + l.from, sceneId, dimension: "assets", severity: "blocker", problem: `Estomparea datelor personale din „${a.originalName}” nu se poate aplica în ${l.capability}.`, recommendation: "Folosește captura într-o rețetă cu media.screen (ecran plat) sau alt material fără date personale." });
+      }
       if (SCREEN_CAPS.has(l.capability) && a.origin !== "real_capture" && a.origin !== "user_provided") add({ frame: sceneFrom + l.from, sceneId, dimension: "real-footage", severity: "blocker", problem: `Interfața din ${l.capability} vine din „${a.origin}”, nu din captură reală sau de la utilizator.`, recommendation: "Interfața produsului nu se inventează: capturează-o (mms capture) sau cere fișierul utilizatorului." });
     }
     // cifrele din grafice și contoare au nevoie de o afirmație verificată

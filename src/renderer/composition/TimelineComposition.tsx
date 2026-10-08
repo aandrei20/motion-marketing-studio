@@ -1,8 +1,8 @@
 import React from "react";
 import { AbsoluteFill, Audio, Sequence, useCurrentFrame } from "remotion";
 import type { Timeline, TimelineLayer, TimelineScene } from "../../core/schema";
-import { cameraMotionBlur, dofBlur, layerTransform, sampleCamera } from "../../motion/camera/rig";
-import { AssetBaseContext, MotionEnvProvider, SceneIdContext, useAssetUrl, useEnv, useSceneId, type MotionEnv } from "../../motion/core/context";
+import { cameraMotionBlur, dofBlur, layerTransform, layerZoom, sampleCamera } from "../../motion/camera/rig";
+import { AssetBaseContext, CameraZoomContext, MotionEnvProvider, SceneIdContext, useAssetUrl, useEnv, useSceneId, type MotionEnv } from "../../motion/core/context";
 import { DirBlurDefs, filterId } from "../../motion/core/filters";
 import { FontGate } from "../../motion/core/fonts";
 import { getLayer, getModifier, getTransition } from "../../motion/registry";
@@ -83,7 +83,9 @@ function SceneContent({ scene }: { scene: TimelineScene }) {
         return (
           <AbsoluteFill key={layer.id} style={{ transform, transformOrigin: "0 0", filter: filters.length ? filters.join(" ") : undefined }}>
             {mb[0] > 0 || mb[1] > 0 ? <DirBlurDefs id={mbId} x={mb[0]} y={mb[1]} /> : null}
-            <LayerNode layer={layer} />
+            <CameraZoomContext.Provider value={layerZoom(cam, d)}>
+              <LayerNode layer={layer} />
+            </CameraZoomContext.Provider>
           </AbsoluteFill>
         );
       })}

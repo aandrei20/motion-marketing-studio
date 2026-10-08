@@ -60,6 +60,10 @@ export function useColor(): (ref: string | undefined, fallback?: PaletteKey) => 
 export const OverlayScaleContext = createContext<number>(1);
 export const useOverlayScale = (): number => useContext(OverlayScaleContext);
 
+/** Zoom-ul camerei pe stratul curent: etichetele care trebuie să rămână la aceeași mărime pe ecran îl compensează. */
+export const CameraZoomContext = createContext<number>(1);
+export const useCameraZoom = (): number => useContext(CameraZoomContext);
+
 export const SceneIdContext = createContext<string>("scene");
 export const useSceneId = (): string => useContext(SceneIdContext);
 

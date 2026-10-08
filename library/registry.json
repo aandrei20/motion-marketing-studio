@@ -6622,7 +6622,7 @@
       "kind": "layer",
       "category": "ui",
       "title": "Callout cu linie spre element",
-      "description": "O etichetă scurtă legată printr-o linie de o zonă din captură. Textul rămâne lizibil la orice zoom.",
+      "description": "O etichetă scurtă legată printr-o linie de o zonă din captură. Eticheta și linia păstrează aceeași mărime pe ecran la orice zoom (al capturii sau al camerei).",
       "tags": [
         "callout",
         "label",

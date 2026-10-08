@@ -98,10 +98,20 @@ describe("validatorul de timeline", () => {
     expect(r.ok).toBe(false);
   });
   it("interfața produsului trebuie să vină din captură reală sau de la utilizator", () => {
-    const asset = { id: "screenshot-1", file: "assets/screenshot-1.png", originalName: "x.png", sha256: "x", bytes: 1, mime: "image/png", type: "image" as const, origin: "generated" as const, role: "screenshot" as const, roleSource: "user" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: false, status: "owned" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, pii: { regions: [], blurApproved: false }, tags: [], notes: "", addedAt: "2026" };
+    const asset = { id: "screenshot-1", file: "assets/screenshot-1.png", originalName: "x.png", sha256: "x", bytes: 1, mime: "image/png", type: "image" as const, origin: "generated" as const, role: "screenshot" as const, roleSource: "user" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: false, status: "owned" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, pii: { regions: [], blurApproved: false, keepApproved: false }, tags: [], notes: "", addedAt: "2026" };
     const t = timeline([{ id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: [layer({ capability: "media.screen", depth: 1, assets: ["projects/t1/assets/screenshot-1.png"], params: { src: "projects/t1/assets/screenshot-1.png", imageWidth: 100, imageHeight: 100 } })], meta: meta("cta") }]);
     const r = validate.validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets: [asset] } });
     expect(r.findings.some((f) => f.dimension === "real-footage" && f.severity === "blocker")).toBe(true);
+  });
+  it("datele personale din capturi cer decizia utilizatorului; estomparea aprobată trebuie să existe în timeline", () => {
+    const pii = { id: "pii-1", label: "email", kind: "pii" as const, rect: { x: 10, y: 10, w: 200, h: 30 } };
+    const base = { id: "screenshot-2", file: "assets/screenshot-2.png", originalName: "app.png", sha256: "y", bytes: 1, mime: "image/png", type: "image" as const, origin: "real_capture" as const, role: "screenshot" as const, roleSource: "user" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: false, status: "owned" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, tags: [], notes: "", addedAt: "2026" };
+    const screen = (children: TimelineLayer[] = []) => timeline([{ id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: [layer({ capability: "media.screen", depth: 1, assets: ["projects/t1/assets/screenshot-2.png"], params: { src: "projects/t1/assets/screenshot-2.png", imageWidth: 400, imageHeight: 300 }, children })], meta: meta("cta") }]);
+    const blockers = (asset: typeof base & { pii: { regions: (typeof pii)[]; blurApproved: boolean; keepApproved: boolean } }, t: Timeline) => validate.validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets: [asset] } }).findings.filter((f) => f.severity === "blocker" && /personale/.test(f.problem));
+    expect(blockers({ ...base, pii: { regions: [pii], blurApproved: false, keepApproved: false } }, screen())).toHaveLength(1);
+    expect(blockers({ ...base, pii: { regions: [pii], blurApproved: false, keepApproved: true } }, screen())).toHaveLength(0);
+    expect(blockers({ ...base, pii: { regions: [pii], blurApproved: true, keepApproved: false } }, screen())).toHaveLength(1);
+    expect(blockers({ ...base, pii: { regions: [pii], blurApproved: true, keepApproved: false } }, screen([layer({ capability: "ui.blur-region", box: pii.rect })]))).toHaveLength(0);
   });
 });
 
