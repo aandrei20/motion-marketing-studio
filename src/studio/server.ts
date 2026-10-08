@@ -15,13 +15,18 @@ import { formatError, MmsError } from "../core/errors";
 import { readJsonLoose } from "../core/json";
 import { makeFormat, FORMAT_PRESETS, type FormatPresetId } from "../core/formats";
 import { PATHS, publicToAbs } from "../core/paths";
-import { Brief, type AssetRole, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
+import { Brief, type AssetRole, type EditOpInput, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
 import { suggestDirections } from "../creative/directions";
 import { INTAKE_GROUPS, INTAKE_QUESTIONS } from "../creative/intake";
 import { validateScript } from "../creative/script";
 import { listTemplates } from "../creative/templates";
 import { ALL_CAPABILITIES } from "../motion/registry";
 import { addReview, critiqueRound, iterate } from "../pipeline/iterate";
+import { produce } from "../pipeline/produce";
+import { runQuality } from "../quality/run";
+import { autoFixLoop } from "../quality/autofix";
+import type { Depth } from "../quality/checks";
+import { applyEdit, redo, undo } from "../editing/history";
 import { approve, demoUrl, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
 import {
   createProject,
@@ -198,7 +203,7 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
     const p = loadProject(id);
     const v = (params.version as string | undefined) ?? p.currentVersion ?? undefined;
     const fmt = (params.format as string | undefined) ?? null;
-    const label = { capture: "Captură reală", brand: "Brand kit", script: "Script", storyboard: "Storyboard", voice: "Voce", compile: "Compilare timeline", audio: "Mix audio", preview: "Preview", critique: "Critică", make: "Producție completă", final: "Render final", iterate: "Iterație", "new-version": "Versiune nouă" }[type] ?? type;
+    const label = { capture: "Captură reală", brand: "Brand kit", script: "Script", storyboard: "Storyboard", voice: "Voce", compile: "Compilare timeline", audio: "Mix audio", preview: "Preview", critique: "Critică", make: "Producție completă", final: "Render final", iterate: "Iterație", "new-version": "Versiune nouă", quality: "Bucla de calitate", autofix: "Corecturi automate", edit: "Editare", undo: "Undo", redo: "Redo" }[type] ?? type;
     return jobs.enqueue(id, type, label, async ({ log, progress }) => {
       switch (type) {
         case "capture": {
@@ -230,16 +235,26 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "preview":
           return stepPreview(id, v!, fmt, log, { onProgress: progress });
         case "critique":
-          return critiqueRound(id, v, fmt ?? undefined);
-        case "make": {
-          stepScript(id);
-          stepStoryboard(id);
-          await stepVoice(id, loadProject(id).currentVersion!, log);
-          const vv = (await stepCompile(id, loadProject(id).currentVersion!, log)).versionId;
-          await stepAudio(id, vv, log);
-          await stepPreview(id, vv, fmt, log, { onProgress: progress });
-          return critiqueRound(id, vv);
+          return critiqueRound(id, v, fmt ?? undefined, "fast", log);
+        case "quality":
+          return (await runQuality(id, { versionId: v, formats: fmt ? [fmt] : undefined, depth: (params.depth as Depth | undefined) ?? "standard", log, onProgress: progress })).run;
+        case "autofix":
+          return autoFixLoop(id, { depth: (params.depth as Depth | undefined) ?? "standard", log });
+        case "edit": {
+          const r = applyEdit(id, (params.ops as EditOpInput[]) ?? [], { source: "editor" });
+          const c = await stepCompile(id, r.versionId, log);
+          await stepAudio(id, c.versionId, log);
+          return { versionId: c.versionId, applied: r.applied.map((x) => x.description) };
         }
+        case "undo":
+        case "redo": {
+          const r = type === "undo" ? undo(id) : redo(id);
+          const c = await stepCompile(id, r.versionId, log);
+          await stepAudio(id, c.versionId, log);
+          return { versionId: c.versionId, description: r.entry.description };
+        }
+        case "make":
+          return produce(id, { log, onProgress: progress, depth: (params.depth as Depth | undefined) ?? "standard", autofix: params.autofix !== false, preview: params.preview !== false });
         case "final":
           return stepFinalRender(id, v!, fmt, log);
         case "iterate":

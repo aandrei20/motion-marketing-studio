@@ -12,7 +12,8 @@ export const Change = z.object({
 });
 export type Change = z.infer<typeof Change>;
 
-export const VersionStatus = z.enum(["draft", "preview", "approved", "final"]);
+/** rejected = respinsă de bucla de corectură automată (a înrăutățit scorul); rămâne pe disc, neatinsă */
+export const VersionStatus = z.enum(["draft", "preview", "approved", "final", "rejected"]);
 export type VersionStatus = z.infer<typeof VersionStatus>;
 
 export const VersionMeta = z.object({
@@ -24,5 +25,9 @@ export const VersionMeta = z.object({
   /** o versiune înghețată nu mai poate fi modificată; schimbările creează versiunea următoare */
   frozen: z.boolean(),
   changes: z.array(Change).default([]),
+  /** amprentele intrărilor la nivel de proiect folosite la compilare (brief, research, brand, assets); conținutul e în projects/<id>/snapshots/ */
+  inputs: z.record(z.string(), z.string()).default({}),
+  /** de ce a fost respinsă (rollback), dacă e cazul */
+  rejectedReason: z.string().optional(),
 });
 export type VersionMeta = z.infer<typeof VersionMeta>;

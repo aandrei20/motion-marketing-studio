@@ -2,6 +2,7 @@ import React from "react";
 import { z } from "zod";
 import { rand } from "../../core/random";
 import { resolveColor } from "../core/context";
+import { mix as mixColor, readableOn } from "../core/color";
 import { EASE, SPRINGS, clamp, prog, sp } from "../core/easing";
 import { hitDecay } from "../core/hits";
 import { ChromaFilterDefs } from "../transitions/transitions";
@@ -318,6 +319,10 @@ export const textHighlight = defineLayer({
     const appear = sp(frame, env.fps, 0, SPRINGS.body);
     const mark = prog(frame, p.markAt, p.markAt + 12, EASE.out);
     const markColor = resolveColor(env.palette, p.markColor, "accent");
+    // pe marker, cuvântul trece la culoarea lizibilă pe culoarea markerului (contrast), pe măsură ce markerul apare
+    const textColor = resolveColor(env.palette, p.color, "text");
+    const hex = (c: string) => /^#[0-9a-f]{6}/i.test(c);
+    const onMark = hex(markColor) && hex(textColor) ? readableOn(markColor, textColor, env.palette.background) : textColor;
     return (
       <TextFrame
         p={{ ...p, emphasisColor: p.style === "marker" ? p.color : p.emphasisColor }}
@@ -325,7 +330,7 @@ export const textHighlight = defineLayer({
         env={env}
         containerStyle={{ opacity: clamp(appear * 1.5, 0, 1) * (1 - ex), transform: `translateY(${((1 - appear) * 0.3).toFixed(3)}em)` }}
         renderWord={(w, _total, color) => (
-          <span style={{ position: "relative", display: "inline-block", color }}>
+          <span style={{ position: "relative", display: "inline-block", color: w.emphasized && p.style === "marker" && onMark !== textColor && hex(color) ? mixColor(color, onMark, mark) : color }}>
             {w.emphasized && p.style === "marker" ? (
               <span style={{ position: "absolute", left: "-0.08em", right: "-0.08em", top: "0.12em", bottom: "0.02em", background: markColor, opacity: 0.85, transform: `scaleX(${mark})`, transformOrigin: "left", zIndex: -1, borderRadius: "0.08em" }} />
             ) : null}

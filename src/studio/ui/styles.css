@@ -111,9 +111,9 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .suggest { padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: 8px; margin-top: 6px; cursor: pointer; }
 .suggest:hover { border-color: var(--accent); }
 .issue { padding: 6px 8px; border-left: 3px solid var(--line-2); margin-bottom: 4px; background: var(--panel-2); border-radius: 4px; font-size: 13px; }
-.issue.blocker { border-left-color: var(--err); }
-.issue.major { border-left-color: var(--warn); }
-.issue.minor, .issue.nit { border-left-color: var(--muted); }
+.issue.critical { border-left-color: var(--err); }
+.issue.high { border-left-color: var(--warn); }
+.issue.medium, .issue.low { border-left-color: var(--muted); }
 .log { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; white-space: pre-wrap; max-height: 260px; overflow: auto; font-size: 12px; }
 details summary { cursor: pointer; padding: 4px 0; }
 .md h2 { font-size: 18px; margin: 4px 0 10px; }

@@ -37,6 +37,7 @@ import { getCamera, getCapability, getLayer, getModifier, getTransition } from "
 import { getRecipe } from "../recipes/recipes";
 import type { RecipeContext, ResolvedAsset } from "../recipes/types";
 import { nodeMeasure } from "./measure-node";
+import { LAYOUT_TEXT_CAPS as TEXT_CAPS } from "../motion/text-caps";
 
 export interface VoiceClipRef {
   lineId: string;
@@ -76,7 +77,6 @@ export interface CompileResult {
   warnings: string[];
 }
 
-const TEXT_CAPS = new Set(["text.word-reveal", "text.char-reveal", "text.mask-reveal", "text.slam", "text.pop", "text.blur-reveal", "text.tracking", "text.typewriter", "text.split", "text.highlight", "text.outline-fill", "text.glitch", "text.big-word", "text.body"]);
 
 function fontsAndTypography(brand: Brand, projectId: string, assets: AssetManifest): { fonts: TimelineFont[]; typography: TypographySet; warnings: string[] } {
   const warnings: string[] = [];
@@ -304,16 +304,24 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const params = plan.recipe.params.parse(sc.recipe.params);
     const out = plan.recipe.build(ctx, params);
     // suprascrieri explicite din storyboard pe straturile rețetei (după capabilitate)
-    // `slot` = capabilitatea sau o parte din id-ul stratului; capabilitatea se poate înlocui (aceeași cutie)
+    // `slot` = capabilitatea sau o parte din id-ul stratului; se pot înlocui animația (aceeași cutie) și parametrii,
+    // se poate ascunde stratul sau i se poate decala startul (editorul din Studio și corecturile automate)
+    const hiddenIds = new Set<string>();
     for (const o of sc.overrides) {
       const target = out.layers.find((l) => l.capability === o.slot || l.id.includes(o.slot));
       if (!target) {
         warnings.push(`Suprascrierea „${o.slot}” din scena ${sc.id} nu găsește niciun strat.`);
         continue;
       }
-      target.capability = o.capability;
+      if (o.capability) target.capability = o.capability;
       target.params = { ...target.params, ...o.params };
+      if (o.shiftSec) {
+        target.from = Math.max(0, Math.min(duration - 1, target.from + Math.round(o.shiftSec * fps)));
+        target.durationInFrames = Math.max(1, Math.min(target.durationInFrames, duration - target.from));
+      }
+      if (o.hidden) hiddenIds.add(target.id);
     }
+    if (hiddenIds.size) out.layers = out.layers.filter((l) => !hiddenIds.has(l.id));
     // textul: rânduri și mărime calculate cu fonturile reale
     const layoutLayer = (l: TimelineLayer): TimelineLayer => {
       if (TEXT_CAPS.has(l.capability)) {

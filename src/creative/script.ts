@@ -85,7 +85,7 @@ export function draftScript(brief: Brief, research: Research, opts: { textLangua
 }
 
 export interface ScriptIssue {
-  severity: "blocker" | "major" | "minor";
+  severity: "critical" | "high" | "medium";
   lineId: string | null;
   message: string;
 }
@@ -96,27 +96,27 @@ export function validateScript(script: Script, brief: Brief, research: Research)
   const claims = new Map<string, Claim>(research.claims.map((c) => [c.id, c]));
   for (const m of brief.userVision.mandatoryPhrases) {
     const found = script.lines.find((l) => (m.channel !== "on-screen" && l.voiceover.includes(m.text)) || (m.channel !== "voiceover" && l.onScreen.includes(m.text)));
-    if (!found) issues.push({ severity: "blocker", lineId: null, message: `Fraza obligatorie „${m.text}” nu apare exact (${m.channel}).` });
+    if (!found) issues.push({ severity: "critical", lineId: null, message: `Fraza obligatorie „${m.text}” nu apare exact (${m.channel}).` });
   }
-  if (!script.lines.some((l) => l.isHook)) issues.push({ severity: "major", lineId: null, message: "Nu există o replică marcată ca hook." });
-  if (!script.lines.some((l) => l.isCta)) issues.push({ severity: "blocker", lineId: null, message: "Nu există apel la acțiune (CTA)." });
+  if (!script.lines.some((l) => l.isHook)) issues.push({ severity: "high", lineId: null, message: "Nu există o replică marcată ca hook." });
+  if (!script.lines.some((l) => l.isCta)) issues.push({ severity: "critical", lineId: null, message: "Nu există apel la acțiune (CTA)." });
   const cta = script.lines.find((l) => l.isCta);
-  if (cta && !cta.onScreen.includes(brief.cta.text) && !cta.voiceover.includes(brief.cta.text)) issues.push({ severity: "major", lineId: cta.id, message: `CTA-ul nu conține textul din brief („${brief.cta.text}”).` });
+  if (cta && !cta.onScreen.includes(brief.cta.text) && !cta.voiceover.includes(brief.cta.text)) issues.push({ severity: "high", lineId: cta.id, message: `CTA-ul nu conține textul din brief („${brief.cta.text}”).` });
   for (const l of script.lines) {
     for (const id of l.claimIds) {
       const c = claims.get(id);
-      if (!c) issues.push({ severity: "blocker", lineId: l.id, message: `Afirmația ${id} nu există în research.` });
-      else if (!isClaimUsable(c)) issues.push({ severity: "blocker", lineId: l.id, message: `Afirmația ${id} nu e verificată sau aprobată (${c.status}); nu poate intra în video.` });
+      if (!c) issues.push({ severity: "critical", lineId: l.id, message: `Afirmația ${id} nu există în research.` });
+      else if (!isClaimUsable(c)) issues.push({ severity: "critical", lineId: l.id, message: `Afirmația ${id} nu e verificată sau aprobată (${c.status}); nu poate intra în video.` });
     }
     const text = `${l.voiceover} ${l.onScreen}`;
     const hasNumber = /\d/.test(text.replace(/\b(19|20)\d{2}\b/g, ""));
-    if (hasNumber && !l.claimIds.length && l.origin !== "user-verbatim") issues.push({ severity: "blocker", lineId: l.id, message: "Conține o cifră fără afirmație-sursă (claimIds)." });
-    if (hasNumber && !l.claimIds.length && l.origin === "user-verbatim") issues.push({ severity: "minor", lineId: l.id, message: "Cifră venită de la utilizator fără sursă: răspunderea e a utilizatorului; recomand o sursă." });
-    for (const banned of brief.doNotSay) if (banned && text.toLowerCase().includes(banned.toLowerCase())) issues.push({ severity: "blocker", lineId: l.id, message: `Conține ceva ce nu trebuie spus: „${banned}”.` });
+    if (hasNumber && !l.claimIds.length && l.origin !== "user-verbatim") issues.push({ severity: "critical", lineId: l.id, message: "Conține o cifră fără afirmație-sursă (claimIds)." });
+    if (hasNumber && !l.claimIds.length && l.origin === "user-verbatim") issues.push({ severity: "medium", lineId: l.id, message: "Cifră venită de la utilizator fără sursă: răspunderea e a utilizatorului; recomand o sursă." });
+    for (const banned of brief.doNotSay) if (banned && text.toLowerCase().includes(banned.toLowerCase())) issues.push({ severity: "critical", lineId: l.id, message: `Conține ceva ce nu trebuie spus: „${banned}”.` });
     const words = l.voiceover.split(/\s+/).filter(Boolean).length;
-    if (words > 32) issues.push({ severity: "minor", lineId: l.id, message: `Replica de voce e lungă (${words} cuvinte); pe social, sub 25 se înțelege mai bine.` });
+    if (words > 32) issues.push({ severity: "medium", lineId: l.id, message: `Replica de voce e lungă (${words} cuvinte); pe social, sub 25 se înțelege mai bine.` });
     const screenWords = l.onScreen.split(/\s+/).filter(Boolean).length;
-    if (screenWords > 9) issues.push({ severity: "minor", lineId: l.id, message: `Text pe ecran lung (${screenWords} cuvinte); ideal sub 8.` });
+    if (screenWords > 9) issues.push({ severity: "medium", lineId: l.id, message: `Text pe ecran lung (${screenWords} cuvinte); ideal sub 8.` });
     if (l.origin === "user-verbatim" && l.mandatoryPhraseIds.length === 0 && !l.isCta && !l.isHook) {
       /* textul utilizatorului fără frază obligatorie: ok */
     }

@@ -69,11 +69,11 @@ describe("script", () => {
     expect(s.lines[0].origin).toBe("user-verbatim");
     expect(s.lines.some((l) => l.isCta && l.onScreen === "Încearcă gratuit")).toBe(true);
     expect(s.lines.some((l) => l.voiceover.includes("în 5 minute") || l.onScreen.includes("în 5 minute"))).toBe(true);
-    expect(validateScript(s, brief, research).filter((i) => i.severity === "blocker")).toHaveLength(0);
+    expect(validateScript(s, brief, research).filter((i) => i.severity === "critical")).toHaveLength(0);
   });
   it("blochează fraza obligatorie lipsă, cifrele fără sursă și afirmațiile neconfirmate", () => {
     const s = Script.parse({ schemaVersion: 1, textLanguage: "ro", voiceLanguage: null, lines: [{ id: "a", origin: "ai", voiceover: "Folosit de 10.000 de echipe", claimIds: [] }, { id: "b", origin: "ai", voiceover: "x", claimIds: ["c-cifra"] }, { id: "cta", origin: "user-verbatim", onScreen: "Încearcă gratuit", isCta: true }] });
-    const issues = validateScript(s, brief, research).filter((i) => i.severity === "blocker").map((i) => i.message);
+    const issues = validateScript(s, brief, research).filter((i) => i.severity === "critical").map((i) => i.message);
     expect(issues.some((m) => m.includes("în 5 minute"))).toBe(true);
     expect(issues.some((m) => m.includes("fără afirmație-sursă"))).toBe(true);
     expect(issues.some((m) => m.includes("c-cifra"))).toBe(true);

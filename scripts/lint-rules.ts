@@ -3,6 +3,7 @@
  *  - regula 4: niciun nume de produs în src/ și library/ (lista fixă + numele produselor din projects/)
  *  - regula 19: nicio cheie API în fișierele urmărite de Git
  *  - regula 18: fără Math.random() / Date.now() în codul de randare (src/motion, src/renderer/composition)
+ *  - fără atribuire de co-autori/contributori în commit-urile noi (după ATTRIBUTION_BASE; istoria veche nu se rescrie)
  * Rulează: npm run lint
  */
 import { execSync } from "node:child_process";
@@ -18,6 +19,8 @@ export interface LintProblem {
 }
 
 const FIXED_NAMES = ["Spotify", "Kolibri"];
+/** ultimul commit dinaintea regulii „fără co-autori”; istoria de dinainte nu se rescrie */
+const ATTRIBUTION_BASE = "f6cb12c";
 
 function productNames(): string[] {
   const names = new Set(FIXED_NAMES);
@@ -86,6 +89,17 @@ export function lintRules(): LintProblem[] {
       });
     if (/^\.env$/.test(path.basename(rel))) problems.push({ rule: "regula 19: .env urmărit de Git", file: rel, line: 0, text: "" });
   }
+  // atribuire: niciun commit nou nu adaugă co-autori sau contributori (decizia utilizatorului, 2026-10-08)
+  try {
+    const body = execSync(`git log ${ATTRIBUTION_BASE}..HEAD --format=%H%n%B%n--end--`, { cwd: PATHS.root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    let sha = "";
+    for (const l of body.split(/\r?\n/)) {
+      if (/^[0-9a-f]{40}$/.test(l)) sha = l;
+      else if (/^(co-authored-by|signed-off-by: claude|🤖 generated with)/i.test(l.trim())) problems.push({ rule: "fără co-autori/contributori în commit-uri", file: `commit ${sha.slice(0, 8)}`, line: 0, text: l.trim().slice(0, 60) });
+    }
+  } catch {
+    /* fără git sau baza nu există în acest clone: verificarea nu se aplică */
+  }
   return problems;
 }
 
@@ -96,5 +110,5 @@ if (process.argv[1] && process.argv[1].endsWith("lint-rules.ts")) {
     console.error(`\n${p.length} probleme.`);
     process.exit(1);
   }
-  console.log("Regulile verificabile automat sunt respectate (nume de produs, determinism, secrete).");
+  console.log("Regulile verificabile automat sunt respectate (nume de produs, determinism, secrete, fără co-autori în commit-uri).");
 }

@@ -193,8 +193,11 @@ function saveVersionMeta(id: string, meta: VersionMeta): VersionMeta {
   return writeValidated(versionFile(id, meta.id, "version.json"), VersionMeta, meta);
 }
 
-/** Fișierele creative copiate dintr-o versiune în următoarea. Timeline-ul și mixul se recompilează. */
-const CARRIED = ["script.json", "storyboard.json", "audio-plan.json"];
+/**
+ * Fișierele copiate dintr-o versiune în următoarea. Timeline-ul și mixul se recompilează; vocea se
+ * refolosește doar dacă amprenta ei (voice-key) corespunde textului, altfel compilarea o reface.
+ */
+const CARRIED = ["script.json", "storyboard.json", "audio-plan.json", "audio/voice.json", "audio/voice-key.json"];
 
 /**
  * Creează versiunea următoare pornind din `from` (sau din versiunea curentă). Versiunea-părinte
@@ -210,7 +213,9 @@ export function createVersion(id: string, opts: { from?: string | null; label?: 
   if (parent) {
     for (const f of CARRIED) {
       const src = versionFile(id, parent, f);
-      if (fs.existsSync(src)) fs.copyFileSync(src, versionFile(id, vid, f));
+      if (!fs.existsSync(src)) continue;
+      fs.mkdirSync(path.dirname(versionFile(id, vid, f)), { recursive: true });
+      fs.copyFileSync(src, versionFile(id, vid, f));
     }
     const pm = loadVersionMeta(id, parent);
     if (!pm.frozen) saveVersionMeta(id, { ...pm, frozen: true });
@@ -223,6 +228,7 @@ export function createVersion(id: string, opts: { from?: string | null; label?: 
     status: "draft",
     frozen: false,
     changes: opts.changes ?? [],
+    inputs: {},
   });
   saveProject({ ...project, currentVersion: vid });
   updateState(id, { log: `Versiune nouă ${vid}${parent ? ` (din ${parent})` : ""}.` });
@@ -248,6 +254,23 @@ export function freezeVersion(id: string, v: string, status?: VersionMeta["statu
 export function setVersionStatus(id: string, v: string, status: VersionMeta["status"]): VersionMeta {
   const meta = loadVersionMeta(id, v);
   return saveVersionMeta(id, { ...meta, status });
+}
+
+/** Amprentele intrărilor de proiect cu care s-a compilat versiunea (snapshot-uri în projects/<id>/snapshots/). */
+export function setVersionInputs(id: string, v: string, inputs: Record<string, string>): VersionMeta {
+  assertWritable(id, v);
+  return saveVersionMeta(id, { ...loadVersionMeta(id, v), inputs });
+}
+
+/**
+ * Rollback: versiunea care a înrăutățit rezultatul rămâne pe disc (regula 9), marcată „rejected”,
+ * iar versiunea curentă a proiectului revine la cea bună. Nimic nu se șterge.
+ */
+export function rejectVersion(id: string, v: string, reason: string, restoreTo: string): VersionMeta {
+  const meta = saveVersionMeta(id, { ...loadVersionMeta(id, v), status: "rejected", frozen: true, rejectedReason: reason });
+  saveProject({ ...loadProject(id), currentVersion: restoreTo });
+  updateState(id, { decision: `Rollback: ${v} respinsă (${reason}); versiunea curentă revine la ${restoreTo}.` });
+  return meta;
 }
 
 export function appendChanges(id: string, v: string, changes: Change[]): VersionMeta {

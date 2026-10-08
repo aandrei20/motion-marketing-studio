@@ -70,7 +70,7 @@ describe("lanțul de producție pe produsul demo", () => {
       r.timeline.scenes.forEach((sc, i) => expect(Math.abs(sc.from / format.fps - primary.scenes[i].from / primary.fps)).toBeLessThanOrEqual(tol));
       expect(Math.abs(r.timeline.durationInFrames / format.fps - primary.durationInFrames / primary.fps)).toBeLessThanOrEqual(tol);
       const val = validateTimeline(r.timeline, { assets: base.assets, research: base.research, format });
-      expect(val.findings.filter((f) => f.severity === "blocker")).toEqual([]);
+      expect(val.findings.filter((f) => f.severity === "critical")).toEqual([]);
     }
   }, 120_000);
 
@@ -120,5 +120,69 @@ describe("lanțul de producție pe produsul demo", () => {
     await steps.stepCompile(id, r.versionId);
     const voice = JSON.parse(fs.readFileSync(path.join(tmp, id, "versions", r.versionId, "audio", "voice.json"), "utf8"));
     expect(voice[line.id].words.map((w: { text: string }) => w.text).join(" ")).toBe(text);
+  }, 300_000);
+
+  it("bucla de calitate „fast” nu randează nimic și produce scorul pe 11 categorii, cu pase 0–9", async () => {
+    const store = await import("../../src/projects/store");
+    const steps = await import("../../src/pipeline/steps");
+    const { runQuality } = await import("../../src/quality/run");
+    const id = "it-e2e";
+    const v = store.loadProject(id).currentVersion!;
+    await steps.stepAudio(id, v);
+    const q = await runQuality(id, { versionId: v, depth: "fast" });
+    expect(q.run.passes.map((p) => p.n)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(q.run.renders).toMatchObject({ stillsRendered: 0, motionFramesRendered: 0, fullRendered: 0 });
+    const skipped = q.run.passes.flatMap((p) => p.checks).filter((c) => c.status === "skipped").map((c) => c.method);
+    expect(skipped).toEqual(expect.arrayContaining(["stills", "scene-render", "full-render"]));
+    expect(Object.keys(q.round.quality!.categories)).toHaveLength(11);
+    // la „fast” nu se pretinde evaluarea vizuală pe pixeli
+    expect(q.round.quality!.categories.visual).toBeNull();
+    expect(q.round.sceneScores).toHaveLength(7);
+    expect(q.round.depth).toBe("fast");
+    for (const f of q.run.issues) {
+      expect(f.category).toBeTruthy();
+      expect(f.whyItMatters.length).toBeGreaterThan(0);
+    }
+    expect(fs.existsSync(path.join(tmp, id, "versions", v, "quality.json"))).toBe(true);
+  }, 300_000);
+
+  it("editarea cu undo/redo restaurează exact storyboard-ul; impactul arată ce se reface", async () => {
+    const store = await import("../../src/projects/store");
+    const steps = await import("../../src/pipeline/steps");
+    const { applyEdit, undo, redo } = await import("../../src/editing/history");
+    const { impactBetween } = await import("../../src/pipeline/impact");
+    const { fingerprint } = await import("../../src/core/hash");
+    const id = "it-e2e";
+    const parent = store.loadProject(id).currentVersion!;
+    store.freezeVersion(id, parent, "preview");
+    const before = store.loadStoryboard(id, parent);
+    const target = before.scenes[1].id;
+    const e = applyEdit(id, [{ op: "scene-extend", sceneId: target, deltaSec: 0.6 }, { op: "set-camera", sceneId: target, capability: "camera.static", params: {} }]);
+    // versiunea înghețată nu se atinge; editarea merge în versiunea următoare
+    expect(e.versionId).not.toBe(parent);
+    expect(fingerprint(store.loadStoryboard(id, parent))).toBe(fingerprint(before));
+    const edited = store.loadStoryboard(id, e.versionId);
+    expect(edited.scenes[1].camera?.capability).toBe("camera.static");
+    // vocea trece în versiunea nouă (amprenta ei decide la compilare dacă se refolosește)
+    expect(fs.existsSync(path.join(tmp, id, "versions", e.versionId, "audio", "voice-key.json"))).toBe(true);
+    await steps.stepCompile(id, e.versionId);
+    await steps.stepAudio(id, e.versionId);
+    const imp = impactBetween(id, parent, e.versionId);
+    expect(imp.plan.rerun.voice).toBe(false);
+    expect(imp.changes.formats["9x16"].changedScenes).toContain(target);
+    expect(imp.changes.formats["9x16"].changedScenes.length).toBeLessThan(7);
+    undo(id);
+    expect(fingerprint(store.loadStoryboard(id, e.versionId))).toBe(fingerprint(before));
+    redo(id);
+    expect(fingerprint(store.loadStoryboard(id, e.versionId))).toBe(fingerprint(edited));
+    // rollback: versiunea respinsă rămâne pe disc, iar cea curentă revine la părinte
+    store.rejectVersion(id, e.versionId, "test", parent);
+    expect(store.loadProject(id).currentVersion).toBe(parent);
+    expect(store.loadVersionMeta(id, e.versionId).status).toBe("rejected");
+    expect(fs.existsSync(path.join(tmp, id, "versions", e.versionId, "storyboard.json"))).toBe(true);
+    // intrările de proiect au snapshot-uri adresate prin conținut
+    const inputs = store.loadVersionMeta(id, parent).inputs;
+    expect(Object.keys(inputs)).toEqual(expect.arrayContaining(["brief", "research", "brand", "assets"]));
+    expect(fs.existsSync(path.join(tmp, id, "snapshots", `brief-${inputs.brief}.json`))).toBe(true);
   }, 300_000);
 });

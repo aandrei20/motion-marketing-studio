@@ -31,13 +31,20 @@ function sourceHash(): string {
   return h.digest("hex").slice(0, 16);
 }
 
+let codeHash: string | null = null;
+/** Amprenta codului de randare (aceeași cu a bundle-ului): orice schimbare de cod invalidează cadrele din cache. */
+export function renderCodeHash(): string {
+  if (!codeHash) codeHash = sourceHash();
+  return codeHash;
+}
+
 let bundlePromise: Promise<string> | null = null;
 
 /** Bundle-ul Remotion, construit o singură dată pentru o versiune a codului. */
 export function getBundle(onProgress?: (p: number) => void): Promise<string> {
   if (bundlePromise) return bundlePromise;
   bundlePromise = (async () => {
-    const hash = sourceHash();
+    const hash = renderCodeHash();
     const outDir = path.join(PATHS.cache, "bundles", hash);
     if (fs.existsSync(path.join(outDir, "index.html"))) return outDir;
     const emptyPublic = path.join(PATHS.cache, "empty-public");
@@ -125,6 +132,8 @@ export interface RenderVideoOptions {
   crf?: number;
   concurrency?: number | null;
   muted?: boolean;
+  /** scara randării (1 = rezoluția formatului); analiza mișcării folosește video mic */
+  scale?: number;
   onProgress?: (p: { progress: number; renderedFrames: number; encodedFrames: number }) => void;
 }
 
@@ -150,6 +159,7 @@ export async function renderTimelineVideo(t: Timeline, o: RenderVideoOptions): P
     concurrency: o.concurrency ?? null,
     muted: o.muted ?? false,
     enforceAudioTrack: !o.muted,
+    scale: o.scale ?? 1,
     overwrite: false,
     puppeteerInstance,
     chromiumOptions: { gl: GL },

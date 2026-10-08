@@ -1,8 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { autoCritique, loopDecision } from "../critique/auto";
-import { readJson } from "../core/json";
-import { MixReport, type Critique, type CritiqueRound, type Finding, type SceneScore } from "../core/schema";
+import { z } from "zod";
+import { sceneAtFrame, type LoopDecision } from "../critique/auto";
+import { collectRounds, runQuality, type QualityRun } from "../quality/run";
+import type { Depth } from "../quality/checks";
+import { makeIssue } from "../quality/issues";
+import { parseWith } from "../core/json";
+import { EditOp, QualityCategory, RUBRIC_KEYS, RubricKey, SceneScore, Severity, TechnicalCheck, type Critique, type CritiqueRound, type Finding } from "../core/schema";
 import { DIRECTIONS } from "../creative/directions";
 import { MmsError } from "../core/errors";
 import { applyOps, parseCommand } from "../iterate/intents";
@@ -76,55 +80,57 @@ export async function hookVariants(projectId: string, opts: { from?: string; cou
   return out;
 }
 
-/** O rundă de critică automată pe versiunea curentă (sau dată), salvată în critique.json. */
-export function critiqueRound(projectId: string, versionId?: string, formatId?: string): { round: CritiqueRound; decision: ReturnType<typeof loopDecision> } {
-  const project = loadProject(projectId);
-  const v = versionId ?? project.currentVersion;
-  if (!v) throw new MmsError("NO_VERSION", "Nu există versiune.");
-  const fmt = project.formats.find((f) => f.id === (formatId ?? project.formats[0].id))!;
-  const t = loadTimeline(projectId, v, fmt.id);
-  const brief = loadBrief(projectId);
-  const sb = loadStoryboard(projectId, v);
-  const validation = validateTimeline(t, { assets: loadAssets(projectId), research: loadResearch(projectId), format: fmt });
-  const mixFile = versionFile(projectId, v, "audio/mix-report.json");
-  const checkFile = versionFile(projectId, v, `renders/check-${fmt.id}.json`);
-  const mix = fs.existsSync(mixFile) ? readJson(mixFile, MixReport) : null;
-  const video = fs.existsSync(checkFile) ? (JSON.parse(fs.readFileSync(checkFile, "utf8")) as VideoCheck) : null;
-  // numărul rundei continuă peste versiuni (aceeași buclă de calitate)
-  const all = collectRounds(projectId);
-  const round = autoCritique({ timeline: t, brief, dir: DIRECTIONS[sb.direction ?? brief.direction ?? "technical"], validation, mix, video }, all.length + 1, v);
-  const c = loadCritique(projectId, v);
-  c.rounds.push(round);
-  saveCritique(projectId, v, c);
-  const decision = loopDecision({ ...c, rounds: [...all, round] });
-  updateState(projectId, { step: "critique", stepState: decision.passed ? "done" : "pending", note: `runda ${round.n}: minim ${round.minScene}/10`, log: `Critică runda ${round.n} pe ${v}: ${decision.message}` });
-  return { round, decision };
+/**
+ * O rundă de critică automată: bucla de calitate adaptivă (rubrica fixă + scorul quality-v1),
+ * la adâncimea cerută. Implicit „fast” (fără randare), ca vechea critică; vezi src/quality/run.ts.
+ */
+export async function critiqueRound(projectId: string, versionId?: string, formatId?: string, depth: Depth = "fast", log: (m: string) => void = () => undefined): Promise<{ round: CritiqueRound; decision: LoopDecision; run: QualityRun }> {
+  const r = await runQuality(projectId, { versionId, formats: formatId ? [formatId] : undefined, depth, log });
+  return { round: r.round, decision: r.decision, run: r.run };
 }
 
-function collectRounds(projectId: string): CritiqueRound[] {
-  const project = loadProject(projectId);
-  const out: CritiqueRound[] = [];
-  const n = Number((project.currentVersion ?? "v0").slice(1));
-  for (let i = 1; i <= n; i++) {
-    try {
-      out.push(...loadCritique(projectId, `v${i}`).rounds.filter((r) => r.reviewer === "mms-auto-critic-v1"));
-    } catch {
-      /* versiune fără critică */
-    }
-  }
-  return out.sort((a, b) => a.n - b.n);
-}
+/** Observațiile lui Claude (revizuirea vizuală) sau notele utilizatorului: validate strict, cu „secunda X” → cadru și scenă. */
+export const ReviewFinding = z.object({
+  frame: z.number().int().min(0).nullable().default(null),
+  /** alternativ la frame: secunda din video (cum o notează utilizatorul) */
+  sec: z.number().min(0).optional(),
+  sceneId: z.string().nullable().default(null),
+  layerId: z.string().nullable().default(null),
+  formatId: z.string().nullable().default(null),
+  durationSec: z.number().min(0).nullable().default(null),
+  dimension: z.union([RubricKey, TechnicalCheck]),
+  category: QualityCategory.optional(),
+  severity: Severity,
+  problem: z.string().min(1),
+  whyItMatters: z.string().optional(),
+  recommendation: z.string().min(1),
+  confidence: z.number().min(0).max(1).default(0.8),
+  suggestedFix: z.array(EditOp).default([]),
+});
+export const ReviewInput = z.object({
+  reviewer: z.enum(["claude-visual", "user-notes"]),
+  findings: z.array(ReviewFinding).default([]),
+  sceneScores: z.array(SceneScore).default([]),
+});
+export type ReviewInput = z.input<typeof ReviewInput>;
 
 /**
- * Adaugă observațiile revizuirii vizuale făcute de Claude pe foaia de contact (sau notele utilizatorului
- * după ascultare), ca rundă separată (reviewer diferit, aceeași rubrică).
+ * Adaugă observațiile revizuirii vizuale făcute de Claude pe cadrele-cheie / foaia de contact (sau notele
+ * utilizatorului după ascultare), ca rundă separată (reviewer diferit, aceeași rubrică).
  */
-export function addReview(projectId: string, versionId: string, input: { reviewer: "claude-visual" | "user-notes"; findings: Array<Omit<Finding, "id" | "round" | "status" | "source"> & { source?: Finding["source"] }>; sceneScores?: SceneScore[] }): CritiqueRound {
+export function addReview(projectId: string, versionId: string, raw: unknown): CritiqueRound {
+  const input = parseWith(ReviewInput, raw, "observațiile revizuirii");
+  const project = loadProject(projectId);
+  const t = loadTimeline(projectId, versionId, project.formats[0].id);
   const c: Critique = loadCritique(projectId, versionId);
-  const n = c.rounds.length + 1;
-  const sceneScores = input.sceneScores ?? [];
-  const keys = ["hook", "clarity", "rhythm", "hierarchy", "variety", "brand", "cta"] as const;
-  const overall = Object.fromEntries(keys.map((k) => [k, sceneScores.length ? sceneScores.reduce((s, x) => s + (x.scores[k] ?? 0), 0) / sceneScores.length : 0])) as CritiqueRound["overall"];
+  const n = Math.max(0, ...c.rounds.map((r) => r.n), ...collectRounds(projectId).map((r) => r.n)) + 1;
+  const sceneScores = input.sceneScores;
+  const overall = Object.fromEntries(RUBRIC_KEYS.map((k) => [k, sceneScores.length ? sceneScores.reduce((s, x) => s + (x.scores[k] ?? 0), 0) / sceneScores.length : 0])) as CritiqueRound["overall"];
+  const source = input.reviewer === "user-notes" ? "user-note" : "ai-review";
+  const findings: Finding[] = input.findings.map((f, i) => {
+    const frame = f.frame ?? (f.sec !== undefined ? Math.round(f.sec * t.fps) : null);
+    return makeIssue({ ...f, frame, sceneId: f.sceneId ?? (frame !== null ? sceneAtFrame(t, frame) : null), method: input.reviewer === "user-notes" ? "human" : "ai-vision", source }, `${input.reviewer}-${n}-${i + 1}`, n, t.fps);
+  });
   const round: CritiqueRound = {
     n,
     at: new Date().toISOString(),
@@ -132,9 +138,9 @@ export function addReview(projectId: string, versionId: string, input: { reviewe
     reviewer: input.reviewer,
     rubricVersion: "rubric-v1",
     sceneScores,
-    findings: input.findings.map((f, i) => ({ ...f, id: `${input.reviewer}-${n}-${i + 1}`, round: n, status: "open", source: f.source ?? (input.reviewer === "user-notes" ? "user-note" : "ai-review") })),
+    findings,
     overall,
-    minScene: sceneScores.length ? Math.min(...sceneScores.map((s) => Math.min(...keys.map((k) => s.scores[k] ?? 10)))) : 0,
+    minScene: sceneScores.length ? Math.min(...sceneScores.map((s) => Math.min(...RUBRIC_KEYS.map((k) => s.scores[k] ?? 10)))) : 0,
   };
   c.rounds.push(round);
   saveCritique(projectId, versionId, c);

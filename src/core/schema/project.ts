@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IsoDate, Slug, VersionId } from "./common";
+import { QualityConfig } from "./critique";
 
 export const ProductCategory = z.enum([
   "saas",
@@ -58,6 +59,10 @@ export const Project = z.object({
   status: ProjectStatus,
   /** Sămânța de determinism: aceeași sămânță + același timeline = aceleași cadre. */
   seed: z.number().int().nonnegative(),
+  /** pragurile scorului de calitate și ale buclei de corectură (implicit: 95 / 92, 3 iterații) */
+  quality: QualityConfig.optional(),
+  /** ajustări peste profilurile de platformă (src/platform/profiles.ts), pe platformă */
+  platformOverrides: z.record(z.string(), z.record(z.string(), z.unknown())).default({}),
 });
 export type Project = z.infer<typeof Project>;
 

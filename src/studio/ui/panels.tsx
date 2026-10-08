@@ -841,7 +841,7 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
               const sec = mm ? (mm[1].includes(":") ? Number(mm[1].split(":")[0]) * 60 + Number(mm[1].split(":")[1].replace(",", ".")) : Number(mm[1].replace(",", "."))) : null;
               const frame = sec !== null ? Math.round(sec * tl!.fps) : null;
               const scene = frame !== null ? tl!.scenes.filter((s) => s.from <= frame).slice(-1)[0]?.id ?? null : null;
-              return { frame, timecode: frame !== null ? tc(frame, tl!.fps) : null, sceneId: scene, dimension: "audio" as const, severity: "major" as const, problem: mm ? mm[2] : l, recommendation: "Corectează doar zona notată." };
+              return { frame, timecode: frame !== null ? tc(frame, tl!.fps) : null, sceneId: scene, dimension: "audio" as const, severity: "high" as const, problem: mm ? mm[2] : l, recommendation: "Corectează doar zona notată." };
             });
             try {
               await api.review(ctx.bundle.project.id, ctx.versionId!, { reviewer: "user-notes", findings });

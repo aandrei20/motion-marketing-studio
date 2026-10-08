@@ -8,6 +8,7 @@ export * from "./script";
 export * from "./storyboard";
 export * from "./audio";
 export * from "./timeline";
+export * from "./edit";
 export * from "./critique";
 export * from "./version";
 export * from "./state";

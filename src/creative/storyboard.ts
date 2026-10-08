@@ -136,6 +136,7 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       composition: i % 2 === 0 ? "thirds-left" : "thirds-right",
       cta: ts.role === "cta" ? "hold" : ts.role === "reveal" ? "setup" : "none",
       notes: "",
+      locked: false,
     });
   });
   // replicile rămase: problema merge imediat după hook; funcțiile și frazele obligatorii, înaintea CTA-ului
@@ -162,6 +163,7 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       composition: "thirds-left",
       cta: "none",
       notes: "Problema din brief, păstrată cuvânt cu cuvânt.",
+      locked: false,
     });
     rationale.push(`Problema („${p.l.id}”) a primit o scenă imediat după hook.`);
   }
@@ -188,6 +190,7 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       composition: scenes.length % 2 === 0 ? "thirds-left" : "thirds-right",
       cta: "none",
       notes: "Adăugată automat pentru o replică fără scenă în șablon.",
+      locked: false,
     };
     const ctaIdx = scenes.findIndex((s) => s.narrativeRole === "cta");
     scenes.splice(ctaIdx >= 0 ? ctaIdx : scenes.length, 0, scene);

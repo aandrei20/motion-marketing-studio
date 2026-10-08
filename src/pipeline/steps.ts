@@ -18,7 +18,10 @@ import { inferBrand } from "../brand/infer";
 import { capture, type CaptureRequestInput, type CaptureResult, type PageData } from "../capture/capture";
 import { MmsError } from "../core/errors";
 import { readJson, writeJson } from "../core/json";
-import { PATHS, projectPublicPath } from "../core/paths";
+import { PATHS, projectPublicPath, publicToAbs } from "../core/paths";
+import { fileFingerprint } from "../core/hash";
+import { audioKey, timelineRenderKey } from "./impact";
+import { snapshotProjectInputs } from "../projects/snapshots";
 import { formatTimecode } from "../core/time";
 import type { BeatGrid, MixReport, Timeline } from "../core/schema";
 import { MixReport as MixReportSchema } from "../core/schema";
@@ -33,6 +36,7 @@ import { compileTimeline, type VoiceClipRef } from "../timeline/compile";
 import { validateTimeline, type ValidationResult } from "../timeline/validate";
 import {
   addApproval,
+  assertWritable,
   createVersion,
   freezeVersion,
   hasFile,
@@ -52,6 +56,7 @@ import {
   saveScript,
   saveStoryboard,
   saveTimeline,
+  setVersionInputs,
   setVersionStatus,
   updateState,
   versionFile,
@@ -129,7 +134,7 @@ export function stepScript(projectId: string, opts: { force?: boolean } = {}): {
   const script = draftScript(brief, research, { textLanguage: project.language.text, voiceLanguage: project.language.voice, productName: project.product.name });
   saveScript(projectId, v, script);
   const issues = validateScript(script, brief, research);
-  updateState(projectId, { step: "script", note: `${script.lines.length} replici, ${issues.filter((i) => i.severity === "blocker").length} blocaje`, log: `Script schiță în ${v}.` });
+  updateState(projectId, { step: "script", note: `${script.lines.length} replici, ${issues.filter((i) => i.severity === "critical").length} blocaje`, log: `Script schiță în ${v}.` });
   return { versionId: v, issues };
 }
 
@@ -250,18 +255,20 @@ export async function stepCompile(projectId: string, requestedVersion: string, l
     validation[format.id] = val;
     warnings.push(...r.warnings.map((w) => `[${format.id}] ${w}`));
     reports[format.id] = { scenes: r.scenes, warnings: r.warnings, validation: val };
-    log(`  → ${r.timeline.scenes.length} scene, ${(r.timeline.durationInFrames / format.fps).toFixed(2)} s, ${val.findings.length} observații (${val.findings.filter((f) => f.severity === "blocker").length} blocaje)`);
+    log(`  → ${r.timeline.scenes.length} scene, ${(r.timeline.durationInFrames / format.fps).toFixed(2)} s, ${val.findings.length} observații (${val.findings.filter((f) => f.severity === "critical").length} blocaje)`);
   }
   writeVersionJson(projectId, versionId, "compile-report.json", reports);
   // brief-ul folosit se păstrează lângă versiune (trasabilitate)
   writeVersionJson(projectId, versionId, "brief.snapshot.json", base.brief);
+  // amprentele intrărilor de proiect (brief, research, brand, assets), cu snapshot-uri pentru comparație și rollback
+  setVersionInputs(projectId, versionId, snapshotProjectInputs(projectId));
   updateState(projectId, { step: "compile", note: Object.entries(timelines).map(([k, t]) => `${k}: ${(t.durationInFrames / t.fps).toFixed(1)} s`).join(", "), log: `Timeline compilat în ${versionId}.` });
   return { versionId, timelines, validation, warnings, report: reports };
 }
 
 // ─── audio: muzică, efecte, voce, mix ───────────────────────────────────────
 
-export async function stepAudio(projectId: string, versionId: string, log: Log = noop): Promise<MixReport> {
+export async function stepAudio(projectId: string, versionId: string, log: Log = noop, opts: { force?: boolean } = {}): Promise<MixReport> {
   const project = loadProject(projectId);
   const brief = loadBrief(projectId);
   const sb = loadStoryboard(projectId, versionId);
@@ -272,55 +279,85 @@ export async function stepAudio(projectId: string, versionId: string, log: Log =
   const silences = t.scenes
     .filter((s) => sb.scenes.find((x) => x.id === s.id)?.audio.silence)
     .map((s) => ({ startSec: s.from / fps, endSec: (s.from + s.durationInFrames) / fps }));
-  let music: { audio: ReturnType<typeof composeMusic>["audio"]; gainDb: number } | undefined;
-  if (brief.audio.music.mode === "synth" && sb.audio.music) {
-    const bpm = t.audio.beatGrid?.bpm ?? 110;
-    const dir = DIRECTIONS[sb.direction ?? brief.direction ?? "technical"];
-    log(`Muzică sintetizată: ${bpm} BPM, dispoziție ${brief.audio.music.mood ?? dir.mood}`);
-    const res = composeMusic({
-      bpm,
-      durationSec,
-      mood: brief.audio.music.mood ?? dir.mood,
-      seed: project.seed,
-      sections: t.scenes.map((s) => ({ startSec: s.from / fps, endSec: (s.from + s.durationInFrames) / fps, energy: s.meta.energy, name: s.id })),
-      accents: t.scenes.filter((s) => s.meta.narrativeRole === "reveal").map((s) => s.from / fps),
-      silences,
-    });
-    music = { audio: res.audio, gainDb: sb.audio.musicGainDb };
-  } else if (brief.audio.music.mode === "user-file" && sb.audio.music) {
-    const a = loadAssets(projectId).assets.find((x) => x.id === brief.audio.music.assetId);
-    if (!a) throw new MmsError("MUSIC_MISSING", "Lipsește fișierul de muzică al utilizatorului.");
-    log(`Muzica utilizatorului: ${a.originalName}`);
-    music = { audio: await decodeAudio(path.join(projectDir(projectId), a.file)), gainDb: sb.audio.musicGainDb };
-  }
-  const voice = t.audio.cues.filter((c) => c.kind === "voice").map((c) => ({ audio: readWavPublic(c.sound), atSec: c.atFrame / fps, gainDb: c.gainDb }));
-  const sfx = t.audio.cues.filter((c) => c.kind === "sfx").map((c) => ({ audio: getSfx(c.sound), atSec: c.atFrame / fps, gainDb: c.gainDb + sb.audio.sfxGainDb, pan: c.pan }));
-  log(`Mix: ${voice.length} replici, ${sfx.length} efecte, muzică: ${music ? "da" : "nu"}`);
-  const out = mix({
-    durationSec,
-    music: music ? { audio: music.audio, gainDb: music.gainDb, loop: brief.audio.music.mode === "user-file", fadeOutSec: 0.8 } : undefined,
-    voice,
-    sfx,
-    duck: { amountDb: sb.audio.duckDb, rampMs: 500, padMs: 120 },
-    intentionalSilences: silences,
-    targetLufs: -14,
-    truePeakCeiling: -1,
-  });
+  // mixul e adresat prin conținut: aceleași intrări (momente, voce, muzică, setări) = același mix, refolosit
+  const voiceFiles = Object.fromEntries(t.audio.cues.filter((c) => c.kind === "voice").map((c) => [c.sound, fileFingerprint(publicToAbs(c.sound))]));
+  const key = audioKey(t, sb, brief, voiceFiles);
+  const cacheWav = path.join(projectDir(projectId), "cache", "mix", `${key}.wav`);
+  const cacheRep = path.join(projectDir(projectId), "cache", "mix", `${key}.json`);
   const mixFile = versionFile(projectId, versionId, "audio/mix.wav");
-  writeWav(mixFile, out.master, 24);
-  const report = MixReportSchema.parse(out.report);
-  writeVersionJson(projectId, versionId, "audio/mix-report.json", report);
-  writeVersionJson(projectId, versionId, "audio/cue-sheet.json", t.audio.cues.map((c) => ({ ...c, timecode: formatTimecode(c.atFrame, fps) })));
-  // subtitrări .srt (dacă sunt cerute)
-  if (brief.captions.srt && t.captions) fs.writeFileSync(versionFile(projectId, versionId, "audio/captions.srt"), toSrt(t), "utf8");
-  const src = projectPublicPath(projectId, `versions/${versionId}/audio/mix.wav`);
-  for (const f of project.formats) {
-    const tf = loadTimeline(projectId, versionId, f.id);
-    if (tf.durationInFrames !== t.durationInFrames || tf.fps !== t.fps) throw new MmsError("FORMAT_TIMING", `Formatul ${f.id} are altă durată decât ${primary.id}; mixul nu se poate împărți.`);
-    saveTimeline(projectId, versionId, { ...tf, audio: { ...tf.audio, src } });
+  let report: MixReport;
+  if (!opts.force && fs.existsSync(cacheWav) && fs.existsSync(cacheRep)) {
+    log("Mix refolosit: intrările sunetului nu s-au schimbat (fără recalculare).");
+    assertWritable(projectId, versionId);
+    fs.mkdirSync(path.dirname(mixFile), { recursive: true });
+    if (fs.existsSync(mixFile)) fs.rmSync(mixFile);
+    try {
+      fs.linkSync(cacheWav, mixFile);
+    } catch {
+      fs.copyFileSync(cacheWav, mixFile);
+    }
+    report = readJson(cacheRep, MixReportSchema);
+  } else {
+    report = await computeMix();
+    fs.mkdirSync(path.dirname(cacheWav), { recursive: true });
+    fs.copyFileSync(mixFile, cacheWav);
+    writeJson(cacheRep, report);
   }
-  updateState(projectId, { step: "audio", note: `${report.integratedLufs ?? "?"} LUFS, TP ${report.truePeakDbtp} dBTP${report.ok ? "" : " – probleme"}`, log: `Mix audio în ${versionId}: ${report.ok ? "ok" : report.problems.join("; ")}` });
-  return report;
+  return finishAudio(report);
+
+  async function computeMix(): Promise<MixReport> {
+    let music: { audio: ReturnType<typeof composeMusic>["audio"]; gainDb: number } | undefined;
+    if (brief.audio.music.mode === "synth" && sb.audio.music) {
+      const bpm = t.audio.beatGrid?.bpm ?? 110;
+      const dir = DIRECTIONS[sb.direction ?? brief.direction ?? "technical"];
+      log(`Muzică sintetizată: ${bpm} BPM, dispoziție ${brief.audio.music.mood ?? dir.mood}`);
+      const res = composeMusic({
+        bpm,
+        durationSec,
+        mood: brief.audio.music.mood ?? dir.mood,
+        seed: project.seed,
+        sections: t.scenes.map((s) => ({ startSec: s.from / fps, endSec: (s.from + s.durationInFrames) / fps, energy: s.meta.energy, name: s.id })),
+        accents: t.scenes.filter((s) => s.meta.narrativeRole === "reveal").map((s) => s.from / fps),
+        silences,
+      });
+      music = { audio: res.audio, gainDb: sb.audio.musicGainDb };
+    } else if (brief.audio.music.mode === "user-file" && sb.audio.music) {
+      const a = loadAssets(projectId).assets.find((x) => x.id === brief.audio.music.assetId);
+      if (!a) throw new MmsError("MUSIC_MISSING", "Lipsește fișierul de muzică al utilizatorului.");
+      log(`Muzica utilizatorului: ${a.originalName}`);
+      music = { audio: await decodeAudio(path.join(projectDir(projectId), a.file)), gainDb: sb.audio.musicGainDb };
+    }
+    const voice = t.audio.cues.filter((c) => c.kind === "voice").map((c) => ({ audio: readWavPublic(c.sound), atSec: c.atFrame / fps, gainDb: c.gainDb }));
+    const sfx = t.audio.cues.filter((c) => c.kind === "sfx").map((c) => ({ audio: getSfx(c.sound), atSec: c.atFrame / fps, gainDb: c.gainDb + sb.audio.sfxGainDb, pan: c.pan }));
+    log(`Mix: ${voice.length} replici, ${sfx.length} efecte, muzică: ${music ? "da" : "nu"}`);
+    const out = mix({
+      durationSec,
+      music: music ? { audio: music.audio, gainDb: music.gainDb, loop: brief.audio.music.mode === "user-file", fadeOutSec: 0.8 } : undefined,
+      voice,
+      sfx,
+      duck: { amountDb: sb.audio.duckDb, rampMs: 500, padMs: 120 },
+      intentionalSilences: silences,
+      targetLufs: -14,
+      truePeakCeiling: -1,
+    });
+    writeWav(mixFile, out.master, 24);
+    return MixReportSchema.parse(out.report);
+  }
+
+  function finishAudio(report: MixReport): MixReport {
+    writeVersionJson(projectId, versionId, "audio/mix-report.json", report);
+    writeVersionJson(projectId, versionId, "audio/cue-sheet.json", t.audio.cues.map((c) => ({ ...c, timecode: formatTimecode(c.atFrame, fps) })));
+    // subtitrări .srt (dacă sunt cerute)
+    if (brief.captions.srt && t.captions) fs.writeFileSync(versionFile(projectId, versionId, "audio/captions.srt"), toSrt(t), "utf8");
+    const src = projectPublicPath(projectId, `versions/${versionId}/audio/mix.wav`);
+    for (const f of project.formats) {
+      const tf = loadTimeline(projectId, versionId, f.id);
+      if (tf.durationInFrames !== t.durationInFrames || tf.fps !== t.fps) throw new MmsError("FORMAT_TIMING", `Formatul ${f.id} are altă durată decât ${primary.id}; mixul nu se poate împărți.`);
+      saveTimeline(projectId, versionId, { ...tf, audio: { ...tf.audio, src } });
+    }
+    updateState(projectId, { step: "audio", note: `${report.integratedLufs ?? "?"} LUFS, TP ${report.truePeakDbtp} dBTP${report.ok ? "" : " – probleme"}`, log: `Mix audio în ${versionId}: ${report.ok ? "ok" : report.problems.join("; ")}` });
+    return report;
+  }
 }
 
 function readWavPublic(p: string) {
@@ -356,11 +393,23 @@ export function toSrt(t: Timeline): string {
 export interface PreviewResult {
   file: string;
   contactSheet: string;
-  check: Awaited<ReturnType<typeof analyzeVideo>>;
+  check: Awaited<ReturnType<typeof analyzeVideo>> & { renderKey?: string };
   renderMs: number;
+  /** true = același timeline (imagine + sunet) era deja randat: video-ul s-a refolosit, fără randare */
+  reused: boolean;
 }
 
-export async function stepPreview(projectId: string, versionId: string, formatId: string | null, log: Log = noop, opts: { onProgress?: (p: number) => void; frameRange?: [number, number] } = {}): Promise<PreviewResult> {
+function linkOrCopy(src: string, dst: string): void {
+  fs.mkdirSync(path.dirname(dst), { recursive: true });
+  if (fs.existsSync(dst)) fs.rmSync(dst);
+  try {
+    fs.linkSync(src, dst);
+  } catch {
+    fs.copyFileSync(src, dst);
+  }
+}
+
+export async function stepPreview(projectId: string, versionId: string, formatId: string | null, log: Log = noop, opts: { onProgress?: (p: number) => void; frameRange?: [number, number]; force?: boolean } = {}): Promise<PreviewResult> {
   const project = loadProject(projectId);
   const fmt = formatId ?? project.formats[0].id;
   const t = loadTimeline(projectId, versionId, fmt);
@@ -368,7 +417,21 @@ export async function stepPreview(projectId: string, versionId: string, formatId
   const renders = versionFile(projectId, versionId, "renders");
   const label = opts.frameRange ? `preview-${fmt}-${opts.frameRange[0]}-${opts.frameRange[1]}` : `preview-${fmt}`;
   const file = path.join(renders, `${label}.mp4`);
+  // preview-ul e adresat prin conținut: același timeline (imagine) + același mix (sunet) = același video
+  const renderKey = timelineRenderKey(t, fileFingerprint(versionFile(projectId, versionId, "audio/mix.wav")));
+  const cacheBase = path.join(projectDir(projectId), "cache", "renders", `${renderKey}${opts.frameRange ? `-${opts.frameRange[0]}-${opts.frameRange[1]}` : ""}`);
+  const cached = fs.existsSync(`${cacheBase}.mp4`) && fs.existsSync(`${cacheBase}.check.json`) && fs.existsSync(`${cacheBase}.contact.png`);
   if (fs.existsSync(file)) fs.renameSync(file, path.join(renders, `${label}-inainte-${Date.now()}.mp4`));
+  if (cached && !opts.force) {
+    log(`Preview ${fmt}: același timeline și același sunet erau deja randate; refolosesc video-ul (fără randare).`);
+    linkOrCopy(`${cacheBase}.mp4`, file);
+    const sheetOut = path.join(renders, `contact-${fmt}.png`);
+    linkOrCopy(`${cacheBase}.contact.png`, sheetOut);
+    const check = { ...(JSON.parse(fs.readFileSync(`${cacheBase}.check.json`, "utf8")) as Awaited<ReturnType<typeof analyzeVideo>>), renderKey };
+    writeJson(versionFile(projectId, versionId, `renders/check-${fmt}.json`), check);
+    if (!opts.frameRange) finishPreview(check);
+    return { file, contactSheet: sheetOut, check, renderMs: 0, reused: true };
+  }
   log(`Randez preview ${fmt}: ${(t.durationInFrames / t.fps).toFixed(1)} s…`);
   const r = await renderTimelineVideo(t, { out: file, muted: !t.audio.src, frameRange: opts.frameRange, onProgress: (p) => opts.onProgress?.(p.progress) });
   log(`  → ${path.relative(PATHS.root, file)} în ${(r.durationMs / 1000).toFixed(0)} s`);
@@ -386,16 +449,22 @@ export async function stepPreview(projectId: string, versionId: string, formatId
   const pub = stills.map((s) => projectPublicPath(projectId, path.relative(projectDir(projectId), s).replace(/\\/g, "/")));
   const cell = t.width > t.height ? { w: 320, h: 180 } : t.width === t.height ? { w: 240, h: 240 } : { w: 180, h: 320 };
   const sheet = await renderContactSheet(pub, list.map((f) => formatTimecode(f, t.fps)), path.join(renders, `contact-${fmt}.png`), { cols: t.width > t.height ? 6 : 8, cellWidth: cell.w, cellHeight: cell.h, title: `${project.name} · ${versionId} · ${fmt}` });
-  const check = await analyzeVideo(file, t.fps);
+  const check = { ...(await analyzeVideo(file, t.fps)), renderKey };
   // raportul descrie randarea; nu modifică versiunea, deci se scrie și pe o versiune înghețată
   writeJson(versionFile(projectId, versionId, `renders/check-${fmt}.json`), check);
-  if (!opts.frameRange) {
+  fs.mkdirSync(path.dirname(cacheBase), { recursive: true });
+  linkOrCopy(file, `${cacheBase}.mp4`);
+  linkOrCopy(sheet, `${cacheBase}.contact.png`);
+  writeJson(`${cacheBase}.check.json`, check);
+  if (!opts.frameRange) finishPreview(check);
+  return { file, contactSheet: sheet, check, renderMs: r.durationMs, reused: false };
+
+  function finishPreview(c: { problems: string[] }): void {
     freezeVersion(projectId, versionId, "preview");
     const p = loadProject(projectId);
     saveProject({ ...p, status: "preview" });
-    updateState(projectId, { step: "preview", note: `${fmt}: ${check.problems.length ? check.problems.join(" ") : "fără probleme tehnice"}`, next: ["Privește și ascultă preview-ul; dă note pe timestamp (secunda X: problema).", "Rulează critica (mms critique) și corectează scenele sub 8/10."], log: `Preview ${fmt} pentru ${versionId}.` });
+    updateState(projectId, { step: "preview", note: `${fmt}: ${c.problems.length ? c.problems.join(" ") : "fără probleme tehnice"}`, next: ["Privește și ascultă preview-ul; dă note pe timestamp (secunda X: problema).", "Verifică scorul de calitate (mms quality) și corectează ce e sub prag."], log: `Preview ${fmt} pentru ${versionId}.` });
   }
-  return { file, contactSheet: sheet, check, renderMs: r.durationMs };
 }
 
 /** Exportul final: doar după ce utilizatorul a scris exact „render final” pentru această versiune. */
@@ -408,7 +477,7 @@ export async function stepFinalRender(projectId: string, versionId: string, form
   const t = loadTimeline(projectId, versionId, fmt);
   if (t.concept) throw new MmsError("FINAL_CONCEPT", "Timeline-ul folosește materiale fără drepturi confirmate (concept).", "Confirmă drepturile sau înlocuiește materialele, apoi recompilează.");
   const val = validateTimeline(t, { assets: loadAssets(projectId), research: loadResearch(projectId), format: project.formats.find((f) => f.id === fmt)! });
-  const blockers = val.findings.filter((f) => f.severity === "blocker");
+  const blockers = val.findings.filter((f) => f.severity === "critical");
   if (blockers.length) throw new MmsError("FINAL_BLOCKED", `Validarea are ${blockers.length} blocaje:\n${blockers.map((b) => `  • ${b.timecode ?? ""} ${b.problem}`).join("\n")}`);
   const reportFile = versionFile(projectId, versionId, "audio/mix-report.json");
   if (!fs.existsSync(reportFile)) throw new MmsError("FINAL_NO_AUDIO", "Lipsește mixul audio verificat.", "Rulează pasul audio.");

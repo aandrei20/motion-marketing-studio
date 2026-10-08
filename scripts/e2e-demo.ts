@@ -1,12 +1,14 @@
 /**
  * Testul de acceptanță cap-coadă pe produsul demo FICTIV (examples/demo-product):
  * intrare → captură reală → research → brand → script → storyboard → voce → timeline → audio →
- * preview randat (MP4) → verificare (video, audio, validare) → critică.
+ * bucla de calitate adaptivă (fără randare / cadre-cheie) → [corecturi automate] → un singur preview
+ * randat pentru om (MP4) → final QA pe video.
  *
  * Rulează: npm run e2e            (proiectul „e2e-kolibri” în projects/)
  *          npm run e2e -- --fresh (șterge întâi proiectul de test e2e-kolibri, doar pe acesta)
  *          npm run e2e -- --auto  (script și storyboard generate automat, fără cele curate)
- *          npm run e2e -- --no-render (fără randare MP4)
+ *          npm run e2e -- --no-render (fără randare: bucla de calitate la adâncimea fast)
+ *          npm run e2e -- --autofix   (plus corecturile automate, cu rollback)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -17,8 +19,9 @@ import { makeFormat } from "../src/core/formats";
 import { PATHS } from "../src/core/paths";
 import { Brief, Script, Storyboard } from "../src/core/schema";
 import { validateScript } from "../src/creative/script";
-import { critiqueRound } from "../src/pipeline/iterate";
-import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepPreview, stepScript, stepStoryboard, stepVoice } from "../src/pipeline/steps";
+import { runQuality } from "../src/quality/run";
+import { autoFixLoop } from "../src/quality/autofix";
+import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepScript, stepStoryboard, stepVoice } from "../src/pipeline/steps";
 import { createProject, loadBrief, loadProject, loadResearch, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
 import { setClaimStatus } from "../src/research/extract";
 
@@ -29,12 +32,13 @@ export interface E2EOptions {
   fresh?: boolean;
   auto?: boolean;
   render?: boolean;
+  autofix?: boolean;
   log?: (m: string) => void;
 }
 
-export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionId: string }> {
+export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionId: string; finalVersion: string }> {
   const ID = o.id ?? "e2e-kolibri";
-  const args = new Set([o.fresh ? "--fresh" : "", o.auto ? "--auto" : "", o.render === false ? "--no-render" : ""]);
+  const args = new Set([o.fresh ? "--fresh" : "", o.auto ? "--auto" : "", o.render === false ? "--no-render" : "", o.autofix ? "--autofix" : ""]);
   const log = o.log ?? ((m: string) => console.log(m));
   const t0 = Date.now();
   if (projectExists(ID)) {
@@ -90,7 +94,7 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
   const v = loadProject(ID).currentVersion!;
   const issues = validateScript(Script.parse(readJsonLoose(path.join(projectDir(ID), "versions", v, "script.json"))), loadBrief(ID), loadResearch(ID));
   for (const i of issues) log(`   script [${i.severity}] ${i.message}`);
-  if (issues.some((i) => i.severity === "blocker")) throw new Error("Scriptul are blocaje.");
+  if (issues.some((i) => i.severity === "critical")) throw new Error("Scriptul are blocaje.");
 
   log("5. Voce");
   await stepVoice(ID, v, log);
@@ -106,26 +110,36 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
   log(`   ${mix.integratedLufs} LUFS, TP ${mix.truePeakDbtp} dBTP, ${mix.ok ? "OK" : mix.problems.join("; ")}`);
   if (!mix.ok) throw new Error("Mixul audio nu trece verificarea.");
 
-  if (!args.has("--no-render")) {
-    for (const f of loadProject(ID).formats) {
-      log(`8. Preview ${f.id}`);
-      const r = await stepPreview(ID, v, f.id, log);
-      log(`   ${path.relative(PATHS.root, r.file)} · ${r.check.frames} cadre analizate · ${r.check.problems.length ? r.check.problems.join(" ") : "fără cadre negre, flash-uri sau înghețări"}`);
-      if (r.check.blackFrames.length || r.check.maxFlashesPerSec > 2) throw new Error("Verificarea video a eșuat.");
-    }
+  // 8. Bucla de calitate adaptivă: fără randare (fast) sau cu cadre-cheie (standard), fără video întreg
+  const depth = args.has("--no-render") ? "fast" : "standard";
+  log(`8. Calitate (adâncime ${depth}: ${depth === "fast" ? "fără randare" : "cadre-cheie, fără video întreg"})`);
+  const q = await runQuality(ID, { versionId: v, depth, log: (m) => log(`   ${m}`) });
+  log(`   scor ${q.run.score.overall}/100 · ${q.run.score.verdict} · rubrica: minim ${q.round.minScene}/10 – ${q.decision.message}`);
+  for (const x of q.run.issues.slice(0, 25)) log(`   ${x.timecode ?? "--"} [${x.severity}] ${x.category}: ${x.problem}`);
+  let finalVersion = v;
+  if (args.has("--autofix")) {
+    log("9. Corecturi automate (cu rollback)");
+    const fx = await autoFixLoop(ID, { depth, log: (m) => log(`   ${m}`) });
+    finalVersion = fx.finalVersion;
+    log(`   ${fx.startVersion} → ${fx.finalVersion}: ${fx.finalScore.overall}/100 · ${fx.stopReason}`);
   }
-  log("9. Critică automată (rubrica fixă)");
-  const cr = critiqueRound(ID, v);
-  for (const [k, val] of Object.entries(cr.round.overall)) log(`   ${k.padEnd(10)} ${val}`);
-  log(`   scor minim pe scenă: ${cr.round.minScene} – ${cr.decision.message}`);
-  for (const f of cr.round.findings) log(`   ${f.timecode ?? "--"} [${f.severity}] ${f.problem}`);
+  if (!args.has("--no-render")) {
+    log("10. Preview pentru om (un singur video pe format, sau refolosit) + final QA pe video");
+    const fin = await runQuality(ID, { versionId: finalVersion, depth: "final", log: (m) => log(`   ${m}`) });
+    for (const fid of fin.run.formats) {
+      const chk = JSON.parse(fs.readFileSync(path.join(projectDir(ID), "versions", finalVersion, "renders", `check-${fid}.json`), "utf8")) as { frames: number; blackFrames: number[]; maxFlashesPerSec: number; problems: string[] };
+      log(`   [${fid}] ${chk.frames} cadre analizate · ${chk.problems.length ? chk.problems.join(" ") : "fără cadre negre, flash-uri sau înghețări"}`);
+      if (chk.blackFrames.length || chk.maxFlashesPerSec > 2) throw new Error("Verificarea video a eșuat.");
+    }
+    log(`   final QA: ${fin.run.score.overall}/100 · ${fin.run.score.verdict} · video randat ${fin.run.renders.fullRendered}, refolosit ${fin.run.renders.fullReused}`);
+  }
   log(`\nGata în ${((Date.now() - t0) / 1000).toFixed(0)} s. Proiect: ${path.relative(PATHS.root, projectDir(ID))}`);
-  return { id: ID, versionId: v };
+  return { id: ID, versionId: v, finalVersion };
 }
 
 if (process.argv[1] && /e2e-demo\.ts$/.test(process.argv[1])) {
   const a = new Set(process.argv.slice(2));
-  runE2E({ fresh: a.has("--fresh"), auto: a.has("--auto"), render: !a.has("--no-render") })
+  runE2E({ fresh: a.has("--fresh"), auto: a.has("--auto"), render: !a.has("--no-render"), autofix: a.has("--autofix") })
     .then(() => shutdown())
     .catch(async (e) => {
       console.error(e);

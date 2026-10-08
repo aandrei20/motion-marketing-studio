@@ -15,7 +15,13 @@ import { PATHS } from "../core/paths";
 import { Brief, type AssetRole, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
 import { intakeMarkdown } from "../creative/intake";
 import { listTemplates } from "../creative/templates";
-import { addReview, critiqueRound, hookVariants, iterate } from "../pipeline/iterate";
+import { addReview, hookVariants, iterate } from "../pipeline/iterate";
+import { produce } from "../pipeline/produce";
+import { impactBetween } from "../pipeline/impact";
+import { runQuality, type QualityRun } from "../quality/run";
+import { autoFixLoop } from "../quality/autofix";
+import type { Depth } from "../quality/checks";
+import { applyEdit, redo, undo } from "../editing/history";
 import { approve, demoUrl, shutdown, writePostPack, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
 import { createProject, createVersion, listProjects, listVersions, loadAssets, loadProject, loadResearch, projectDir, saveBrief } from "../projects/store";
 import { analyzeReference, saveReferenceProfile } from "../references/analyze";
@@ -102,8 +108,16 @@ PRODUCȚIE
   compile <id>                           timeline-ul pentru toate formatele + validare
   audio <id>                             muzică, efecte, voce, mix (−14 LUFS, ≤ −1 dBTP)
   preview <id> [--format 9x16] [--from 0 --to 150]
-  make <id> [--skip-preview]             script → storyboard → voce → compile → audio → preview → critică
-  critique <id> [--format 9x16]          o rundă de critică automată (rubrica fixă)
+  make <id> [--depth standard] [--no-autofix] [--skip-preview]
+                                         script → storyboard → voce → timeline → mix → bucla de calitate
+                                         → corecturi automate → un singur preview la predare
+  quality <id> [--depth fast|standard|deep|final] [--format 9x16] [--version v3] [--force]
+                                         bucla de calitate adaptivă: 10 pase, metoda cea mai ieftină, cache
+  critique <id> [--format 9x16]          aceeași buclă la adâncimea „fast” (fără randare)
+  autofix <id> [--depth standard] [--max 3]   corecturi automate sigure, cu rollback
+  impact <id> [--from v2] [--to v3]      ce s-a schimbat între versiuni și ce trebuie refăcut
+  edit <id> --op '{"op":"scene-extend","sceneId":"s2-hook","deltaSec":0.5}' [--file ops.json] [--no-compile]
+  undo <id> | redo <id>                  anulează / reface ultima editare din versiunea curentă
   review <id> --file review.json         observațiile lui Claude / notele tale (vezi docs)
   iterate <id> "la 00:14 zoom pe câmpul de căutare"
   hook-variants <id> [--count 2] [--from v2]   câte o versiune pentru fiecare variantă de hook din script
@@ -320,38 +334,75 @@ async function main(): Promise<void> {
     }
     case "make": {
       const pid = need(id, "proiectul");
-      const p = loadProject(pid);
-      if (p.status === "intake") throw new MmsError("BRIEF_NOT_APPROVED", "Brief-ul nu e aprobat.", `Utilizatorul scrie „aprob”: npm run mms -- approve ${pid} brief "aprob"`);
-      const s = stepScript(pid);
-      s.issues.filter((i) => i.severity === "blocker").forEach((i) => log(`! script: ${i.message}`));
-      stepStoryboard(pid).rationale.forEach((x) => log(`• ${x}`));
-      await stepVoice(pid, loadProject(pid).currentVersion!, log);
-      const c = await stepCompile(pid, loadProject(pid).currentVersion!, log);
-      const v = c.versionId;
-      c.warnings.forEach((w) => log(`! ${w}`));
-      const mixR = await stepAudio(pid, v, log);
-      log(`Audio: ${mixR.integratedLufs} LUFS, TP ${mixR.truePeakDbtp} dBTP`);
-      if (!a.flags["skip-preview"]) {
-        for (const f of p.formats) {
-          const r = await stepPreview(pid, v, f.id, log, { onProgress: progressBar() });
-          log(`\nPreview ${f.id}: ${path.relative(PATHS.root, r.file)}`);
-        }
-      }
-      const cr = critiqueRound(pid, v);
-      log(`Critică: scor minim ${cr.round.minScene}/10 – ${cr.decision.message}`);
+      const r = await produce(pid, { log, depth: (str(a.flags.depth) as Depth | undefined) ?? "standard", autofix: !a.flags["no-autofix"], preview: !a.flags["skip-preview"], onProgress: progressBar(), stage: (n) => log(`\n— ${n} —`) });
+      const score = r.final?.score ?? r.autofix?.finalScore ?? r.first.score;
+      log(`\nVersiunea ${r.versionId}: calitate ${score.overall}/100 · ${score.verdict}`);
+      for (const x of score.reasons) log(`  ${x}`);
+      if (r.autofix?.needsHuman.length) log(`${r.autofix.needsHuman.length} probleme cer decizie creativă (vezi versions/${r.versionId}/autofix.json).`);
       return;
     }
-    case "critique": {
-      const r = critiqueRound(need(id, "proiectul"), str(a.flags.version), str(a.flags.format));
-      log(`Runda ${r.round.n} (${r.round.reviewer}): scor minim ${r.round.minScene}/10`);
-      for (const [k, v] of Object.entries(r.round.overall)) log(`  ${k.padEnd(10)} ${v}`);
-      for (const f of r.round.findings) log(`  ${f.timecode ?? "--:--"} [${f.severity}] ${f.problem} → ${f.recommendation}`);
+    case "critique":
+    case "quality": {
+      const pid = need(id, "proiectul");
+      const depth = (str(a.flags.depth) as Depth | undefined) ?? (cmd === "critique" ? "fast" : "standard");
+      const fmt = str(a.flags.format);
+      const r = await runQuality(pid, { versionId: str(a.flags.version), formats: fmt ? [fmt] : undefined, depth, log, force: !!a.flags.force, onProgress: progressBar() });
+      printQuality(r.run);
       log(r.decision.message);
+      return;
+    }
+    case "autofix": {
+      const pid = need(id, "proiectul");
+      const r = await autoFixLoop(pid, { depth: (str(a.flags.depth) as Depth | undefined) ?? "standard", maxIterations: a.flags.max ? Number(str(a.flags.max)) : undefined, log });
+      log(`\n${r.startVersion} → ${r.finalVersion}: ${r.finalScore.overall}/100 · ${r.finalScore.verdict}`);
+      log(r.stopReason);
+      for (const it of r.iterations) log(`  iterația ${it.n}: ${it.from} → ${it.to} ${it.decision === "kept" ? "păstrată" : "respinsă (rollback)"} – ${it.reason}`);
+      if (r.needsHuman.length) {
+        log(`\nCer decizie creativă (${r.needsHuman.length}):`);
+        for (const x of r.needsHuman.slice(0, 12)) log(`  ${x.timecode ?? "--:--"} [${x.severity}] ${x.problem} → ${x.recommendation}`);
+      }
+      if (r.checkpoint) log("\nRegula 7: 3 runde de corectură; arată progresul utilizatorului înainte de a continua.");
+      return;
+    }
+    case "impact": {
+      const pid = need(id, "proiectul");
+      const to = str(a.flags.to) ?? loadProject(pid).currentVersion!;
+      const from = str(a.flags.from) ?? listVersions(pid).find((v) => v.id === to)?.parent;
+      if (!from) throw new MmsError("ARG_MISSING", "Versiunea de comparat lipsește (--from vN).");
+      const r = impactBetween(pid, from, to);
+      log(`${from} → ${to}: artefacte schimbate: ${r.changes.artifacts.join(", ") || "niciunul"}`);
+      for (const x of r.plan.reasons) log(`  • ${x}`);
+      log(`  de refăcut: voce ${r.plan.rerun.voice ? "da" : "nu"}, mix ${r.plan.rerun.audio ? "da" : "nu"}, video ${r.plan.rerun.fullRender ? "da" : "nu"}`);
+      return;
+    }
+    case "edit": {
+      const pid = need(id, "proiectul");
+      const file = str(a.flags.file);
+      const raw = file ? readJsonLoose(path.resolve(file)) : JSON.parse(need(str(a.flags.op), "--op (JSON) sau --file ops.json"));
+      const ops = Array.isArray(raw) ? raw : [raw];
+      const r = applyEdit(pid, ops, { source: "editor" });
+      r.applied.forEach((x) => log(`• ${x.description}`));
+      if (!a.flags["no-compile"]) {
+        const c = await stepCompile(pid, r.versionId, log);
+        await stepAudio(pid, c.versionId, log);
+      }
+      log(`Versiunea ${r.versionId} (editarea ${r.entry.n}).`);
+      return;
+    }
+    case "undo":
+    case "redo": {
+      const pid = need(id, "proiectul");
+      const r = cmd === "undo" ? undo(pid) : redo(pid);
+      log(`${cmd === "undo" ? "Anulat" : "Refăcut"}: ${r.entry.description}`);
+      if (!a.flags["no-compile"]) {
+        const c = await stepCompile(pid, r.versionId, log);
+        await stepAudio(pid, c.versionId, log);
+      }
       return;
     }
     case "review": {
       const pid = need(id, "proiectul");
-      const data = readJsonLoose(path.resolve(need(str(a.flags.file), "--file"))) as Parameters<typeof addReview>[2];
+      const data = readJsonLoose(path.resolve(need(str(a.flags.file), "--file")));
       const r = addReview(pid, str(a.flags.version) ?? loadProject(pid).currentVersion!, data);
       log(`Observații adăugate: ${r.findings.length}`);
       return;
@@ -420,6 +471,24 @@ async function main(): Promise<void> {
     default:
       throw new MmsError("UNKNOWN_COMMAND", `Comandă necunoscută: ${cmd}`, "Vezi: npm run mms -- help");
   }
+}
+
+function printQuality(r: QualityRun): void {
+  const s = r.score;
+  log(`\nRunda ${r.round} · ${r.versionId} · adâncime ${r.depth} · ${(r.durationMs / 1000).toFixed(1)} s`);
+  log(`Calitate ${s.overall}/100 · ${s.verdict} · acoperire ${Math.round(s.coverage * 100)}%`);
+  for (const [k, v] of Object.entries(s.categories)) log(`  ${k.padEnd(11)} ${v === null ? "neevaluat" : v}`);
+  if (r.rubric.minScene !== null) log(`  rubrica regulii 7: scor minim pe scenă ${r.rubric.minScene}/10`);
+  log(`Randări: ${r.renders.stillsRendered} cadre noi, ${r.renders.stillsReused} din cache; mișcare ${r.renders.motionFramesRendered} cadre; video ${r.renders.fullRendered} randat, ${r.renders.fullReused} refolosit`);
+  for (const p of r.passes) {
+    const ran = p.checks.filter((c) => c.status !== "skipped");
+    const skipped = p.checks.filter((c) => c.status === "skipped");
+    log(`  PASS ${p.n} ${p.title}: ${ran.map((c) => `${c.id}(${c.method}${c.status === "cached" ? ", cache" : ""})`).join(" ") || "—"}${skipped.length ? ` · sărite: ${skipped.map((c) => c.id).join(", ")}` : ""}`);
+  }
+  log(`\nProbleme (${r.issues.length}):`);
+  for (const x of r.issues.slice(0, 40)) log(`  ${(x.timecode ?? "--:--").padEnd(8)} [${x.severity}] ${x.category}/${x.dimension}${x.formatId ? ` [${x.formatId}]` : ""}: ${x.problem}${x.autoFixable ? " (corectabil automat)" : ""}`);
+  if (r.issues.length > 40) log(`  … și încă ${r.issues.length - 40} (versions/${r.versionId}/quality.json)`);
+  for (const x of s.reasons) log(`• ${x}`);
 }
 
 function listCaptureCount(pid: string): number {

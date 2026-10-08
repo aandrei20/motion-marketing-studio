@@ -51,6 +51,22 @@ export const CapabilityUse = z.object({
 });
 export type CapabilityUse = z.infer<typeof CapabilityUse>;
 
+/**
+ * Suprascriere pe un strat al rețetei: slot = capabilitatea sau o parte din id-ul stratului.
+ * Poate înlocui animația, schimba parametri, ascunde stratul sau îi decala startul.
+ */
+export const LayerOverride = z.object({
+  slot: z.string().min(1),
+  capability: z.string().min(1).optional(),
+  params: z.record(z.string(), z.unknown()).default({}),
+  hidden: z.boolean().optional(),
+  /** decalajul startului în scenă, secunde */
+  shiftSec: z.number().min(-10).max(10).optional(),
+  /** blocat: corecturile automate nu îl ating */
+  locked: z.boolean().optional(),
+});
+export type LayerOverride = z.infer<typeof LayerOverride>;
+
 export const TransitionUse = z.object({
   capability: z.string().min(1),
   /** null = durata implicită a tranziției, ajustată după ritm; cadre la 30 fps (se scalează la FPS-ul formatului) */
@@ -86,7 +102,7 @@ export const StoryboardScene = z.object({
     .object({ assetId: z.string(), region: Slug.optional(), point: NormPoint.optional() })
     .optional(),
   camera: CapabilityUse.optional(),
-  overrides: z.array(CapabilityUse.extend({ slot: z.string() })).default([]),
+  overrides: z.array(LayerOverride).default([]),
   transitionIn: TransitionUse.nullable().default(null),
   typography: z.enum(["kinetic", "editorial", "minimal", "technical"]).optional(),
   audio: z
@@ -102,6 +118,8 @@ export const StoryboardScene = z.object({
   composition: CompositionKind.default("thirds-left"),
   cta: z.enum(["none", "setup", "payoff", "hold"]).default("none"),
   notes: z.string().default(""),
+  /** blocată de utilizator: corecturile automate nu o modifică */
+  locked: z.boolean().default(false),
 });
 export type StoryboardScene = z.infer<typeof StoryboardScene>;
 export type StoryboardSceneInput = z.input<typeof StoryboardScene>;
