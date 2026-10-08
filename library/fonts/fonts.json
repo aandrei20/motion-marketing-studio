@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "note": "Fonturi incluse în repo. Toate sub SIL Open Font License 1.1 (fișierul OFL.txt din fiecare folder). Sursa: github.com/google/fonts, descărcate pe 2026-10-08.",
+  "fonts": [
+    {
+      "id": "inter",
+      "family": "Inter",
+      "file": "library/fonts/inter/Inter-Variable.ttf",
+      "weight": "100 900",
+      "axes": ["opsz", "wght"],
+      "roles": ["body", "display"],
+      "personality": ["neutral", "technical", "minimal", "saas"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/inter"
+    },
+    {
+      "id": "archivo",
+      "family": "Archivo",
+      "file": "library/fonts/archivo/Archivo-Variable.ttf",
+      "weight": "100 900",
+      "axes": ["wght", "wdth"],
+      "roles": ["display"],
+      "personality": ["aggressive", "energetic", "bold", "social"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/archivo"
+    },
+    {
+      "id": "space-grotesk",
+      "family": "Space Grotesk",
+      "file": "library/fonts/space-grotesk/SpaceGrotesk-Variable.ttf",
+      "weight": "300 700",
+      "axes": ["wght"],
+      "roles": ["display", "body"],
+      "personality": ["technical", "energetic", "startup", "ai"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/spacegrotesk"
+    },
+    {
+      "id": "instrument-serif",
+      "family": "Instrument Serif",
+      "file": "library/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
+      "weight": "400",
+      "axes": [],
+      "roles": ["display"],
+      "personality": ["premium", "cinematic", "emotional", "editorial"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/instrumentserif"
+    },
+    {
+      "id": "instrument-serif-italic",
+      "family": "Instrument Serif",
+      "style": "italic",
+      "file": "library/fonts/instrument-serif/InstrumentSerif-Italic.ttf",
+      "weight": "400",
+      "axes": [],
+      "roles": ["display"],
+      "personality": ["premium", "cinematic", "emotional", "editorial"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/instrumentserif"
+    },
+    {
+      "id": "jetbrains-mono",
+      "family": "JetBrains Mono",
+      "file": "library/fonts/jetbrains-mono/JetBrainsMono-Variable.ttf",
+      "weight": "100 800",
+      "axes": ["wght"],
+      "roles": ["mono"],
+      "personality": ["technical", "developer"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/jetbrainsmono"
+    },
+    {
+      "id": "manrope",
+      "family": "Manrope",
+      "file": "library/fonts/manrope/Manrope-Variable.ttf",
+      "weight": "200 800",
+      "axes": ["wght"],
+      "roles": ["body", "display"],
+      "personality": ["friendly", "productivity", "fintech", "minimal"],
+      "license": "OFL-1.1",
+      "source": "https://github.com/google/fonts/tree/main/ofl/manrope"
+    }
+  ]
+}

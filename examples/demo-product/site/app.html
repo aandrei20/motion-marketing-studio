@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kolibri – Azi</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- PRODUS FICTIV de test. Interfața e reală (HTML), deci capturile ei sunt footage real al produsului de test. -->
+  <div class="app">
+    <aside class="side">
+      <div class="brand"><img src="logo.svg" alt="" style="width:30px;height:30px" /> Kolibri</div>
+      <a class="active" href="#" data-nav="azi">☀ Azi <span class="count">6</span></a>
+      <a href="#" data-nav="inbox">✉ Inbox <span class="count">3</span></a>
+      <a href="#" data-nav="tabla">▦ Tabla echipei</a>
+      <a href="#" data-nav="rapoarte">↗ Rapoarte</a>
+      <div class="projects">Proiecte</div>
+      <a href="#"><span class="dot" style="background:#6c5cff"></span> Lansare toamnă</a>
+      <a href="#"><span class="dot" style="background:#2de2b0"></span> Site nou</a>
+      <a href="#"><span class="dot" style="background:#ffb547"></span> Cercetare utilizatori</a>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <label class="search" id="search-box">⌕ <input id="search" placeholder="Caută sarcini, oameni, fișiere…" autocomplete="off" /> <kbd>Ctrl K</kbd></label>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" id="new-task">+ Sarcină nouă</button>
+        <div class="bell" title="Notificări">🔔</div>
+        <div class="avatar">AM</div>
+      </div>
+
+      <div class="page-head">
+        <div><h1>Bună dimineața, Ana</h1><p>Ai 6 sarcini azi. Două sunt blocate de ieri.</p></div>
+      </div>
+
+      <div class="grid">
+        <div class="board" id="board">
+          <section class="column" data-col="todo"><h3>De făcut <span>3</span></h3>
+            <article class="card" data-title="Brief campanie toamnă"><h4>Brief campanie toamnă</h4><div class="meta"><span class="pill p">Marketing</span> azi</div></article>
+            <article class="card" data-title="Interviuri utilizatori"><h4>Interviuri utilizatori</h4><div class="meta"><span class="pill w">Cercetare</span> mâine</div></article>
+            <article class="card" data-title="Texte pentru onboarding"><h4>Texte pentru onboarding</h4><div class="meta"><span class="pill a">Produs</span> vineri</div></article>
+          </section>
+          <section class="column" data-col="doing"><h3>În lucru <span>2</span></h3>
+            <article class="card" data-title="Pagina de prețuri v2"><h4>Pagina de prețuri v2</h4><div class="meta"><span class="pill p">Web</span> 60%</div><div class="progress"><span style="width:60%"></span></div></article>
+            <article class="card" data-title="Raport lunar septembrie"><h4>Raport lunar septembrie</h4><div class="meta"><span class="pill a">Date</span> 30%</div><div class="progress"><span style="width:30%"></span></div></article>
+          </section>
+          <section class="column" data-col="done"><h3>Gata <span>4</span></h3>
+            <article class="card" data-title="Onboarding nou"><h4>Onboarding nou</h4><div class="meta"><span class="pill a">Produs</span> ieri</div></article>
+            <article class="card" data-title="Logo actualizat"><h4>Logo actualizat</h4><div class="meta"><span class="pill p">Brand</span> luni</div></article>
+          </section>
+        </div>
+        <div>
+          <div class="panel" id="focus-panel"><h3>Focusul zilei</h3>
+            <div class="focus-list">
+              <div class="focus-item"><span class="check done"></span> Trimite brief-ul la design</div>
+              <div class="focus-item"><span class="check"></span> Aprobă textele de onboarding</div>
+              <div class="focus-item"><span class="check"></span> Deblochează pagina de prețuri</div>
+            </div>
+          </div>
+          <div class="panel" id="stats-panel"><h3>Săptămâna asta</h3>
+            <div class="stat">18 / 24</div><div class="stat-sub">sarcini terminate</div>
+            <svg viewBox="0 0 280 90" width="100%" height="90" style="margin-top:14px">
+              <polyline fill="none" stroke="#2de2b0" stroke-width="3" points="0,70 46,62 92,66 138,44 184,40 230,24 276,16" />
+              <polyline fill="rgba(45,226,176,0.12)" stroke="none" points="0,70 46,62 92,66 138,44 184,40 230,24 276,16 276,90 0,90" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal"><div class="modal"><h3>Sarcină nouă</h3><input id="task-title" placeholder="Ce trebuie făcut?" /><div class="row"><button class="btn btn-ghost" id="cancel">Renunță</button><button class="btn btn-primary" id="save">Adaugă</button></div></div></div>
+
+  <script>
+    // filtrare reală la tastare: rezultatul vizibil în capturi și înregistrări
+    const search = document.getElementById("search");
+    search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      document.querySelectorAll(".card").forEach((c) => {
+        c.style.display = !q || c.dataset.title.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+    const modal = document.getElementById("modal");
+    document.getElementById("new-task").addEventListener("click", () => { modal.classList.add("open"); document.getElementById("task-title").focus(); });
+    document.getElementById("cancel").addEventListener("click", () => modal.classList.remove("open"));
+    document.getElementById("save").addEventListener("click", () => {
+      const t = document.getElementById("task-title").value.trim();
+      if (t) {
+        const card = document.createElement("article");
+        card.className = "card"; card.dataset.title = t;
+        card.innerHTML = `<h4>${t.replace(/</g, "&lt;")}</h4><div class="meta"><span class="pill a">Nou</span> azi</div>`;
+        document.querySelector('[data-col="todo"]').insertBefore(card, document.querySelector('[data-col="todo"] .card'));
+      }
+      modal.classList.remove("open");
+    });
+  </script>
+</body>
+</html>
