@@ -42,7 +42,7 @@ FFmpeg și Python **nu** trebuie instalate separat: FFmpeg vine cu Remotion, iar
 
 ```powershell
 cd C:\dev
-git clone <adresa-repo> motion-marketing-studio
+git clone https://github.com/aandrei20/motion-marketing-studio.git motion-marketing-studio
 cd motion-marketing-studio
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
