@@ -11,6 +11,7 @@ import { thumbnail } from "../../src/assets/analyze";
 import { buildCatalogTimeline } from "../../src/motion/catalog";
 import { closeBrowser, renderStills } from "../../src/renderer/node/render";
 import { compareFrames, RASTER_TOLERANCE } from "./pixels";
+import { checkGolden } from "./golden";
 
 const out = fs.mkdtempSync(path.join(os.tmpdir(), "mms-catalog-"));
 /** capabilități care, prin definiție, umplu cadrul cu o singură culoare în momentul eșantionat */
@@ -52,6 +53,11 @@ describe("catalogul de capabilități", () => {
       if (v < 0.02) empty.push(`${id} (variație ${v.toFixed(3)})`);
     }
     expect(empty).toEqual([]);
+    // regresia vizuală: amprenta perceptuală a fiecărei capabilități față de referința din tests/golden/catalog.json
+    const g = await checkGolden("catalog", entries.map((e, i) => ({ id: e.id, file: files[i], aspect: 16 / 9 })));
+    if (g.written) console.log(`Referințe scrise: tests/golden/catalog.json (${entries.length} capabilități)`);
+    expect(g.missing, "capabilități fără referință: rulează cu MMS_UPDATE_GOLDEN=1 după ce verifici vizual").toEqual([]);
+    expect(g.regressions).toEqual([]);
   }, 1_800_000);
 
   it(`randarea e deterministă (aceleași cadre ies identice; rasterizarea poate varia cu cel mult ${RASTER_TOLERANCE}/255)`, async () => {
