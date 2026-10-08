@@ -147,6 +147,9 @@ function parseLayer(l: TimelineLayer, sceneId: string): TimelineLayer {
   return { ...l, params: r.data as Record<string, unknown>, modifiers, children: l.children.map((c) => parseLayer(c, sceneId)) };
 }
 
+/** FPS-ul de referință pentru structura tăieturilor (duratele tranzițiilor din registry sunt la 30 fps). */
+export const REF_FPS = 30;
+
 export function compileTimeline(input: CompileInput): CompileResult {
   const { project, format, brief, brand, research, assets, script, storyboard } = input;
   const warnings: string[] = [];
@@ -188,42 +191,56 @@ export function compileTimeline(input: CompileInput): CompileResult {
     warnings.push(`Durata naturală (${natural.toFixed(1)} s) depășește ținta (${target} s) cu peste 15%: vocea și timpul de citire nu permit mai scurt. Scurtează scriptul sau acceptă durata.`);
   }
 
-  // 3. tranziții și tăieturi pe ritm
-  const beatFrames: number[] = [];
+  // 3. tranziții și tăieturi pe ritm. Structura se calculează o singură dată, la REF_FPS (duratele tranzițiilor
+  //    din registry și din storyboard sunt în cadre la 30 fps), apoi se convertește prin secunde la FPS-ul formatului.
+  //    Așa toate formatele au aceleași tăieturi (±1 cadru), iar mixul audio comun rămâne sincron.
+  const R = REF_FPS;
+  const beatRef: number[] = [];
   if (input.beatGrid) {
-    const step = (60 / input.beatGrid.bpm) * fps;
-    for (let f = input.beatGrid.offsetSec * fps; f < (target + 20) * fps; f += step) beatFrames.push(Math.round(f));
+    const step = (60 / input.beatGrid.bpm) * R;
+    for (let f = input.beatGrid.offsetSec * R; f < (target + 20) * R; f += step) beatRef.push(Math.round(f));
   }
-  const durFrames = plans.map((p) => Math.round(p.d.sec * fps));
-  const minFrames = plans.map((p) => Math.ceil(p.d.minSec * fps));
+  const durRef = plans.map((p) => Math.round(p.d.sec * R));
+  const minRef = plans.map((p) => Math.ceil(p.d.minSec * R));
   let previousTransition: string | null = null;
-  const transitions: Array<{ capability: string; frames: number; params: Record<string, unknown> } | null> = plans.map((p, i) => {
+  const trRef: Array<{ capability: string; frames: number; params: Record<string, unknown> } | null> = plans.map((p, i) => {
     if (i === 0) return null;
     const prev = plans[i - 1].sc;
     const chosen = p.sc.transitionIn?.capability ?? chooseTransition({ energy: prev.energy, role: prev.narrativeRole }, { energy: p.sc.energy, role: p.sc.narrativeRole, id: p.sc.id }, dir, project.seed, forbidden, previousTransition);
     previousTransition = chosen;
     const tr = getTransition(chosen);
     const params = tr.params.parse(p.sc.transitionIn?.params ?? {}) as Record<string, unknown>;
-    const frames = p.sc.transitionIn?.durationFrames ?? transitionFrames(tr.defaultDuration, brief.pacing, durFrames[i - 1], durFrames[i]);
-    return { capability: chosen, frames: Math.min(frames, Math.floor(Math.min(durFrames[i - 1], durFrames[i]) * 0.45)), params };
+    const frames = p.sc.transitionIn?.durationFrames ?? transitionFrames(tr.defaultDuration, brief.pacing, durRef[i - 1], durRef[i]);
+    return { capability: chosen, frames: Math.min(frames, Math.floor(Math.min(durRef[i - 1], durRef[i]) * 0.45)), params };
   });
-  const starts: number[] = [];
+  const startsRef: number[] = [];
   let cursor = 0;
   for (let i = 0; i < plans.length; i++) {
-    starts.push(cursor);
-    let end = cursor + durFrames[i];
-    const next = transitions[i + 1];
-    const d = next?.frames ?? 0;
+    startsRef.push(cursor);
+    let end = cursor + durRef[i];
+    const d = trRef[i + 1]?.frames ?? 0;
     const snap = plans[i].sc.beat.snap;
-    if (beatFrames.length && snap !== "none" && i < plans.length - 1) {
+    if (beatRef.length && snap !== "none" && i < plans.length - 1) {
       const cut = end - d / 2;
-      const grid = snap === "bar" ? beatFrames.filter((_, k) => k % (input.beatGrid?.beatsPerBar ?? 4) === 0) : beatFrames;
+      const grid = snap === "bar" ? beatRef.filter((_, k) => k % (input.beatGrid?.beatsPerBar ?? 4) === 0) : beatRef;
       const nearest = grid.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), grid[0]);
       const newEnd = Math.round(nearest + d / 2);
-      if (newEnd - cursor >= minFrames[i] && Math.abs(newEnd - end) <= Math.max(4, durFrames[i] * 0.25)) end = newEnd;
+      if (newEnd - cursor >= minRef[i] && Math.abs(newEnd - end) <= Math.max(4, durRef[i] * 0.25)) end = newEnd;
     }
-    durFrames[i] = end - cursor;
+    durRef[i] = end - cursor;
     cursor = end - d;
+  }
+  // conversia la FPS-ul formatului: începuturile și sfârșiturile se rotunjesc din secunde,
+  // iar tranziția devine exact suprapunerea dintre scene (fără goluri, deci fără cadre negre)
+  const toF = (refFrames: number) => Math.round((refFrames / R) * fps);
+  const starts = startsRef.map(toF);
+  const ends = startsRef.map((st, i) => toF(st + durRef[i]));
+  const durFrames = starts.map((st, i) => ends[i] - st);
+  const transitions = trRef.map((t, i) => (t && i > 0 ? { ...t, frames: Math.max(0, ends[i - 1] - starts[i]) } : t));
+  const beatFrames: number[] = [];
+  if (input.beatGrid) {
+    const step = (60 / input.beatGrid.bpm) * fps;
+    for (let f = input.beatGrid.offsetSec * fps; f < (target + 20) * fps; f += step) beatFrames.push(Math.round(f));
   }
   const total = starts[starts.length - 1] + durFrames[durFrames.length - 1];
 
@@ -394,7 +411,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const s = safe.rect;
     const h = orientation === "portrait" ? H * 0.075 : H * 0.11;
     const box = { x: s.x, y: s.y + s.h - h, w: s.w, h };
-    captions = { words, box, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false } };
+    captions = { words, box, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: orientation === "portrait" } };
   }
 
   // 7. materiale fără drepturi confirmate → marcaj „concept”

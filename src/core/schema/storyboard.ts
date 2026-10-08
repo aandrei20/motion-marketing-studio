@@ -53,7 +53,7 @@ export type CapabilityUse = z.infer<typeof CapabilityUse>;
 
 export const TransitionUse = z.object({
   capability: z.string().min(1),
-  /** null = durata implicită a tranziției, ajustată după ritm */
+  /** null = durata implicită a tranziției, ajustată după ritm; cadre la 30 fps (se scalează la FPS-ul formatului) */
   durationFrames: z.number().int().min(0).max(60).nullable().default(null),
   params: z.record(z.string(), z.unknown()).default({}),
 });

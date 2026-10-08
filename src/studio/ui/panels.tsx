@@ -132,6 +132,7 @@ const EMPTY_BRIEF: Brief = {
   audio: { voice: { mode: "tts", provider: "windows", voiceId: "", rate: 1 }, music: { mode: "synth", mood: "driving" }, sfxDensity: "medium", intentionalSilence: false },
   references: [],
   captions: { burnIn: true, srt: true },
+  delivery: { postPack: false, hookVariants: 0, previews: "until-threshold" },
   approvedAt: null,
 };
 
@@ -332,6 +333,26 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
               </label>
               <label className="check">
                 <input type="checkbox" checked={b.captions.burnIn} onChange={(e) => up({ captions: { ...b.captions, burnIn: e.target.checked } })} /> subtitrări arse în video
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={b.captions.srt} onChange={(e) => up({ captions: { ...b.captions, srt: e.target.checked } })} /> fișier .srt
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={b.delivery.postPack} onChange={(e) => up({ delivery: { ...b.delivery, postPack: e.target.checked } })} /> pachet de postare (copertă + text)
+              </label>
+              <label>
+                Variante de hook
+                <select value={b.delivery.hookVariants} onChange={(e) => up({ delivery: { ...b.delivery, hookVariants: Number(e.target.value) } })}>
+                  {[0, 2, 3].map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </label>
+              <label>
+                Preview-uri
+                <select value={b.delivery.previews} onChange={(e) => up({ delivery: { ...b.delivery, previews: e.target.value as Brief["delivery"]["previews"] } })}>
+                  <option value="one">1 preview</option>
+                  <option value="two">2 preview-uri</option>
+                  <option value="until-threshold">până trece pragul 8/10</option>
+                </select>
               </label>
             </div>
           </div>

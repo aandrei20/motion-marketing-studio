@@ -102,6 +102,8 @@ export const textCaptions = defineLayer({
     activeColor: z.string().default("accent"),
     size: z.number().min(16).max(200).default(64),
     uppercase: z.boolean().default(false),
+    /** fundal discret în spatele frazei, când subtitrările stau peste un material încărcat (de ex. o captură) */
+    backdrop: z.boolean().default(false),
   }),
   Component: ({ params: p, frame, env }) => {
     // grupează cuvintele în fraze de maximum maxWords, fără să traverseze pauze lungi
@@ -121,7 +123,8 @@ export const textCaptions = defineLayer({
     const active = resolveColor(env.palette, p.activeColor, "accent");
     const base = resolveColor(env.palette, p.color, "text");
     return (
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: "0 0.28em", fontFamily: `"${env.typography.display.family}"`, fontWeight: 800, fontSize: p.size, lineHeight: 1.1, textAlign: "center", textTransform: p.uppercase ? "uppercase" : "none", textShadow: "0 4px 18px rgba(0,0,0,0.65), 0 0 2px rgba(0,0,0,0.8)" }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: `"${env.typography.display.family}"`, fontWeight: 800, fontSize: p.size, lineHeight: 1.1, textAlign: "center", textTransform: p.uppercase ? "uppercase" : "none", textShadow: "0 4px 18px rgba(0,0,0,0.65), 0 0 2px rgba(0,0,0,0.8)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0 0.28em", maxWidth: "100%", ...(p.backdrop ? { background: "rgba(8,10,20,0.62)", padding: "0.16em 0.42em", borderRadius: "0.32em", boxShadow: "0 8px 30px rgba(0,0,0,0.35)" } : {}) }}>
         {g.map((w, i) => {
           const on = frame >= w.from && frame < w.to;
           const said = frame >= w.from;
@@ -143,6 +146,7 @@ export const textCaptions = defineLayer({
             </span>
           );
         })}
+        </div>
       </div>
     );
   },

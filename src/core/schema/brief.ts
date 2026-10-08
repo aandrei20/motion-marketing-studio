@@ -78,6 +78,14 @@ export const Brief = z.object({
     .default([]),
   /** subtitrări arse în video și/sau fișier .srt */
   captions: z.object({ burnIn: z.boolean().default(true), srt: z.boolean().default(true) }).default({ burnIn: true, srt: true }),
+  /** livrare (grupa G): pachet de postare, variante de hook, câte preview-uri înainte de predare */
+  delivery: z
+    .object({
+      postPack: z.boolean().default(false),
+      hookVariants: z.number().int().min(0).max(3).default(0),
+      previews: z.enum(["one", "two", "until-threshold"]).default("until-threshold"),
+    })
+    .default({ postPack: false, hookVariants: 0, previews: "until-threshold" }),
   approvedAt: IsoDate.nullable().default(null),
 });
 export type Brief = z.infer<typeof Brief>;
