@@ -59,6 +59,8 @@ describe("lanțul de producție pe produsul demo", () => {
     const base = { project: store.loadProject(id), versionId: v, brief: store.loadBrief(id), brand: store.loadBrand(id), research: store.loadResearch(id), assets: store.loadAssets(id), script: store.loadScript(id, v), storyboard: store.loadStoryboard(id, v), voice, beatGrid: store.loadTimeline(id, v, "9x16").audio.beatGrid };
     for (const format of [makeFormat("1x1", { platform: "feed", durationSec: 24, fps: 24 }), makeFormat("4x5", { platform: "feed", durationSec: 24, fps: 60 }), makeFormat({ width: 1280, height: 720, id: "custom-720p" }, { platform: "generic", durationSec: 24, fps: 25 })]) {
       const r = compileTimeline({ ...base, format });
+      // determinism strict: aceleași date de intrare → exact același timeline
+      expect(JSON.stringify(compileTimeline({ ...base, format }).timeline)).toBe(JSON.stringify(r.timeline));
       expect(r.timeline.fps).toBe(format.fps);
       expect(r.timeline.width).toBe(format.width);
       expect(r.timeline.scenes).toHaveLength(7);

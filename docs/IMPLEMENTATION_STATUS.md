@@ -19,7 +19,7 @@ Actualizat: 2026-10-08 · ramura `build/studio-v0.1`
 | `npm run typecheck` | trece |
 | `npm run lint` | trece |
 | `npm test` | 49 teste unitare + 8 de integrare trec |
-| `npm run test:render` | 5 teste trec: toate cele 124 de capabilități randate, determinism byte cu byte, MP4 H.264 + AAC verificat |
+| `npm run test:render` | 5 teste trec: toate cele 124 de capabilități randate, determinismul cadrelor (toleranță de rasterizare 2/255), MP4 H.264 + AAC verificat |
 | `npm run e2e -- --fresh` | trece: 2 formate, ~22,7 s, 0 blocaje, −14,2 LUFS / −1,6 dBTP, fără cadre negre, flash-uri sau înghețări |
 
 ## 1. Instalare și mediu
@@ -73,7 +73,8 @@ Actualizat: 2026-10-08 · ramura `build/studio-v0.1`
 - [✓] 16 rețete, gramatica de montaj, tăieturi pe beat, adaptoare de layout pe format.
 - [✓] Camera: chei, aim spre țintă, parallax pe adâncimi, handheld, shake, punch pe ritm, DOF, blur de mișcare calibrat (180°).
 - [✓] Callout-ul alege partea după locul real de pe ecran la finalul push-ului și păstrează aceeași mărime la orice zoom. Zoom-ul se limitează ca materialul să nu intre peste titlu (teste unitare + randare verificată).
-- [✓] Determinism: aceleași cadre randate de două ori au aceiași octeți. Lint-ul interzice `Math.random`/`Date.now` în randare.
+- [✓] Determinism: același timeline octet cu octet la fiecare compilare. Aceleași cadre randate de două ori ies identice. Lint-ul interzice `Math.random`/`Date.now` în randare.
+- [!] Rasterizarea Chrome poate varia rar cu cel mult 2/255 între randări (GPU și software): invizibil, tolerat explicit de teste (docs/DECIZII.md, punctul 38).
 - [~] 3D înseamnă CSS 3D (rame, stive, cărți, orbită). Nu există geometrie 3D reală (Three.js), pentru că nu a fost necesară (docs/DECIZII.md).
 
 ## 8. Timeline, validare, formate

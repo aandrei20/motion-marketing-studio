@@ -2,11 +2,11 @@
  * Randare reală de video: proiectul demo, primele ~6 secunde în 9:16, cu sunet. Verificări pe fișierul
  * MP4 rezultat (ffprobe, cadre negre, flash-uri) și determinism pe un cadru al timeline-ului.
  */
-import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { compareFrames, RASTER_TOLERANCE } from "./pixels";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mms-video-"));
 process.env.MMS_PROJECTS_DIR = tmp;
@@ -48,7 +48,8 @@ describe("randare video", () => {
     const { renderTimelineStill } = await import("../../src/renderer/node/render");
     const a = await renderTimelineStill(t, 140, path.join(tmp, "a.png"));
     const b = await renderTimelineStill(t, 140, path.join(tmp, "b.png"));
-    const h = (f: string) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
-    expect(h(a)).toBe(h(b));
+    const c = compareFrames(a, b);
+    if (!c.identicalBytes) console.log(`Diferență de rasterizare (tolerată): max ${c.maxDiff}/255 pe ${(c.differingShare * 100).toFixed(2)}% din valori`);
+    expect(c.maxDiff).toBeLessThanOrEqual(RASTER_TOLERANCE);
   }, 300_000);
 });

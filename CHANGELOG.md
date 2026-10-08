@@ -31,4 +31,11 @@ Prima versiune funcțională a studioului.
 - Push-ul cu zoom mare împingea captura sub titlu: zoom-ul se limitează.
 - Pe capturile de pagină întreagă, zona țintită putea fi în afara ecranului: derulare automată.
 - `iterate` scria `voice.json` într-un folder inexistent.
+- Un script editat după sinteza vocii ajungea în video cu vocea veche: vocea are acum amprentă și se reface automat.
+- Compilarea pe o versiune înghețată se oprea cu eroare: acum creează versiunea următoare.
+- Demonstrațiile trăgeau captura sub titlu: centrul camerei se limitează.
+- Analiza referințelor număra o tranziție rapidă ca două tăieturi și dădea tempo-ul nesigur ca fapt.
+- Capturile cu date personale nu aveau decizie și nu se estompau în video.
+- Întrebările de livrare (grupa G) nu aveau efect.
 - Opțiunea de calitate JPEG trimisă la randări PNG.
+- Testul de determinism al cadrelor cerea octeți identici, deși rasterizarea Chrome variază rar cu 1–2/255. Acum tolerează exact această diferență, iar determinismul strict se verifică pe timeline.

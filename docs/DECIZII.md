@@ -62,3 +62,7 @@ Fiecare decizie are motivul ei. Deciziile de produs (ce face studioul, regulile)
 
 36. **Vocea are o amprentă** (setările din brief + textul rostit). Compilarea refolosește vocea doar dacă amprenta e aceeași; altfel o reface (TTS-ul e în cache, deci e rapid). Motiv: un script editat manual nu trebuie să ajungă cu vocea veche.
 37. **Compilarea pe o versiune înghețată creează versiunea următoare**, cu jurnal („recompilare”), ca orice altă modificare.
+
+## Determinism
+
+38. **Garanția de determinism e pe două niveluri.** Timeline-ul (toate deciziile, pozițiile, timpii, sunetele) e identic octet cu octet la fiecare compilare. Pixelii sunt identici în aproape toate randările, dar rasterizarea Chrome poate varia rar cu cel mult 2/255. Am observat asta pe GPU (o bandă la marginea plăcilor de 256 px) și în randarea software (filtrul SVG al tranziției glitch). Testele tolerează exact această diferență și nimic peste ea. Un bug real (aleator nefixat, timp real) produce diferențe mari și e prins.

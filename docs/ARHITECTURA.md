@@ -101,7 +101,9 @@ Un șablon (`templates/<id>.json`, schema în `src/creative/templates.ts`) descr
 - Totul se calculează din cadru; aleatorul vine din `rand()`/`mulberry32()` cu sămânța proiectului și id-ul stratului.
 - Canvas-urile (grain, particule) se desenează sincron din cadru.
 - Audio-ul e generat determinist și pus în cache pe conținut.
-- `tests/render/*` verifică: aceleași cadre randate de două ori dau aceiași octeți PNG.
+- Compilarea e deterministă octet cu octet: aceleași date dau exact același timeline (test de integrare).
+- `tests/render/*` verifică: aceleași cadre randate de două ori ies identice. Rasterizarea Chrome (GPU sau software) poate varia rar cu 1–2 niveluri din 255, la marginea plăcilor de rasterizare sau în filtrele SVG. Diferența e invizibilă și e tolerată explicit (`tests/render/pixels.ts`); orice diferență mai mare pică testul.
+- Randarea grafică se poate alege cu `MMS_GL` (`angle` = GPU, implicit; `swangle` = software, mai lentă).
 - `npm run lint` interzice `Math.random()`/`Date.now()` în codul care se randează.
 
 ## Studio

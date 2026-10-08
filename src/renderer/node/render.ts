@@ -97,9 +97,12 @@ export function stageFiles(serveUrl: string, files: string[]): void {
   if (missing.length) throw new MmsError("ASSET_MISSING", `Lipsesc fișiere folosite de timeline:\n${missing.map((m) => `  • ${m}`).join("\n")}`, "Reingerează materialele sau recompilează timeline-ul.");
 }
 
+/** Randarea grafică: „angle” (GPU, implicit) sau „swangle” (software, mai lentă). Se alege cu MMS_GL. */
+const GL = (["angle", "swangle", "swiftshader", "egl"] as const).find((g) => g === process.env.MMS_GL) ?? "angle";
+
 let browser: HeadlessBrowser | null = null;
 export async function getBrowser(): Promise<HeadlessBrowser> {
-  if (!browser) browser = await openBrowser("chrome", { chromiumOptions: { gl: "angle" } });
+  if (!browser) browser = await openBrowser("chrome", { chromiumOptions: { gl: GL } });
   return browser;
 }
 export async function closeBrowser(): Promise<void> {
@@ -149,7 +152,7 @@ export async function renderTimelineVideo(t: Timeline, o: RenderVideoOptions): P
     enforceAudioTrack: !o.muted,
     overwrite: false,
     puppeteerInstance,
-    chromiumOptions: { gl: "angle" },
+    chromiumOptions: { gl: GL },
     logLevel: "error",
     licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null,
     onProgress: (p) => o.onProgress?.({ progress: p.progress, renderedFrames: p.renderedFrames, encodedFrames: p.encodedFrames }),
@@ -171,7 +174,7 @@ export async function renderTimelineStill(t: Timeline, frame: number, out: strin
     scale: opts.scale ?? 1,
     overwrite: true,
     puppeteerInstance,
-    chromiumOptions: { gl: "angle" },
+    chromiumOptions: { gl: GL },
     logLevel: "error",
     licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null,
   });
@@ -196,7 +199,7 @@ export async function renderStills(t: Timeline, frames: number[], outDir: string
       scale: opts.scale ?? 1,
       overwrite: true,
       puppeteerInstance,
-      chromiumOptions: { gl: "angle" },
+      chromiumOptions: { gl: GL },
       logLevel: "error",
       licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null,
     });
