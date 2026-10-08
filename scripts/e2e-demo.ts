@@ -22,13 +22,21 @@ import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepComp
 import { createProject, loadBrief, loadProject, loadResearch, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
 import { setClaimStatus } from "../src/research/extract";
 
-const ID = "e2e-kolibri";
-const args = new Set(process.argv.slice(2));
 const ex = path.join(PATHS.examples, "demo-product");
-const log = (m: string) => console.log(m);
-const t0 = Date.now();
 
-async function main() {
+export interface E2EOptions {
+  id?: string;
+  fresh?: boolean;
+  auto?: boolean;
+  render?: boolean;
+  log?: (m: string) => void;
+}
+
+export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionId: string }> {
+  const ID = o.id ?? "e2e-kolibri";
+  const args = new Set([o.fresh ? "--fresh" : "", o.auto ? "--auto" : "", o.render === false ? "--no-render" : ""]);
+  const log = o.log ?? ((m: string) => console.log(m));
+  const t0 = Date.now();
   if (projectExists(ID)) {
     if (!args.has("--fresh")) throw new Error(`Proiectul de test ${ID} există. Rulează cu --fresh ca să-l refaci.`);
     fs.rmSync(projectDir(ID), { recursive: true, force: true });
@@ -112,12 +120,16 @@ async function main() {
   log(`   scor minim pe scenă: ${cr.round.minScene} – ${cr.decision.message}`);
   for (const f of cr.round.findings) log(`   ${f.timecode ?? "--"} [${f.severity}] ${f.problem}`);
   log(`\nGata în ${((Date.now() - t0) / 1000).toFixed(0)} s. Proiect: ${path.relative(PATHS.root, projectDir(ID))}`);
+  return { id: ID, versionId: v };
 }
 
-main()
-  .then(() => shutdown())
-  .catch(async (e) => {
-    console.error(e);
-    await shutdown();
-    process.exit(1);
-  });
+if (process.argv[1] && /e2e-demo\.ts$/.test(process.argv[1])) {
+  const a = new Set(process.argv.slice(2));
+  runE2E({ fresh: a.has("--fresh"), auto: a.has("--auto"), render: !a.has("--no-render") })
+    .then(() => shutdown())
+    .catch(async (e) => {
+      console.error(e);
+      await shutdown();
+      process.exit(1);
+    });
+}

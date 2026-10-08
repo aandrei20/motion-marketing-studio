@@ -1,4 +1,4 @@
-# Listează vocile Windows OneCore/WinRT disponibile (nume, limbă, gen) ca JSON UTF-8.
+﻿# Listează vocile Windows OneCore/WinRT disponibile (nume, limbă, gen) ca JSON UTF-8.
 param([Parameter(Mandatory = $true)][string]$Out)
 $ErrorActionPreference = 'Stop'
 $null = [Windows.Media.SpeechSynthesis.SpeechSynthesizer, Windows.Media.SpeechSynthesis, ContentType = WindowsRuntime]

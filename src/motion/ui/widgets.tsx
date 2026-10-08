@@ -1,7 +1,7 @@
 import React from "react";
 import { Img } from "remotion";
 import { z } from "zod";
-import { readableOn, withAlpha } from "../core/color";
+import { mix, readableOn, withAlpha } from "../core/color";
 import { resolveColor, useAssetUrl } from "../core/context";
 import { EASE, SPRINGS, clamp, prog, sp } from "../core/easing";
 import { ORIGINAL, defineLayer } from "../types";
@@ -117,7 +117,7 @@ export const uiToggle = defineLayer({
     const h = box.h;
     const w = box.w;
     return (
-      <div style={{ position: "absolute", inset: 0, borderRadius: h, background: `color-mix(in srgb, ${c} ${(s * 100).toFixed(1)}%, #5b5b66)` }}>
+      <div style={{ position: "absolute", inset: 0, borderRadius: h, background: mix("#5b5b66", hex(c), clamp(s, 0, 1)), boxShadow: "inset 0 2px 6px rgba(0,0,0,0.3)" }}>
         <div style={{ position: "absolute", top: h * 0.1, left: h * 0.1 + (w - h) * clamp(s, 0, 1.1), width: h * 0.8, height: h * 0.8, borderRadius: "50%", background: "#fff", boxShadow: "0 3px 8px rgba(0,0,0,0.3)" }} />
       </div>
     );

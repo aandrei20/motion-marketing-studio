@@ -36,7 +36,7 @@ const main = async () => {
   fs.copyFileSync(path.join(site, "logo.svg"), path.join(out, "logo.svg"));
   const manifest = {
     note: "Capturi reale ale produsului FICTIV de test (examples/demo-product). Generate de scripts/make-catalog-samples.ts.",
-    screenshot: { file: "library/catalog/samples/screenshot.png", w: shot.width, h: shot.height, regions: shot.regions.slice(0, 40) },
+    screenshot: { file: "library/catalog/samples/screenshot.png", w: shot.width, h: shot.height },
     "tall-screenshot": { file: "library/catalog/samples/tall-screenshot.png", w: tall.width, h: tall.height },
     image: { file: "library/catalog/samples/image.png", w: hero.width, h: hero.height },
     video: { file: "library/catalog/samples/video.mp4", w: rec.recording!.width, h: rec.recording!.height, durationSec: rec.recording!.durationSec, fps: rec.recording!.fps },
