@@ -220,3 +220,30 @@ blockquote { margin: 0; padding-left: 10px; border-left: 2px solid var(--line-2)
   .sidebar { max-height: none; }
   .cols, .preview.portrait, .preview.landscape { grid-template-columns: 1fr; }
 }
+
+/* bucla de calitate */
+.qhead { display: flex; gap: 18px; align-items: center; margin: 6px 0 12px; }
+.qscore { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+.qscore span { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+.qscore.ok { color: var(--ok); }
+.qscore.warn { color: var(--warn); }
+.qscore.err { color: var(--err); }
+.qbars { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; }
+.qbar { display: grid; grid-template-columns: 90px 1fr 34px; gap: 8px; align-items: center; font-size: 12.5px; }
+.qbar-track { height: 6px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.qbar-track span { display: block; height: 100%; background: var(--accent); }
+.qbar.good .qbar-track span { background: var(--ok); }
+.qbar.mid .qbar-track span { background: var(--warn); }
+.qbar.low .qbar-track span { background: var(--err); }
+.qbar.na { opacity: 0.5; }
+.qbar-value { text-align: right; font-variant-numeric: tabular-nums; }
+.pill.ok { color: var(--ok); border-color: var(--ok); }
+.pill.warn { color: var(--warn); border-color: var(--warn); }
+.pill.err { color: var(--err); border-color: var(--err); }
+.concepts { display: grid; gap: 10px; }
+.concept { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; background: var(--panel-2); display: grid; gap: 4px; }
+.concept.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.cscores { display: flex; flex-wrap: wrap; gap: 4px; }
+.editor { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 4px; display: grid; gap: 6px; }
+.editor input.num { width: 64px; }
+.editor select, .editor input { background: var(--panel-2); color: var(--text); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 6px; font: inherit; }

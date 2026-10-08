@@ -3,6 +3,7 @@ import type { Project } from "../../core/schema";
 import { api, type Job, type Meta, type ProjectBundle, type VersionBundle } from "./api";
 import { AssetsPanel, AudioPanel, BrandPanel, BriefPanel, CritiquePanel, ExportPanel, OverviewPanel, ResearchPanel, ScriptPanel, StoryboardPanel, VersionsPanel } from "./panels";
 import { PreviewPanel } from "./preview";
+import { ConceptsPanel, QualityPanel } from "./quality";
 import { NewProject } from "./new-project";
 
 export const TABS = [
@@ -11,10 +12,12 @@ export const TABS = [
   ["assets", "Materiale"],
   ["research", "Research"],
   ["brand", "Brand"],
+  ["concept", "Concept"],
   ["script", "Script"],
   ["storyboard", "Storyboard"],
   ["preview", "Preview & timeline"],
   ["audio", "Audio"],
+  ["quality", "Calitate"],
   ["critique", "Critică"],
   ["versions", "Versiuni"],
   ["export", "Export"],
@@ -130,6 +133,7 @@ export function App() {
   );
 
   const running = jobs.filter((j) => j.state === "running" || j.state === "queued");
+  const interrupted = jobs.filter((j) => j.state === "interrupted" && j.projectId === current).slice(-3);
 
   return (
     <div className="shell">
@@ -164,8 +168,17 @@ export function App() {
                 <span>{j.label}</span>
                 <span className="muted">{j.state === "queued" ? "în așteptare" : j.progress !== null ? `${Math.round(j.progress * 100)}%` : "…"}</span>
               </div>
+              {j.stage ? <div className="small">etapa: <b>{j.stage}</b></div> : null}
+              <button className="btn tiny ghost" onClick={() => api.cancelJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>oprește</button>
               {j.progress !== null ? <div className="bar"><span style={{ width: `${Math.round(j.progress * 100)}%` }} /></div> : null}
               <div className="job-log">{j.log.slice(-2).join("\n")}</div>
+            </div>
+          ))}
+          {interrupted.map((j) => (
+            <div key={j.id} className="job">
+              <div className="job-head"><span>{j.label}</span><span className="warn">întrerupt</span></div>
+              <div className="small muted">{j.error}</div>
+              <button className="btn tiny" onClick={() => api.resumeJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>reia</button>
             </div>
           ))}
         </div>
@@ -230,6 +243,8 @@ export function App() {
               {tab === "storyboard" && <StoryboardPanel ctx={ctx} />}
               {tab === "preview" && <PreviewPanel ctx={ctx} />}
               {tab === "audio" && <AudioPanel ctx={ctx} />}
+              {tab === "concept" && <ConceptsPanel ctx={ctx} />}
+              {tab === "quality" && <QualityPanel ctx={ctx} />}
               {tab === "critique" && <CritiquePanel ctx={ctx} />}
               {tab === "versions" && <VersionsPanel ctx={ctx} onSelect={(v) => setVersionId(v)} />}
               {tab === "export" && <ExportPanel ctx={ctx} />}

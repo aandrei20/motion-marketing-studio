@@ -428,7 +428,7 @@ function linkOrCopy(src: string, dst: string): void {
   }
 }
 
-export async function stepPreview(projectId: string, versionId: string, formatId: string | null, log: Log = noop, opts: { onProgress?: (p: number) => void; frameRange?: [number, number]; force?: boolean } = {}): Promise<PreviewResult> {
+export async function stepPreview(projectId: string, versionId: string, formatId: string | null, log: Log = noop, opts: { onProgress?: (p: number) => void; frameRange?: [number, number]; force?: boolean; signal?: AbortSignal } = {}): Promise<PreviewResult> {
   const project = loadProject(projectId);
   const fmt = formatId ?? project.formats[0].id;
   const t = loadTimeline(projectId, versionId, fmt);
@@ -452,7 +452,7 @@ export async function stepPreview(projectId: string, versionId: string, formatId
     return { file, contactSheet: sheetOut, check, renderMs: 0, reused: true };
   }
   log(`Randez preview ${fmt}: ${(t.durationInFrames / t.fps).toFixed(1)} s…`);
-  const r = await renderTimelineVideo(t, { out: file, muted: !t.audio.src, frameRange: opts.frameRange, onProgress: (p) => opts.onProgress?.(p.progress) });
+  const r = await renderTimelineVideo(t, { out: file, muted: !t.audio.src, frameRange: opts.frameRange, signal: opts.signal, onProgress: (p) => opts.onProgress?.(p.progress) });
   log(`  → ${path.relative(PATHS.root, file)} în ${(r.durationMs / 1000).toFixed(0)} s`);
   // foaie de contact: 2 cadre pe secundă + cadrele critice (început, tranziții, CTA, ultimul cadru)
   const frames = new Set<number>();

@@ -10,7 +10,7 @@
  * Nu se face randare completă la fiecare pas: randarea întreagă apare doar când omul trebuie să vadă
  * rezultatul (sau la export, după „render final”).
  */
-import { MmsError } from "../core/errors";
+import { MmsError, throwIfCancelled } from "../core/errors";
 import { ensureConcepts } from "../creative/concepts";
 import type { Depth } from "../quality/checks";
 import { autoFixLoop, type AutoFixReport } from "../quality/autofix";
@@ -28,6 +28,7 @@ export interface ProduceOptions {
   autofix?: boolean;
   /** randează preview-ul pentru utilizator la final (implicit da) */
   preview?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface ProduceReport {
@@ -39,7 +40,10 @@ export interface ProduceReport {
 
 export async function produce(projectId: string, o: ProduceOptions = {}): Promise<ProduceReport> {
   const log = o.log ?? (() => undefined);
-  const stage = o.stage ?? (() => undefined);
+  const stage = (name: string) => {
+    throwIfCancelled(o.signal);
+    (o.stage ?? (() => undefined))(name);
+  };
   const p = loadProject(projectId);
   if (p.status === "intake") throw new MmsError("BRIEF_NOT_APPROVED", "Brief-ul nu e aprobat.", `Utilizatorul scrie „aprob”: npm run mms -- approve ${projectId} brief "aprob"`);
   stage("concept");
@@ -63,18 +67,18 @@ export async function produce(projectId: string, o: ProduceOptions = {}): Promis
   log(`Audio: ${mixR.integratedLufs} LUFS, TP ${mixR.truePeakDbtp} dBTP${mixR.ok ? "" : ` – ${mixR.problems.join("; ")}`}`);
   stage("calitate");
   const depth = o.depth ?? "standard";
-  const first = (await runQuality(projectId, { versionId: c.versionId, depth, log })).run;
+  const first = (await runQuality(projectId, { versionId: c.versionId, depth, log, signal: o.signal })).run;
   let fix: AutoFixReport | null = null;
   if (o.autofix !== false && first.score.verdict !== "PASS") {
     stage("corecturi");
-    fix = await autoFixLoop(projectId, { depth, log });
+    fix = await autoFixLoop(projectId, { depth, log, signal: o.signal });
     log(`Corecturi: ${fix.stopReason}`);
   }
   let final: QualityRun | null = null;
   const versionId = loadProject(projectId).currentVersion!;
   if (o.preview !== false) {
     stage("preview");
-    final = (await runQuality(projectId, { versionId, depth: "final", log, onProgress: o.onProgress })).run;
+    final = (await runQuality(projectId, { versionId, depth: "final", log, onProgress: o.onProgress, signal: o.signal })).run;
   }
   stage("revizuire");
   return { versionId, first, autofix: fix, final };

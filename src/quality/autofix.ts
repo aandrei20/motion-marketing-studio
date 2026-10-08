@@ -12,7 +12,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { MmsError } from "../core/errors";
+import { MmsError, throwIfCancelled } from "../core/errors";
 import type { EditOp, Finding, QualityScore } from "../core/schema";
 import { applyEditOps, mergeOps } from "../editing/ops";
 import { impactBetween, type ImpactPlan } from "../pipeline/impact";
@@ -55,6 +55,7 @@ export interface AutoFixOptions {
   depth?: Depth;
   maxIterations?: number;
   log?: (m: string) => void;
+  signal?: AbortSignal;
 }
 
 function candidates(run: QualityRun, cfg: ReturnType<typeof resolveQualityConfig>, banned: Set<string>, locked: Set<string>): Finding[] {
@@ -80,6 +81,7 @@ export async function autoFixLoop(projectId: string, o: AutoFixOptions = {}): Pr
   const banned = new Set<string>();
   let stopReason = `Limita de ${maxIt} iterații atinsă.`;
   for (let i = 1; i <= maxIt; i++) {
+    throwIfCancelled(o.signal);
     if (q.score.verdict === "PASS") {
       stopReason = `PASS: ${q.score.overall}/100, fără probleme critice sau mari.`;
       break;
@@ -115,7 +117,7 @@ export async function autoFixLoop(projectId: string, o: AutoFixOptions = {}): Pr
     await stepAudio(projectId, compiled.versionId, log);
     const { plan } = impactBetween(projectId, cur, compiled.versionId);
     for (const r of plan.reasons) log(`  impact: ${r}`);
-    const q2 = (await runQuality(projectId, { versionId: compiled.versionId, depth, log })).run;
+    const q2 = (await runQuality(projectId, { versionId: compiled.versionId, depth, log, signal: o.signal })).run;
     const oldKeys = new Set(q.issues.map(issueKey));
     const introduced = q2.issues.filter((f) => (f.severity === "critical" || f.severity === "high") && !oldKeys.has(issueKey(f)));
     const d = scoreDelta(q.score, q2.score);

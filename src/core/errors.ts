@@ -15,3 +15,8 @@ export function formatError(e: unknown): string {
   if (e instanceof Error) return e.stack ?? e.message;
   return String(e);
 }
+
+/** Oprește lucrul dacă jobul a fost anulat (de utilizator sau de timeout). Pașii deja făcuți rămân în cache. */
+export function throwIfCancelled(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new MmsError("CANCELLED", String(signal.reason ?? "Jobul a fost oprit."), "Pornește-l din nou când vrei: pașii deja făcuți se refolosesc.");
+}

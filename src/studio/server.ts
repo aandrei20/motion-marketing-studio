@@ -56,6 +56,34 @@ import {
 import { RECIPES } from "../recipes/recipes";
 import { setClaimStatus } from "../research/extract";
 import { JobQueue } from "./jobs";
+import { critiquePack } from "../critique/pack";
+import { crawlSite } from "../research/crawl";
+import { chooseConcept, ensureConcepts, loadConcepts } from "../creative/concepts";
+import { loadQualityRun } from "../quality/run";
+import { loadEditLog } from "../editing/history";
+import { impactBetween } from "../pipeline/impact";
+
+const JOB_TYPES = new Set(["capture", "brand", "script", "storyboard", "voice", "compile", "audio", "preview", "critique", "quality", "autofix", "edit", "undo", "redo", "make", "final", "iterate", "new-version", "critique-pack", "research-crawl", "concepts"]);
+/** Încărcările: doar tipurile de materiale pe care studioul le folosește, maximum 500 MB. */
+const UPLOAD_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".mp4", ".mov", ".webm", ".m4v", ".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".ttf", ".otf", ".woff", ".woff2", ".pdf"]);
+const UPLOAD_LIMIT = 500 * 1024 * 1024;
+
+/**
+ * Protecția serverului local: doar Host 127.0.0.1/localhost (oprește DNS rebinding), iar cererile care
+ * modifică ceva vin doar din interfața Studio-ului (Origin local + antetul X-MMS, pe care o pagină străină
+ * nu îl poate trimite fără CORS, iar serverul nu permite CORS). Întoarce motivul refuzului sau null.
+ */
+export function checkRequest(req: Pick<http.IncomingMessage, "headers" | "method">, port: number): string | null {
+  const host = String(req.headers.host ?? "");
+  const allowedHosts = [`127.0.0.1:${port}`, `localhost:${port}`];
+  if (!allowedHosts.includes(host)) return `Host nepermis: ${host || "lipsă"}.`;
+  const m = req.method ?? "GET";
+  if (m === "GET" || m === "HEAD") return null;
+  const origin = req.headers.origin;
+  if (origin && !allowedHosts.some((h) => origin === `http://${h}`)) return `Origine nepermisă: ${origin}.`;
+  if (req.headers["x-mms"] !== "1") return "Cerere fără antetul X-MMS (doar interfața Studio poate modifica date).";
+  return null;
+}
 import { registryJson } from "./registry-json";
 
 const UI_DIR = path.join(PATHS.root, "src", "studio", "ui");
@@ -164,6 +192,17 @@ function versionBundle(id: string, v: string) {
     cueSheet: read("audio/cue-sheet.json"),
     renders,
     scriptIssues: hasFile(id, `versions/${v}/script.json`) && hasFile(id, "brief.json") ? validateScript(loadScript(id, v), loadBrief(id), loadResearch(id)) : [],
+    quality: loadQualityRun(id, v),
+    edits: loadEditLog(id, v),
+    autofix: read("autofix.json"),
+    impact: (() => {
+      const meta = loadVersionMeta(id, v);
+      try {
+        return meta.parent ? impactBetween(id, meta.parent, v).plan : null;
+      } catch {
+        return null;
+      }
+    })(),
   };
 }
 
@@ -179,6 +218,7 @@ function projectBundle(id: string) {
     assets: loadAssets(id),
     approvals: loadApprovals(id),
     versions: listVersions(id),
+    concepts: loadConcepts(id),
   };
 }
 
@@ -203,8 +243,9 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
     const p = loadProject(id);
     const v = (params.version as string | undefined) ?? p.currentVersion ?? undefined;
     const fmt = (params.format as string | undefined) ?? null;
-    const label = { capture: "Captură reală", brand: "Brand kit", script: "Script", storyboard: "Storyboard", voice: "Voce", compile: "Compilare timeline", audio: "Mix audio", preview: "Preview", critique: "Critică", make: "Producție completă", final: "Render final", iterate: "Iterație", "new-version": "Versiune nouă", quality: "Bucla de calitate", autofix: "Corecturi automate", edit: "Editare", undo: "Undo", redo: "Redo" }[type] ?? type;
-    return jobs.enqueue(id, type, label, async ({ log, progress }) => {
+    const label = { capture: "Captură reală", brand: "Brand kit", script: "Script", storyboard: "Storyboard", voice: "Voce", compile: "Compilare timeline", audio: "Mix audio", preview: "Preview", critique: "Critică", make: "Producție completă", final: "Render final", iterate: "Iterație", "new-version": "Versiune nouă", quality: "Bucla de calitate", autofix: "Corecturi automate", edit: "Editare", undo: "Undo", redo: "Redo", "critique-pack": "Pachet de revizuire vizuală", "research-crawl": "Research pe site", concepts: "Concepte creative" }[type] ?? type;
+    if (!JOB_TYPES.has(type)) throw new MmsError("JOB_UNKNOWN", `Job necunoscut: ${type}`);
+    return jobs.enqueue(id, type, label, params, async ({ log, progress, stage, signal }) => {
       switch (type) {
         case "capture": {
           const reqs = params.demo
@@ -233,13 +274,23 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "audio":
           return stepAudio(id, v!, log);
         case "preview":
-          return stepPreview(id, v!, fmt, log, { onProgress: progress });
+          return stepPreview(id, v!, fmt, log, { onProgress: progress, signal });
         case "critique":
           return critiqueRound(id, v, fmt ?? undefined, "fast", log);
         case "quality":
-          return (await runQuality(id, { versionId: v, formats: fmt ? [fmt] : undefined, depth: (params.depth as Depth | undefined) ?? "standard", log, onProgress: progress })).run;
+          return (await runQuality(id, { versionId: v, formats: fmt ? [fmt] : undefined, depth: (params.depth as Depth | undefined) ?? "standard", log, onProgress: progress, signal })).run;
         case "autofix":
-          return autoFixLoop(id, { depth: (params.depth as Depth | undefined) ?? "standard", log });
+          return autoFixLoop(id, { depth: (params.depth as Depth | undefined) ?? "standard", log, signal });
+        case "critique-pack":
+          return critiquePack(id, { versionId: v, formatId: fmt ?? undefined, log });
+        case "research-crawl": {
+          const url = String(params.url ?? p.product.url ?? "");
+          if (!url) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului.");
+          const r = await crawlSite(id, url, { max: typeof params.max === "number" ? params.max : undefined, competitors: Array.isArray(params.competitors) ? params.competitors.map(String) : [], log });
+          return { pages: r.pages, skipped: r.skipped };
+        }
+        case "concepts":
+          return ensureConcepts(id, { force: !!params.force });
         case "edit": {
           const r = applyEdit(id, (params.ops as EditOpInput[]) ?? [], { source: "editor" });
           const c = await stepCompile(id, r.versionId, log);
@@ -254,7 +305,7 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
           return { versionId: c.versionId, description: r.entry.description };
         }
         case "make":
-          return produce(id, { log, onProgress: progress, depth: (params.depth as Depth | undefined) ?? "standard", autofix: params.autofix !== false, preview: params.preview !== false });
+          return produce(id, { log, stage, signal, onProgress: progress, depth: (params.depth as Depth | undefined) ?? "standard", autofix: params.autofix !== false, preview: params.preview !== false });
         case "final":
           return stepFinalRender(id, v!, fmt, log);
         case "iterate":
@@ -269,6 +320,8 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
 
   const server = http.createServer(async (req, res) => {
     try {
+      const guard = checkRequest(req, o.port);
+      if (guard) return send(res, 403, { error: guard, code: "FORBIDDEN" });
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
       const m = req.method ?? "GET";
@@ -320,7 +373,8 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         }
         if (sub === "assets" && m === "POST" && !parts[4]) {
           const name = String(req.headers["x-filename"] ?? "fisier.bin").replace(/[^\w.\-]+/g, "_");
-          const data = await readBody(req);
+          if (!UPLOAD_EXT.has(path.extname(name).toLowerCase())) return send(res, 415, { error: `Tip de fișier nepermis: ${path.extname(name) || "fără extensie"}. Permise: ${[...UPLOAD_EXT].join(" ")}`, code: "UPLOAD_TYPE" });
+          const data = await readBody(req, UPLOAD_LIMIT);
           const tmp = path.join(PATHS.cache, "uploads", `${crypto.randomBytes(6).toString("hex")}-${name}`);
           fs.mkdirSync(path.dirname(tmp), { recursive: true });
           fs.writeFileSync(tmp, data);
@@ -342,6 +396,17 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         if (sub === "versions" && parts[4] && parts[5] === "script" && m === "PUT") return send(res, 200, saveScript(id, parts[4], await json(req)));
         if (sub === "versions" && parts[4] && parts[5] === "storyboard" && m === "PUT") return send(res, 200, saveStoryboard(id, parts[4], await json(req)));
         if (sub === "versions" && parts[4] && parts[5] === "review" && m === "POST") return send(res, 200, addReview(id, parts[4], await json(req)));
+        if (sub === "concepts" && m === "GET") return send(res, 200, loadConcepts(id));
+        if (sub === "concepts" && m === "POST") {
+          const b = await json<{ select?: string }>(req);
+          return send(res, 200, b.select ? chooseConcept(id, b.select) : ensureConcepts(id));
+        }
+        if (sub === "jobs" && parts[4] && parts[5] === "cancel" && m === "POST") return send(res, 200, jobs.cancel(parts[4]));
+        if (sub === "jobs" && parts[4] && parts[5] === "resume" && m === "POST") {
+          const old = jobs.get(parts[4]);
+          if (!old || old.projectId !== id) throw new MmsError("JOB_MISSING", `Nu există jobul ${parts[4]}.`);
+          return send(res, 202, runJob(id, old.type, old.params));
+        }
         if (sub === "jobs" && m === "POST") {
           const b = await json<{ type: string; params?: Record<string, unknown> }>(req);
           return send(res, 202, runJob(id, b.type, b.params ?? {}));

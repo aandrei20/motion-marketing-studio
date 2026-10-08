@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fingerprint, fileFingerprint } from "../core/hash";
 import { readJson, writeJson } from "../core/json";
-import { MmsError } from "../core/errors";
+import { MmsError, throwIfCancelled } from "../core/errors";
 import { projectPublicPath } from "../core/paths";
 import { MixReport, type CritiqueRound, type Finding, type QualityCategory, type QualityScore, type Timeline } from "../core/schema";
 import { REVIEWER, loopDecision, type LoopDecision } from "../critique/auto";
@@ -76,6 +76,8 @@ export interface QualityRunOptions {
   force?: boolean;
   /** la adâncimea final: callback de progres pentru randarea video */
   onProgress?: (p: number) => void;
+  /** anularea (jobul oprit): verificată între verificări și transmisă randărilor */
+  signal?: AbortSignal;
 }
 
 const LIMITS = [
@@ -258,7 +260,7 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
     }
     if (DEPTH_MAX_COST[depth] < METHOD_COST["full-render"]) return null;
     const { stepPreview } = await import("../pipeline/steps");
-    const r = await stepPreview(projectId, versionId, fid, log, { onProgress: o.onProgress });
+    const r = await stepPreview(projectId, versionId, fid, log, { onProgress: o.onProgress, signal: o.signal });
     if ((r as { reused?: boolean }).reused) renders.fullReused++;
     else renders.fullRendered++;
     return r.check;
@@ -306,6 +308,7 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
       const before = renders.stillsRendered + renders.motionFramesRendered + renders.fullRendered;
       let n = 0;
       for (const fid of fids) {
+        throwIfCancelled(o.signal);
         const found = await c.run(ctx, fid);
         n += found.length;
         drafts.push(...found.map((d) => ({ method: c.method, ...d })));

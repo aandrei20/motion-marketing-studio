@@ -1,4 +1,7 @@
-import type { Approvals, AssetManifest, Brand, Brief, Critique, MixReport, Project, ProjectState, Research, Script, Storyboard, Timeline, VersionMeta } from "../../core/schema";
+import type { Approvals, AssetManifest, Brand, Brief, Concepts, Critique, EditLog, MixReport, Project, ProjectState, Research, Script, Storyboard, Timeline, VersionMeta } from "../../core/schema";
+import type { QualityRun } from "../../quality/run";
+import type { AutoFixReport } from "../../quality/autofix";
+import type { ImpactPlan } from "../../pipeline/impact";
 
 export interface ProjectBundle {
   project: Project;
@@ -10,6 +13,7 @@ export interface ProjectBundle {
   assets: AssetManifest;
   approvals: Approvals;
   versions: VersionMeta[];
+  concepts: Concepts | null;
 }
 
 export interface VersionBundle {
@@ -23,6 +27,10 @@ export interface VersionBundle {
   cueSheet: Array<{ id: string; kind: string; atFrame: number; sound: string; gainDb: number; reason: string; timecode: string }> | null;
   renders: string[];
   scriptIssues: Array<{ severity: string; lineId: string | null; message: string }>;
+  quality: QualityRun | null;
+  edits: EditLog;
+  autofix: AutoFixReport | null;
+  impact: ImpactPlan | null;
 }
 
 export interface Job {
@@ -30,7 +38,9 @@ export interface Job {
   projectId: string;
   type: string;
   label: string;
-  state: "queued" | "running" | "done" | "failed";
+  state: "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
+  stage: string | null;
+  params: Record<string, unknown>;
   progress: number | null;
   log: string[];
   error: string | null;
@@ -62,7 +72,8 @@ export interface RegistryCap {
 async function call<T>(method: string, url: string, body?: unknown, headers: Record<string, string> = {}): Promise<T> {
   const res = await fetch(url, {
     method,
-    headers: body instanceof Blob || body instanceof ArrayBuffer ? headers : { "Content-Type": "application/json", ...headers },
+    // X-MMS: doar interfața Studio poate modifica date (serverul refuză cererile fără el)
+    headers: body instanceof Blob || body instanceof ArrayBuffer ? { "X-MMS": "1", ...headers } : { "Content-Type": "application/json", "X-MMS": "1", ...headers },
     body: body === undefined ? undefined : body instanceof Blob || body instanceof ArrayBuffer ? body : JSON.stringify(body),
   });
   const text = await res.text();
@@ -90,6 +101,9 @@ export const api = {
   upload: (id: string, file: File, opts: { role?: string; thirdParty?: boolean }) =>
     call<{ asset: { id: string }; duplicate: boolean }>("POST", `/api/projects/${id}/assets`, file, { "x-filename": file.name, ...(opts.role ? { "x-role": opts.role } : {}), ...(opts.thirdParty ? { "x-third-party": "1" } : {}) }),
   job: (id: string, type: string, params: Record<string, unknown> = {}) => call<Job>("POST", `/api/projects/${id}/jobs`, { type, params }),
+  cancelJob: (id: string, jobId: string) => call<Job>("POST", `/api/projects/${id}/jobs/${jobId}/cancel`),
+  resumeJob: (id: string, jobId: string) => call<Job>("POST", `/api/projects/${id}/jobs/${jobId}/resume`),
+  concepts: (id: string, select?: string) => call<Concepts>("POST", `/api/projects/${id}/concepts`, select ? { select } : {}),
   jobs: (id?: string) => call<Job[]>("GET", `/api/jobs${id ? `?project=${id}` : ""}`),
 };
 

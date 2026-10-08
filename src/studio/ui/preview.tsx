@@ -3,6 +3,8 @@ import { Player, type PlayerRef } from "@remotion/player";
 import type { Timeline, TimelineLayer } from "../../core/schema";
 import { TimelineComposition } from "../../renderer/composition/TimelineComposition";
 import type { Ctx } from "./App";
+import { api } from "./api";
+import { SceneEditor } from "./quality";
 
 const tc = (frames: number, fps: number) => {
   const s = frames / fps;
@@ -77,7 +79,7 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
   return (
     <div className="timeline" ref={ref}>
       <div className="timeline-tools">
-        <span className="muted small">Timeline-ul real al versiunii (date din timeline.json). Editarea se face prin Storyboard, comenzi sau Claude; aici se inspectează și se navighează.</span>
+        <span className="muted small">Timeline-ul real al versiunii (timeline.json). Clic = salt; scena de sub cursor se editează în panoul din dreapta (cu undo/redo), sau prin comenzi și Claude.</span>
         <label className="small">
           zoom <input type="range" min={1} max={6} step={0.5} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
         </label>
@@ -116,6 +118,10 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
   const ref = useRef<PlayerRef>(null);
   const [frame, setFrame] = useState(0);
   const [quality, setQuality] = useState<"draft" | "full">("draft");
+  const [caps, setCaps] = useState<{ transitions: string[]; cameras: string[] }>({ transitions: [], cameras: [] });
+  useEffect(() => {
+    void api.registry().then((r) => setCaps({ transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id), cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id) }));
+  }, []);
   useEffect(() => {
     const p = ref.current;
     if (!p) return;
@@ -175,6 +181,7 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
                 {tc(scene.from, t.fps)} → {tc(scene.from + scene.durationInFrames, t.fps)} ({(scene.durationInFrames / t.fps).toFixed(2)} s)
                 {scene.transitionIn ? ` · intră cu ${scene.transitionIn.capability}` : ""}
               </div>
+              <SceneEditor key={`${ctx.versionId}-${scene.id}`} ctx={ctx} t={t} scene={scene} transitions={caps.transitions} cameras={caps.cameras} />
               <h3>Straturi</h3>
               <ul className="layers">
                 {scene.layers.map((l) => (

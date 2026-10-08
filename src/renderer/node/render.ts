@@ -2,9 +2,9 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
-import { openBrowser, renderMedia, renderStill, selectComposition, type HeadlessBrowser } from "@remotion/renderer";
+import { makeCancelSignal, openBrowser, renderMedia, renderStill, selectComposition, type HeadlessBrowser } from "@remotion/renderer";
 import { optionalEnv } from "../../core/env";
-import { MmsError } from "../../core/errors";
+import { MmsError, throwIfCancelled } from "../../core/errors";
 import { PATHS, publicToAbs } from "../../core/paths";
 import type { Timeline, TimelineLayer } from "../../core/schema";
 
@@ -134,6 +134,8 @@ export interface RenderVideoOptions {
   muted?: boolean;
   /** scara randării (1 = rezoluția formatului); analiza mișcării folosește video mic */
   scale?: number;
+  /** anularea randării (jobul oprit sau expirat) */
+  signal?: AbortSignal;
   onProgress?: (p: { progress: number; renderedFrames: number; encodedFrames: number }) => void;
 }
 
@@ -141,7 +143,13 @@ export async function renderTimelineVideo(t: Timeline, o: RenderVideoOptions): P
   const started = Date.now();
   const { serveUrl, inputProps, composition, puppeteerInstance } = await prepare(t);
   fs.mkdirSync(path.dirname(o.out), { recursive: true });
+  const cancel = makeCancelSignal();
+  if (o.signal) {
+    if (o.signal.aborted) cancel.cancel();
+    o.signal.addEventListener("abort", () => cancel.cancel(), { once: true });
+  }
   await renderMedia({
+    cancelSignal: cancel.cancelSignal,
     serveUrl,
     composition,
     inputProps,
@@ -192,11 +200,12 @@ export async function renderTimelineStill(t: Timeline, frame: number, out: strin
 }
 
 /** Randează mai multe cadre statice cu aceeași pregătire (o singură selecție de compoziție). */
-export async function renderStills(t: Timeline, frames: number[], outDir: string, opts: { format?: "png" | "jpeg"; scale?: number; prefix?: string } = {}): Promise<string[]> {
+export async function renderStills(t: Timeline, frames: number[], outDir: string, opts: { format?: "png" | "jpeg"; scale?: number; prefix?: string; signal?: AbortSignal } = {}): Promise<string[]> {
   const { serveUrl, inputProps, composition, puppeteerInstance } = await prepare(t);
   fs.mkdirSync(outDir, { recursive: true });
   const files: string[] = [];
   for (const f of frames) {
+    throwIfCancelled(opts.signal);
     const out = path.join(outDir, `${opts.prefix ?? "frame"}-${String(f).padStart(5, "0")}.${opts.format ?? "png"}`);
     await renderStill({
       serveUrl,

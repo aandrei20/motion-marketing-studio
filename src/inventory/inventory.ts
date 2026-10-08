@@ -195,7 +195,7 @@ export const INVENTORY: InventoryItem[] = [
     ["silence", "Tăcere intenționată", "P2", "IMPLEMENTED", ["module:src/audio/mixer.ts#mix"]],
     ["speed-ramp", "Speed ramp", "P2", "IMPLEMENTED", ["cap:tr.speed-ramp"]],
     ["ops", "Operații de editare: durată, ștergere, duplicare, mutare, blocare, sunet, text, material, cameră, tranziție, straturi", "P0", "IMPLEMENTED", ["module:src/editing/ops.ts#applyEditOps", "op:scene-duplicate", "op:scene-move", "op:layer-hide"]],
-    ["undo-redo", "Undo / redo (jurnal de operații + snapshot-uri)", "P0", "IMPLEMENTED", ["module:src/editing/history.ts#undo", "module:src/editing/history.ts#redo"]],
+    ["undo-redo", "Undo / redo (jurnal de operații + snapshot-uri), în CLI și în Studio", "P0", "IMPLEMENTED", ["module:src/editing/history.ts#undo", "module:src/editing/history.ts#redo"]],
     ["nl-commands", "Comenzi în limbaj natural", "P1", "IMPLEMENTED", ["module:src/iterate/intents.ts#parseCommand"]],
   ]),
   ...area("camera", [

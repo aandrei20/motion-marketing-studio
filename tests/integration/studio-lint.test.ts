@@ -18,7 +18,7 @@ beforeAll(async () => {
 afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 const call = async (method: string, url: string, body?: unknown) => {
-  const res = await fetch(`${base}${url}`, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(`${base}${url}`, { method, headers: { "Content-Type": "application/json", "X-MMS": "1" }, body: body === undefined ? undefined : JSON.stringify(body) });
   return { status: res.status, data: await res.json().catch(() => null) };
 };
 
@@ -48,6 +48,40 @@ describe("Studio (server + interfață)", () => {
     const res = await fetch(`${base}/files/library/catalog/samples/video.mp4`, { headers: { Range: "bytes=0-99" } });
     expect(res.status).toBe(206);
     expect((await res.arrayBuffer()).byteLength).toBe(100);
+  });
+});
+
+describe("Studio: protecții și joburi", () => {
+  it("refuză Host-ul străin (DNS rebinding), originea străină și cererile fără antetul X-MMS", async () => {
+    const { checkRequest } = await import("../../src/studio/server");
+    expect(checkRequest({ method: "GET", headers: { host: "evil.test:80" } }, PORT)).toMatch(/Host/);
+    expect(checkRequest({ method: "GET", headers: { host: `127.0.0.1:${PORT}` } }, PORT)).toBeNull();
+    expect(checkRequest({ method: "POST", headers: { host: `127.0.0.1:${PORT}`, origin: "http://evil.test", "x-mms": "1" } }, PORT)).toMatch(/Origine/);
+    expect(checkRequest({ method: "POST", headers: { host: `localhost:${PORT}` } }, PORT)).toMatch(/X-MMS/);
+    const noHeader = await fetch(`${base}/api/projects`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    expect(noHeader.status).toBe(403);
+  });
+  it("refuză tipurile de fișier nepermise la încărcare", async () => {
+    const res = await fetch(`${base}/api/projects/ui-test/assets`, { method: "POST", headers: { "X-MMS": "1", "x-filename": "script.exe" }, body: new Uint8Array([1, 2, 3]) });
+    expect(res.status).toBe(415);
+  });
+  it("un job se oprește, are manifest pe disc și se poate relua", async () => {
+    const j = (await call("POST", "/api/projects/ui-test/jobs", { type: "concepts" })).data;
+    expect(j.id).toMatch(/^job-/);
+    for (let k = 0; k < 50; k++) {
+      const list = (await call("GET", "/api/jobs?project=ui-test")).data as Array<{ id: string; state: string }>;
+      if (list.find((x) => x.id === j.id)?.state !== "queued" && list.find((x) => x.id === j.id)?.state !== "running") break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const { PATHS } = await import("../../src/core/paths");
+    const manifest = JSON.parse(fs.readFileSync(path.join(PATHS.cache, "jobs", `${j.id}.json`), "utf8"));
+    expect(manifest).toMatchObject({ id: j.id, type: "concepts" });
+    expect(["done", "failed"]).toContain(manifest.state);
+    expect(manifest.updatedAt).toBeTruthy();
+    const again = await call("POST", `/api/projects/ui-test/jobs/${j.id}/resume`);
+    expect(again.status).toBe(202);
+    expect(again.data.type).toBe("concepts");
+    expect((await call("POST", "/api/projects/ui-test/jobs", { type: "nu-exista" })).status).toBe(400);
   });
 });
 
