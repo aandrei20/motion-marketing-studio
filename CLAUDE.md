@@ -111,6 +111,7 @@ Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și
 ## Mișcare
 
 - Totul se calculează din numărul cadrului; aleatorul doar prin `rand()`/`noise1()`/`mulberry32` cu sămânță. Fără `Math.random()`, `Date.now()`.
+- Regula 18 se verifică pe două niveluri: timeline-ul compilat e identic octet cu octet; pixelii randați pot varia cu cel mult 2/255 din cauza rasterizării Chrome (invizibil). Orice diferență mai mare e un bug.
 - O capabilitate intră în registry doar cu implementare reală, parametri zod, sunet declarat, exemplu randat de testul de catalog și stare corectă. Nu se înregistrează nimic nefuncțional.
 - Interfața produsului vine doar din `media.screen`/`media.device-3d`/... cu captură reală sau fișier de la utilizator. Straturile UI (cursor, spotlight, callout) sunt doar peste captura reală, în pixelii ei.
 - Logo-ul: doar scară uniformă (fără recolorare, rotire, deformare), conform `brand.logo.rules`.
