@@ -1,0 +1,48 @@
+{
+  "name": "motion-marketing-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Studio reutilizabil de productie video pentru produse software, construit pe Remotion.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "studio": "tsx src/cli/index.ts studio",
+    "remotion": "tsx src/cli/index.ts remotion-studio",
+    "mms": "tsx src/cli/index.ts",
+    "render": "tsx src/cli/index.ts render --final",
+    "preview": "tsx src/cli/index.ts render --preview",
+    "doctor": "tsx scripts/doctor.ts",
+    "test": "vitest run",
+    "test:render": "vitest run --config vitest.render.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsx scripts/lint-rules.ts",
+    "registry": "tsx scripts/build-registry.ts",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "update": "git pull --ff-only && npm ci && tsx scripts/setup.ts && tsx scripts/doctor.ts"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.534",
+    "@remotion/cli": "4.0.534",
+    "@remotion/player": "4.0.534",
+    "@remotion/renderer": "4.0.534",
+    "esbuild": "0.28.2",
+    "fontkit": "2.0.4",
+    "playwright": "1.64.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.534",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/fontkit": "2.0.9",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

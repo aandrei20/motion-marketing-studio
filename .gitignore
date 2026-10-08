@@ -1,0 +1,36 @@
+# Dependențe și build
+node_modules/
+dist/
+.cache/
+out/
+*.tsbuildinfo
+
+# Proiectele utilizatorului (au materiale cu drepturi, capturi, randări)
+projects/*
+!projects/README.md
+
+# Randări și media generate
+*.mp4
+*.mov
+*.webm
+renders/
+
+# Secrete
+.env
+.env.*
+!.env.example
+
+# Sesiuni de browser (autentificări pentru captură)
+.browser-profiles/
+
+# Sistem și editoare
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# Excepții: materialele mici de probă ale catalogului (capturi reale ale produsului demo fictiv)
+!library/catalog/samples/*.mp4
