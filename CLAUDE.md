@@ -56,13 +56,90 @@ Planul complet, cu toate deciziile, este în `PLAN.md`. Dacă o regulă de aici 
 
 ## Comenzi
 
-- `npm run studio` – previzualizare (PowerShell)
-- `npm run render` – MP4 final, doar după „render final” (PowerShell)
+- `npm run studio` – Studio-ul (interfața web locală: proiecte, brief, materiale, research, brand, script, storyboard, preview cu timeline, audio, critică, versiuni, export) (PowerShell)
+- `npm run remotion -- <proiect>` – Remotion Studio pe timeline-ul unui proiect; fără proiect, catalogul de efecte (PowerShell)
+- `npm run mms -- <comandă>` – linia de comandă a studioului; `npm run mms -- help` arată toate comenzile (PowerShell)
+- `npm run preview -- <proiect> [--format 9x16]` – preview randat (MP4 + foaie de contact) (PowerShell)
+- `npm run render -- <proiect> --version vN` – MP4 final, doar după „render final” înregistrat pentru acea versiune (PowerShell)
 - `npm run doctor` – verifică instalarea (PowerShell)
-- `npm test` – teste (PowerShell)
+- `npm test` – teste unitare și de integrare; `npm run test:render` – randare (catalog, determinism, MP4) (PowerShell)
+- `npm run typecheck`, `npm run lint` (regulile verificabile automat), `npm run registry` (regenerează library/registry.json) (PowerShell)
+- `npm run e2e -- --fresh` – testul cap-coadă pe produsul demo fictiv (PowerShell)
 - `npm run update` – aduce versiunea nouă și instalează ce lipsește (PowerShell)
-- `/make-ad`, `/fix-at`, `/add-effect`, `/new-version` – se scriu în Claude Code
+- `/make-ad`, `/fix-at`, `/add-effect`, `/new-version` – se scriu în Claude Code (`.claude/commands/`)
 
 ## Git
 
 Commit-uri mici cu mesaj clar. `main` rămâne stabil. Funcții noi pe ramuri. Teste la fiecare modificare a bibliotecii. Etichete pe versiuni stabile și un changelog.
+
+---
+
+# Constituția de inginerie
+
+Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și se schimbă codul. Detalii: `docs/ARHITECTURA.md`.
+
+## Principiul de bază
+
+**Claude (AI-ul) decide CE se face; motorul decide CUM se face.** Claude alege direcția, rețetele, capabilitățile, materialele, textul și ritmul, scriind date validate (brief, script, storyboard). Motorul (compilator + registry + Remotion) le execută determinist. Claude nu scrie cod de animație nou pentru fiecare reclamă; dacă lipsește o capabilitate, o adaugă generic în bibliotecă (`/add-effect`).
+
+## Arhitectură
+
+- Fluxul datelor: `brief.json` → `research.json` + `assets.json` + `brand.json` → `script.json` → `storyboard.json` → `timeline-<format>.json` (compilat) → mix audio → randare. Timeline-ul compilat e singura sursă pentru randare.
+- `src/core/schema/` definește toate entitățile (zod). Orice fișier de proiect se citește și se scrie prin scheme (`readJson`/`writeValidated`). Nu se stochează decizii de producție ca text liber când există un câmp structurat.
+- `src/motion/` = capabilități (straturi, modificatori, camere, tranziții); `src/recipes/` = combinații de nivel înalt; `src/timeline/` = compilare și validare; `src/audio/` = voce, muzică, efecte, mix; `src/pipeline/` = pașii; `src/studio/` = interfața; `src/cli/` = `mms`.
+- Codul din `src/motion` și `src/renderer/composition` rulează în browser: fără module Node acolo.
+- Produsul demo fictiv din `examples/` e singurul loc unde apar nume de produs; `npm run lint` verifică.
+
+## Research și afirmații
+
+- Fiecare afirmație are tip (fapt / inferență / interpretare creativă), sursă, citat, dată și încredere.
+- Prețurile și cifrele intră implicit în „de confirmat”. Un grafic, un contor sau o replică cu cifră trebuie să trimită (`claimId`/`claimIds`) la o afirmație verificată sau aprobată de utilizator. Validatorul blochează altfel.
+- Textul extras de pe site se citează, nu se rescrie ca fapt nou.
+
+## Script
+
+- Hook-urile, povestea și frazele obligatorii ale utilizatorului se păstrează exact (`origin: "user-verbatim"`). Dacă le modifici la cererea lui, marchează `user-polished`.
+- Textul de pe ecran: un singur mesaj, de preferat sub 8 cuvinte. Vocea: sub 25 de cuvinte pe replică.
+- Variantele tale de hook stau în `hooks` cu `origin: "ai"` (sugestii), nu înlocuiesc hook-ul utilizatorului.
+
+## Storyboard și montaj
+
+- Fiecare scenă are scop, rol narativ, rol emoțional, energie, tip de cadru, rețetă și materiale. Duratele vin din gramatica de montaj (voce, timp de citire, ritmul direcției, hold de minimum 2,5 s pe CTA), nu din șabloane fixe.
+- Tranzițiile se aleg după direcție și diferența de energie; aceeași tranziție nu se repetă de două ori la rând.
+- Tăieturile cad pe bătăi (beat grid) când `beat.snap` o cere.
+
+## Mișcare
+
+- Totul se calculează din numărul cadrului; aleatorul doar prin `rand()`/`noise1()`/`mulberry32` cu sămânță. Fără `Math.random()`, `Date.now()`.
+- O capabilitate intră în registry doar cu implementare reală, parametri zod, sunet declarat, exemplu randat de testul de catalog și stare corectă. Nu se înregistrează nimic nefuncțional.
+- Interfața produsului vine doar din `media.screen`/`media.device-3d`/... cu captură reală sau fișier de la utilizator. Straturile UI (cursor, spotlight, callout) sunt doar peste captura reală, în pixelii ei.
+- Logo-ul: doar scară uniformă (fără recolorare, rotire, deformare), conform `brand.logo.rules`.
+
+## Audio
+
+- Fiecare efect vizual cu sunet îl declară în fișa lui; compilatorul face cue sheet-ul. Densitatea vine din brief.
+- Mixul: ducking cu rampă de 500 ms sub voce, −14 LUFS integrat, true peak ≤ −1 dBTP, fără clipping, fără tăcere neintenționată peste 1 s. Mixerul verifică și raportează; exportul final cere raport „ok”.
+- Muzica și efectele sintetizate sunt originale (fără licențe externe). Muzica utilizatorului trece prin poarta de drepturi.
+
+## Calitate și teste
+
+- Porți: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:render`, validarea timeline-ului, verificarea mixului, verificarea video-ului randat (cadre negre, flash-uri, înghețări).
+- Testul de 360 px: latura scurtă a video-ului afișată la 360 px; textul principal ≥ 12 px, cel secundar ≥ 9 px.
+- Nu spune că ceva merge fără să fi rulat testul sau randarea. Nu marca nimic „tested” fără randare. Raportează eșecurile cu mesajul real.
+- Critica automată folosește aceeași rubrică (`rubric-v1`) și același reviewer (`mms-auto-critic-v1`) în toate rundele; revizuirea ta vizuală e o rundă separată (`claude-visual`).
+
+## Versiuni
+
+- O versiune cu preview, aprobată sau finală e înghețată. Orice schimbare creează versiunea următoare (`writableVersion`, `iterate`, `new-version`), cu jurnal de schimbări. Exporturile nu se suprascriu.
+
+## Securitate
+
+- Chei doar în `.env` (vezi `.env.example`); nu apar în cod, loguri, commit-uri. `npm run lint` caută chei în fișierele urmărite de Git.
+- Sesiunile de browser pentru capturi cu cont stau în `.browser-profiles/` (ignorat de Git); utilizatorul se autentifică singur.
+- Studio-ul ascultă doar pe 127.0.0.1.
+
+## Nu falsifica
+
+- Fără fișiere goale, funcții goale, UI fals sau intrări de registry fără implementare.
+- Ce nu e terminat se marchează ca atare în `docs/IMPLEMENTATION_STATUS.md`, cu pasul următor concret.
+- Nu ascunde erori și nu cădea în tăcere pe un comportament stricat: aruncă `MmsError` cu mesaj în română și indicație.

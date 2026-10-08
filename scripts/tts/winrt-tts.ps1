@@ -1,4 +1,4 @@
-# Sinteză vocală offline cu vocile Windows (OneCore/WinRT), inclusiv cele românești (ex. Microsoft Andrei).
+﻿# Sinteză vocală offline cu vocile Windows (OneCore/WinRT), inclusiv cele românești (ex. Microsoft Andrei).
 # Textul vine dintr-un fișier UTF-8 (ca diacriticele să nu se piardă), rezultatul: WAV + JSON cu cuvintele.
 param(
   [Parameter(Mandatory = $true)][string]$TextFile,
