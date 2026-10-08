@@ -6,8 +6,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 160 | 84 | 46 | 26 | 4 |
-| PARTIAL | 25 | 1 | 10 | 9 | 5 |
+| IMPLEMENTED | 161 | 85 | 46 | 26 | 4 |
+| PARTIAL | 24 | 0 | 10 | 9 | 5 |
 | MISSING | 12 | 0 | 0 | 9 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
@@ -264,7 +264,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Zone sigure și zonele butoanelor platformei | P0 | IMPLEMENTED | `module:src/core/formats.ts#resolveSafeZone`, `check:timeline.validate` | — |
 | Zone pentru subtitrări (fără ocluzie) | P0 | IMPLEMENTED | `module:src/timeline/compile.ts#captionSegments`, `check:ui.caption-occlusion` | — |
 | Profiluri configurabile: TikTok, Reels, Shorts, YouTube, LinkedIn, X, Feed | P0 | IMPLEMENTED | `module:src/platform/profiles.ts#platformProfile`, `check:platform.profile` | — |
-| Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) | P0 | PARTIAL | `module:src/recipes/kit.ts#portraitCrop`, `module:src/recipes/kit.ts#zones` | Adaptoarele rearanjează conținutul; nu există o verificare că zona țintită rămâne vizibilă pe fiecare format. **Următorul pas:** Verificare „reframing”: zona de interes a scenei e în zona media vizibilă la hold, pe fiecare format. |
+| Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#portraitCrop`, `module:src/recipes/kit.ts#zones`, `check:platform.reframing` | — |
 
 ## Materiale și media (9)
 

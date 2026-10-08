@@ -26,6 +26,7 @@ import type { IssueDraft } from "./issues";
 import { loadConcepts } from "../creative/concepts";
 import { claimGraph } from "../research/graph";
 import { area, focusRects, holdFrame, overlapArea, screenRect } from "../timeline/geometry";
+import { resolveSafeZone } from "../core/formats";
 import { boxAt, captionBoxes } from "../timeline/validate";
 import type { PixelMetrics } from "../critique/pixel";
 
@@ -588,6 +589,34 @@ export const CHECKS: CheckDef[] = [
       if (words / dur > prof.maxWordsPerSec) out.push({ frame: null, sceneId: null, formatId: fid, dimension: "platform", category: "typography", severity: "medium", problem: `Text dens: ${(words / dur).toFixed(1)} cuvinte pe ecran pe secundă (maximum ${prof.maxWordsPerSec} pentru ${prof.label}).`, recommendation: "Mută explicațiile în voce; pe ecran un singur mesaj scurt pe scenă.", confidence: 0.7 });
       const cta = t.scenes.find((s) => s.meta.narrativeRole === "cta");
       if (cta && cta.durationInFrames / t.fps < prof.ctaHoldSec) out.push({ frame: cta.from, sceneId: cta.id, formatId: fid, dimension: "cta", category: "platform", severity: "medium", problem: `Cardul final ține ${(cta.durationInFrames / t.fps).toFixed(1)} s (recomandat ${prof.ctaHoldSec} s pentru ${prof.label}).`, recommendation: "Prelungește cardul final.", suggestedFix: [{ op: "scene-extend", sceneId: cta.id, deltaSec: Math.ceil((prof.ctaHoldSec - cta.durationInFrames / t.fps + 0.1) * 10) / 10, currentSec: cta.durationInFrames / t.fps }], confidence: 0.85 });
+      return out;
+    },
+  },
+  {
+    id: "platform.reframing",
+    version: 1,
+    pass: "platform",
+    title: "Reîncadrarea pe format: zona demonstrată rămâne în cadru și în zona sigură la momentul de hold",
+    categories: ["platform", "ui"],
+    method: "timeline",
+    perFormat: true,
+    run: (ctx, fid) => {
+      const t = ctx.timelines[fid];
+      const fmt = ctx.formats.find((f) => f.id === fid)!;
+      const safe = resolveSafeZone(fmt).rect;
+      const frame = { x: 0, y: 0, w: t.width, h: t.height };
+      const out: IssueDraft[] = [];
+      t.scenes.forEach((s, i) => {
+        const local = holdFrame(t, i);
+        for (const r of focusRects(t, s, local)) {
+          const a = Math.max(1, area(r));
+          const inFrame = overlapArea(r, frame) / a;
+          const inSafe = overlapArea(r, safe) / a;
+          if (inFrame < 0.8) out.push({ frame: s.from + local, sceneId: s.id, formatId: fid, dimension: "reframing", severity: "high", problem: `Pe ${fid}, zona demonstrată din ${s.id} iese din cadru (${Math.round(inFrame * 100)}% vizibilă).`, recommendation: "Decupează captura în jurul zonei pe acest format (portraitCrop) sau mută camera pe ea.", confidence: 0.8 });
+          else if (inSafe < 0.7) out.push({ frame: s.from + local, sceneId: s.id, formatId: fid, dimension: "reframing", severity: "medium", problem: `Pe ${fid}, zona demonstrată din ${s.id} stă mult în afara zonei sigure (${Math.round(inSafe * 100)}% în zona sigură).`, recommendation: "Adu zona în interiorul zonei sigure (sub butoanele platformei se pierde).", confidence: 0.7 });
+          break;
+        }
+      });
       return out;
     },
   },

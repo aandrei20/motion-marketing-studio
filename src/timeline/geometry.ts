@@ -60,8 +60,23 @@ export function focusRects(t: Pick<Timeline, "width" | "height" | "fps">, scene:
     for (const c of l.children) {
       if (!FOCUS_CAPS.test(c.capability)) continue;
       const lf = Math.max(0, local - l.from);
-      const a = screenPointToBox(p, l.box, { x: c.box.x, y: c.box.y }, lf, l.durationInFrames);
-      const b = screenPointToBox(p, l.box, { x: c.box.x + c.box.w, y: c.box.y + c.box.h }, lf, l.durationInFrames);
+      // straturile care acoperă toată captura (spotlight, drag, cursor) au ținta în parametri, nu în cutie
+      const cp = c.params as { region?: Rect; from?: Rect; to?: { x: number; y: number }; path?: Array<{ at: number; x: number; y: number }> };
+      const full = c.box.w * c.box.h >= p.imageWidth * p.imageHeight * 0.6;
+      let target: Rect | null = full ? null : c.box;
+      if (full && cp.region) target = cp.region;
+      else if (full && cp.from && cp.to) {
+        const x0 = Math.min(cp.from.x, cp.to.x - cp.from.w / 2);
+        const y0 = Math.min(cp.from.y, cp.to.y - cp.from.h / 2);
+        target = { x: x0, y: y0, w: Math.max(cp.from.x + cp.from.w, cp.to.x + cp.from.w / 2) - x0, h: Math.max(cp.from.y + cp.from.h, cp.to.y + cp.from.h / 2) - y0 };
+      } else if (full && cp.path?.length) {
+        // cursorul: punctul în care se află la momentul de hold (o zonă mică în jurul lui)
+        const pt = [...cp.path].reverse().find((q) => q.at <= local - l.from - c.from) ?? cp.path[0];
+        target = { x: pt.x - 40, y: pt.y - 40, w: 80, h: 80 };
+      }
+      if (!target) continue;
+      const a = screenPointToBox(p, l.box, { x: target.x, y: target.y }, lf, l.durationInFrames);
+      const b = screenPointToBox(p, l.box, { x: target.x + target.w, y: target.y + target.h }, lf, l.durationInFrames);
       const inBox = { x: l.box.x + Math.min(a.x, b.x), y: l.box.y + Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
       if (inBox.w > 1 && inBox.h > 1) out.push(screenRect(t, scene, { box: inBox, depth: l.depth }, local));
     }

@@ -113,6 +113,7 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `platform.profile` – Profilul platformei: durată, format, hook, subtitrări, densitatea textului, hold pe CTA | timeline | platform | da |
+| `platform.reframing` – Reîncadrarea pe format: zona demonstrată rămâne în cadru și în zona sigură la momentul de hold | timeline | platform, ui | da |
 
 ### PASS 9 – Final QA: determinism, fișiere, video randat, porți de export
 

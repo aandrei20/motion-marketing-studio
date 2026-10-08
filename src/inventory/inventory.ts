@@ -278,7 +278,7 @@ export const INVENTORY: InventoryItem[] = [
     ["safe-zones", "Zone sigure și zonele butoanelor platformei", "P0", "IMPLEMENTED", ["module:src/core/formats.ts#resolveSafeZone", "check:timeline.validate"]],
     ["caption-zones", "Zone pentru subtitrări (fără ocluzie)", "P0", "IMPLEMENTED", ["module:src/timeline/compile.ts#captionSegments", "check:ui.caption-occlusion"]],
     ["profiles", "Profiluri configurabile: TikTok, Reels, Shorts, YouTube, LinkedIn, X, Feed", "P0", "IMPLEMENTED", ["module:src/platform/profiles.ts#platformProfile", "check:platform.profile"]],
-    ["reframing", "Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media)", "P0", "PARTIAL", ["module:src/recipes/kit.ts#portraitCrop", "module:src/recipes/kit.ts#zones"], "Adaptoarele rearanjează conținutul; nu există o verificare că zona țintită rămâne vizibilă pe fiecare format.", "Verificare „reframing”: zona de interes a scenei e în zona media vizibilă la hold, pe fiecare format."],
+    ["reframing", "Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură", "P0", "IMPLEMENTED", ["module:src/recipes/kit.ts#portraitCrop", "module:src/recipes/kit.ts#zones", "check:platform.reframing"]],
   ]),
   ...area("asset-media", [
     ["screenshots", "Capturi reale (2×, pagină întreagă, mobil)", "P0", "IMPLEMENTED", ["module:src/capture/capture.ts#capture"]],
