@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "ai-product",
+  "title": "Produs AI (25–35 s)",
+  "description": "Hook scris ca un prompt, problema, demonstrație cu tastare reală, rezultat pe captură, CTA.",
+  "durationSec": [
+    20,
+    40
+  ],
+  "directions": [
+    "technical",
+    "premium",
+    "energetic"
+  ],
+  "products": [
+    "ai-product",
+    "developer-tool",
+    "saas"
+  ],
+  "scenes": [
+    {
+      "role": "hook",
+      "recipe": "hook-kinetic",
+      "energy": 0.7,
+      "emotion": "curiosity",
+      "shot": "title",
+      "line": "hook",
+      "weight": 1
+    },
+    {
+      "role": "problem",
+      "recipe": "problem-statement",
+      "energy": 0.45,
+      "emotion": "frustration",
+      "shot": "close-up",
+      "line": "problem",
+      "weight": 1,
+      "optional": true
+    },
+    {
+      "role": "demo",
+      "recipe": "ui-walkthrough",
+      "energy": 0.7,
+      "emotion": "delight",
+      "shot": "detail",
+      "line": "feature",
+      "weight": 1.6
+    },
+    {
+      "role": "feature",
+      "recipe": "ui-spotlight",
+      "energy": 0.7,
+      "emotion": "confidence",
+      "shot": "close-up",
+      "line": "feature",
+      "weight": 1.2
+    },
+    {
+      "role": "cta",
+      "recipe": "cta-end",
+      "energy": 0.5,
+      "emotion": "urgency",
+      "shot": "title",
+      "line": "cta",
+      "weight": 1.2
+    }
+  ]
+}

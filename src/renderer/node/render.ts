@@ -68,9 +68,13 @@ export function timelineAssets(t: Timeline): string[] {
  * Aruncă eroare clară dacă lipsește vreun fișier.
  */
 export function stagePublic(serveUrl: string, t: Timeline): void {
+  stageFiles(serveUrl, timelineAssets(t));
+}
+
+export function stageFiles(serveUrl: string, files: string[]): void {
   const pub = path.join(serveUrl, "public");
   const missing: string[] = [];
-  for (const rel of timelineAssets(t)) {
+  for (const rel of files) {
     const src = publicToAbs(rel);
     if (!fs.existsSync(src)) {
       missing.push(rel);
@@ -199,4 +203,16 @@ export async function renderStills(t: Timeline, frames: number[], outDir: string
     files.push(out);
   }
   return files;
+}
+
+/** Foaie de contact: cadre JPEG (căi publice) puse într-o singură imagine PNG. */
+export async function renderContactSheet(images: string[], labels: string[], out: string, opts: { cols?: number; cellWidth?: number; cellHeight?: number; title?: string } = {}): Promise<string> {
+  const serveUrl = await getBundle();
+  stageFiles(serveUrl, images);
+  const inputProps = { images, labels, cols: opts.cols ?? 6, cellWidth: opts.cellWidth ?? 320, cellHeight: opts.cellHeight ?? 180, title: opts.title ?? "" };
+  const puppeteerInstance = await getBrowser();
+  const composition = await selectComposition({ serveUrl, id: "ContactSheet", inputProps, puppeteerInstance, logLevel: "error" });
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  await renderStill({ serveUrl, composition, inputProps, frame: 0, output: path.resolve(out), imageFormat: "png", overwrite: true, puppeteerInstance, logLevel: "error", licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null });
+  return out;
 }

@@ -18,6 +18,14 @@ const key = (at: number, x: number, y: number, zoom: number, extra: Partial<Came
 
 const center = (c: CameraBuildContext) => ({ x: c.width / 2, y: c.height / 2 });
 const target = (c: CameraBuildContext) => c.focus ?? center(c);
+/**
+ * Punctul din scenă care trebuie pus în centrul cadrului ca `F` să apară la `T` (ținta pe ecran) la zoom-ul z:
+ * centru = F + (C − T) / z.
+ */
+const aim = (c: CameraBuildContext, f: { x: number; y: number }, z: number) => {
+  const t = c.target ?? center(c);
+  return { x: f.x + (c.width / 2 - t.x) / z, y: f.y + (c.height / 2 - t.y) / z };
+};
 
 const baseMeta = {
   category: "camera" as const,
@@ -56,10 +64,10 @@ export const cameraPush = defineCamera({
     ease: Ease.default("inOut"),
   }),
   build: (p, c) => {
-    const t = target(c);
     const to = p.to ?? c.focusZoom;
+    const a = c.focus ? aim(c, c.focus, to) : center(c);
     return {
-      keys: [key(c.duration * p.start, center(c).x, center(c).y, p.from), key(c.duration * p.end, t.x, t.y, to, { ease: p.ease })],
+      keys: [key(c.duration * p.start, center(c).x, center(c).y, p.from), key(c.duration * p.end, a.x, a.y, to, { ease: p.ease })],
     };
   },
   example: { params: { from: 1, to: 1.6 }, durationInFrames: 60 },
@@ -79,9 +87,10 @@ export const cameraPull = defineCamera({
     ease: Ease.default("out"),
   }),
   build: (p, c) => {
-    const t = target(c);
+    const z0 = p.from ?? c.focusZoom;
+    const a = c.focus ? aim(c, c.focus, z0) : center(c);
     return {
-      keys: [key(0, t.x, t.y, p.from ?? c.focusZoom), key(c.duration * p.end, center(c).x, center(c).y, p.to, { ease: p.ease })],
+      keys: [key(0, a.x, a.y, z0), key(c.duration * p.end, center(c).x, center(c).y, p.to, { ease: p.ease })],
     };
   },
   example: { params: { from: 1.8, to: 1 }, durationInFrames: 60 },

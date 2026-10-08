@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "feature-showcase",
+  "title": "Parada funcțiilor (30 s)",
+  "description": "Hook, pagina reală derulată, 2–3 funcții pe zone reale, montaj rapid, CTA.",
+  "durationSec": [
+    20,
+    40
+  ],
+  "directions": [
+    "energetic",
+    "technical",
+    "premium"
+  ],
+  "products": [
+    "saas",
+    "productivity",
+    "creative-tool",
+    "ai-product",
+    "website"
+  ],
+  "scenes": [
+    {
+      "role": "hook",
+      "recipe": "hook-kinetic",
+      "energy": 0.85,
+      "emotion": "curiosity",
+      "shot": "title",
+      "line": "hook",
+      "weight": 1
+    },
+    {
+      "role": "reveal",
+      "recipe": "scroll-tour",
+      "energy": 0.6,
+      "emotion": "aspiration",
+      "shot": "establishing",
+      "line": "reveal",
+      "weight": 1.2
+    },
+    {
+      "role": "feature",
+      "recipe": "ui-spotlight",
+      "energy": 0.65,
+      "emotion": "confidence",
+      "shot": "close-up",
+      "line": "feature",
+      "weight": 1.2
+    },
+    {
+      "role": "feature",
+      "recipe": "ui-spotlight",
+      "energy": 0.7,
+      "emotion": "delight",
+      "shot": "close-up",
+      "line": "feature",
+      "weight": 1.2
+    },
+    {
+      "role": "feature",
+      "recipe": "feature-montage",
+      "energy": 0.85,
+      "emotion": "delight",
+      "shot": "montage",
+      "line": "feature",
+      "weight": 1.2,
+      "optional": true
+    },
+    {
+      "role": "cta",
+      "recipe": "cta-end",
+      "energy": 0.5,
+      "emotion": "urgency",
+      "shot": "title",
+      "line": "cta",
+      "weight": 1.2
+    }
+  ]
+}

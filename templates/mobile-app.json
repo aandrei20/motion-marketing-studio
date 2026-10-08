@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "mobile-app",
+  "title": "Aplicație mobilă (vertical, 20–30 s)",
+  "description": "Hook, telefonul 3D cu aplicația, funcții pe ecrane reale, CTA de descărcare.",
+  "durationSec": [
+    15,
+    35
+  ],
+  "directions": [
+    "energetic",
+    "premium",
+    "emotional"
+  ],
+  "products": [
+    "mobile-app",
+    "fintech",
+    "productivity",
+    "ecommerce"
+  ],
+  "scenes": [
+    {
+      "role": "hook",
+      "recipe": "hook-kinetic",
+      "energy": 0.85,
+      "emotion": "curiosity",
+      "shot": "title",
+      "line": "hook",
+      "weight": 1
+    },
+    {
+      "role": "reveal",
+      "recipe": "device-hero",
+      "energy": 0.65,
+      "emotion": "aspiration",
+      "shot": "hero",
+      "line": "reveal",
+      "weight": 1.3
+    },
+    {
+      "role": "feature",
+      "recipe": "ui-spotlight",
+      "energy": 0.7,
+      "emotion": "delight",
+      "shot": "close-up",
+      "line": "feature",
+      "weight": 1.2
+    },
+    {
+      "role": "feature",
+      "recipe": "feature-montage",
+      "energy": 0.85,
+      "emotion": "delight",
+      "shot": "montage",
+      "line": "feature",
+      "weight": 1.1,
+      "optional": true
+    },
+    {
+      "role": "cta",
+      "recipe": "cta-end",
+      "energy": 0.5,
+      "emotion": "urgency",
+      "shot": "title",
+      "line": "cta",
+      "weight": 1.2
+    }
+  ]
+}

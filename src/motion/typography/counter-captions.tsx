@@ -109,7 +109,7 @@ export const textCaptions = defineLayer({
     let cur: typeof p.words = [];
     for (const w of p.words) {
       const prev = cur[cur.length - 1];
-      if (cur.length >= p.maxWords || (prev && w.from - prev.to > env.fps * 0.35)) {
+      if (cur.length >= p.maxWords || (prev && (w.from - prev.to > env.fps * 0.35 || /[.!?…]$/.test(prev.text)))) {
         groups.push(cur);
         cur = [];
       }

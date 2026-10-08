@@ -76,6 +76,8 @@ export const Brief = z.object({
   references: z
     .array(z.object({ assetId: Slug, aspects: z.array(z.string()).default([]), note: z.string().default("") }))
     .default([]),
+  /** subtitrări arse în video și/sau fișier .srt */
+  captions: z.object({ burnIn: z.boolean().default(true), srt: z.boolean().default(true) }).default({ burnIn: true, srt: true }),
   approvedAt: IsoDate.nullable().default(null),
 });
 export type Brief = z.infer<typeof Brief>;

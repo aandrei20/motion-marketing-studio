@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "textLanguage": "ro",
+  "voiceLanguage": "ro",
+  "hooks": [
+    { "id": "hook-1", "text": "Încă o ședință de o oră?", "origin": "user-verbatim", "selected": true },
+    { "id": "hook-2", "text": "Lunea ta nu e o ședință.", "origin": "ai", "selected": false }
+  ],
+  "lines": [
+    {
+      "id": "hook",
+      "voiceover": "Încă o ședință de o oră?",
+      "onScreen": "Încă o ședință de o oră?",
+      "emphasis": ["o oră?"],
+      "origin": "user-verbatim",
+      "isHook": true,
+      "emotion": "curiozitate",
+      "visualIntent": "text mare care sare pe ritm, peste pagina reală estompată"
+    },
+    {
+      "id": "durere",
+      "voiceover": "Tabele pierdute. Mesaje „ai văzut?”.",
+      "onScreen": "Tabele pierdute. Mesaje „ai văzut?”.",
+      "origin": "ai",
+      "emotion": "frustrare",
+      "visualIntent": "două fraze scurte, una pe bătaie"
+    },
+    {
+      "id": "promisiune",
+      "voiceover": "Cu Kolibri: Planifică săptămâna în 5 minute.",
+      "onScreen": "Planifică săptămâna în 5 minute",
+      "emphasis": ["5 minute"],
+      "claimIds": ["c-poz-planifica-saptamana-in-5-minute-"],
+      "origin": "user-verbatim",
+      "mandatoryPhraseIds": ["promisiune"],
+      "emotion": "ușurare",
+      "visualIntent": "logo-ul se adună din particule, promisiunea sub el"
+    },
+    {
+      "id": "cautare",
+      "voiceover": "Găsești orice sarcină tastând câteva litere.",
+      "onScreen": "Căutare instantă",
+      "emphasis": ["instantă"],
+      "claimIds": ["c-f-cautare-instanta"],
+      "origin": "ai",
+      "emotion": "încredere",
+      "visualIntent": "înregistrarea reală: se tastează „raport”, lista se filtrează"
+    },
+    {
+      "id": "focus",
+      "voiceover": "Dimineața primești lista scurtă cu ce contează azi.",
+      "onScreen": "Focusul zilei",
+      "claimIds": ["c-f-focusul-zilei"],
+      "origin": "ai",
+      "emotion": "claritate",
+      "visualIntent": "spotlight pe panoul real „Focusul zilei”"
+    },
+    {
+      "id": "kanban",
+      "voiceover": "Muți sarcinile între coloane, iar echipa vede schimbarea imediat.",
+      "onScreen": "Tablă kanban cu drag & drop",
+      "claimIds": ["c-f-tabla-kanban-cu-drag-drop"],
+      "origin": "ai",
+      "emotion": "control",
+      "visualIntent": "cursorul ia un card real și îl mută în coloana „În lucru”"
+    },
+    {
+      "id": "cta",
+      "voiceover": "Încearcă gratuit.",
+      "onScreen": "Încearcă gratuit",
+      "origin": "user-verbatim",
+      "isCta": true,
+      "emotion": "urgență"
+    }
+  ]
+}

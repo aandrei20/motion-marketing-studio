@@ -17,11 +17,64 @@ const base = {
 const RectP = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() });
 const FrameP = z.enum(["none", "browser", "phone", "laptop", "desktop"]);
 
-function SourceMedia({ src, kind, w, h, startFrom, playbackRate, muted }: { src: string; kind: "image" | "video"; w: number; h: number; startFrom?: number; playbackRate?: number; muted?: boolean }) {
+function SourceMedia({ src, kind, w, h, startFrom, playbackRate, muted, videoFrames, frame }: { src: string; kind: "image" | "video"; w: number; h: number; startFrom?: number; playbackRate?: number; muted?: boolean; videoFrames?: number; frame: number }) {
   const url = useAssetUrl();
   const style: React.CSSProperties = { position: "absolute", left: 0, top: 0, width: w, height: h, display: "block" };
-  if (kind === "video") return <OffthreadVideo src={url(src)} style={style} startFrom={startFrom} playbackRate={playbackRate} muted={muted ?? true} />;
+  if (kind === "video") {
+    const video = <OffthreadVideo src={url(src)} style={style} startFrom={startFrom} playbackRate={playbackRate} muted={muted ?? true} />;
+    // înregistrarea reală e mai scurtă decât scena: ultimul ei cadru rămâne pe ecran (fără cadre goale)
+    if (videoFrames && videoFrames > 1) {
+      const last = Math.max(0, Math.floor((videoFrames - 1 - (startFrom ?? 0)) / (playbackRate ?? 1)) - 1);
+      return <Freeze frame={last} active={frame >= last}>{video}</Freeze>;
+    }
+    return video;
+  }
   return <Img src={url(src)} style={style} />;
+}
+
+export interface ScreenParams {
+  imageWidth: number;
+  imageHeight: number;
+  frame: string;
+  viewportAspect?: number;
+  crop?: { x: number; y: number; w: number; h: number };
+  scroll?: { from: number; to: number; start: number; end: number; ease: "inOut" | "out" | "linear" };
+}
+
+/**
+ * Geometria unui ecran (media.screen): unde stă ecranul în cutie, scara k (pixeli captură → pixeli
+ * compoziție) și decalajul (ox, oy) în pixelii capturii, la un cadru dat. Folosită de componentă și de
+ * compilator (de exemplu, ca să afle unde ajunge pe ecran o zonă din captură).
+ */
+export function screenMapping(p: ScreenParams, box: { w: number; h: number }, frame = 0, duration = 1): { geo: ReturnType<typeof frameGeometry>; k: number; ox: number; oy: number; aspect: number } {
+  const imgAspect = p.imageWidth / p.imageHeight;
+  const cropAspect = p.crop ? p.crop.w / p.crop.h : undefined;
+  const aspect = cropAspect ?? p.viewportAspect ?? (imgAspect < 0.4 ? 9 / 19.5 : imgAspect < 1.1 && p.frame !== "phone" ? 16 / 10 : imgAspect);
+  const geo = frameGeometry(p.frame as FrameKind, box, aspect);
+  const s = geo.screen;
+  let k: number;
+  let ox: number;
+  let oy: number;
+  if (p.crop) {
+    k = Math.max(s.w / p.crop.w, s.h / p.crop.h);
+    ox = p.crop.x + p.crop.w / 2 - s.w / k / 2;
+    oy = p.crop.y + p.crop.h / 2 - s.h / k / 2;
+  } else {
+    k = s.w / p.imageWidth;
+    ox = 0;
+    const visibleH = s.h / k;
+    if (p.scroll) {
+      const t = prog(frame, p.scroll.start * duration, p.scroll.end * duration, p.scroll.ease === "out" ? EASE.out : p.scroll.ease === "linear" ? EASE.linear : EASE.inOut);
+      oy = clamp(p.scroll.from + (p.scroll.to - p.scroll.from) * t, 0, Math.max(0, p.imageHeight - visibleH));
+    } else oy = visibleH > p.imageHeight ? -(visibleH - p.imageHeight) / 2 : 0;
+  }
+  return { geo, k, ox, oy, aspect };
+}
+
+/** Unde ajunge un punct din captură (pixeli imagine) în cutia stratului. */
+export function screenPointToBox(p: ScreenParams, box: { w: number; h: number }, pt: { x: number; y: number }, frame = 0, duration = 1): { x: number; y: number; k: number } {
+  const m = screenMapping(p, box, frame, duration);
+  return { x: m.geo.screen.x + (pt.x - m.ox) * m.k, y: m.geo.screen.y + (pt.y - m.oy) * m.k, k: m.k };
 }
 
 export const mediaScreen = defineLayer({
@@ -52,34 +105,16 @@ export const mediaScreen = defineLayer({
       .optional(),
     videoStartFrom: z.number().int().min(0).default(0),
     playbackRate: z.number().min(0.1).max(8).default(1),
+    /** lungimea înregistrării în cadre (la FPS-ul compoziției); după ea se îngheață ultimul cadru */
+    videoFrames: z.number().int().min(1).optional(),
     radius: z.number().min(0).max(200).optional(),
     shadow: z.boolean().default(true),
   }),
   Component: ({ params: p, frame, duration, box, children }) => {
-    const imgAspect = p.imageWidth / p.imageHeight;
-    const cropAspect = p.crop ? p.crop.w / p.crop.h : undefined;
-    const aspect = p.viewportAspect ?? cropAspect ?? (imgAspect < 0.4 ? 9 / 19.5 : imgAspect < 1.1 && p.frame !== "phone" ? 16 / 10 : imgAspect);
-    const geo = frameGeometry(p.frame as FrameKind, box, aspect);
-    const s = geo.screen;
-    let k: number;
-    let ox: number;
-    let oy: number;
-    if (p.crop) {
-      k = Math.max(s.w / p.crop.w, s.h / p.crop.h);
-      ox = p.crop.x + p.crop.w / 2 - s.w / k / 2;
-      oy = p.crop.y + p.crop.h / 2 - s.h / k / 2;
-    } else {
-      k = s.w / p.imageWidth;
-      ox = 0;
-      const visibleH = s.h / k;
-      if (p.scroll) {
-        const t = prog(frame, p.scroll.start * duration, p.scroll.end * duration, p.scroll.ease === "out" ? EASE.out : p.scroll.ease === "linear" ? EASE.linear : EASE.inOut);
-        oy = clamp(p.scroll.from + (p.scroll.to - p.scroll.from) * t, 0, Math.max(0, p.imageHeight - visibleH));
-      } else oy = visibleH > p.imageHeight ? -(visibleH - p.imageHeight) / 2 : 0;
-    }
+    const { geo, k, ox, oy } = screenMapping(p, box, frame, duration);
     const inner = (
       <div style={{ position: "absolute", left: 0, top: 0, width: p.imageWidth, height: p.imageHeight, transformOrigin: "0 0", transform: `scale(${k.toFixed(6)}) translate(${(-ox).toFixed(3)}px, ${(-oy).toFixed(3)}px)` }}>
-        <SourceMedia src={p.src} kind={p.kind} w={p.imageWidth} h={p.imageHeight} startFrom={p.videoStartFrom} playbackRate={p.playbackRate} />
+        <SourceMedia src={p.src} kind={p.kind} w={p.imageWidth} h={p.imageHeight} startFrom={p.videoStartFrom} playbackRate={p.playbackRate} videoFrames={p.videoFrames} frame={frame} />
         <OverlayScaleContext.Provider value={k}>{children}</OverlayScaleContext.Provider>
       </div>
     );

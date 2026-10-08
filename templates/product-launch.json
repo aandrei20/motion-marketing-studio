@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "id": "product-launch",
+  "title": "Anunț de lansare (20–30 s)",
+  "description": "Anunț, revelare, ce e nou pe captură, beneficiu, CTA.",
+  "durationSec": [
+    15,
+    35
+  ],
+  "directions": [
+    "energetic",
+    "aggressive",
+    "premium"
+  ],
+  "products": [
+    "saas",
+    "mobile-app",
+    "ai-product",
+    "startup",
+    "website",
+    "digital-service"
+  ],
+  "scenes": [
+    {
+      "role": "hook",
+      "recipe": "launch-burst",
+      "energy": 0.9,
+      "emotion": "curiosity",
+      "shot": "title",
+      "line": "hook",
+      "weight": 1
+    },
+    {
+      "role": "reveal",
+      "recipe": "product-reveal",
+      "energy": 0.75,
+      "emotion": "aspiration",
+      "shot": "hero",
+      "line": "reveal",
+      "weight": 1
+    },
+    {
+      "role": "feature",
+      "recipe": "ui-spotlight",
+      "energy": 0.65,
+      "emotion": "delight",
+      "shot": "close-up",
+      "line": "feature",
+      "weight": 1.4
+    },
+    {
+      "role": "benefit",
+      "recipe": "kinetic-sequence",
+      "energy": 0.8,
+      "emotion": "confidence",
+      "shot": "title",
+      "line": "benefit",
+      "weight": 1,
+      "optional": true
+    },
+    {
+      "role": "cta",
+      "recipe": "cta-end",
+      "energy": 0.5,
+      "emotion": "urgency",
+      "shot": "title",
+      "line": "cta",
+      "weight": 1.2
+    }
+  ]
+}
