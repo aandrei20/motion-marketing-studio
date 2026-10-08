@@ -6,9 +6,9 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 159 | 83 | 46 | 26 | 4 |
-| PARTIAL | 25 | 2 | 10 | 8 | 5 |
-| MISSING | 13 | 0 | 0 | 10 | 3 |
+| IMPLEMENTED | 160 | 84 | 46 | 26 | 4 |
+| PARTIAL | 25 | 1 | 10 | 9 | 5 |
+| MISSING | 12 | 0 | 0 | 9 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
 | **toate** | **197** | 85 | 56 | 44 | 12 |
@@ -98,7 +98,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Spotlight / magnifier | P1 | IMPLEMENTED | `cap:ui.spotlight`, `cap:ui.zoom-lens` | — |
 | Callout pe funcție (mărime constantă pe ecran) | P0 | IMPLEMENTED | `cap:ui.callout`, `recipe:ui-spotlight` | — |
 | Lizibilitatea interfeței pe ecran (scară × zoom) | P0 | IMPLEMENTED | `check:ui.legibility` | — |
-| Date personale estompate în capturi | P0 | PARTIAL | `cap:ui.blur-region`, `check:timeline.validate` | Detecția acoperă emailurile din DOM; telefoanele, numele și textul din imagini nu. **Următorul pas:** Detecție DOM pentru telefon/IBAN/ID-uri + OCR pe imagini (Windows OCR). |
+| Date personale (email, telefon, IBAN, card, CNP, ID de cont, nume din salut) din DOM și din OCR, estompate sau lăsate doar cu decizia utilizatorului | P0 | IMPLEMENTED | `module:src/assets/pii.ts#findPii`, `cap:ui.blur-region`, `check:timeline.validate` | Numele în liste și adresele nu se detectează sigur: rămân pe revizuirea omului. |
 | Cod și terminal (grafică generică) | P2 | IMPLEMENTED | `cap:ui.code`, `cap:ui.terminal` | — |
 | Vizualizare de date legate de afirmații | P1 | IMPLEMENTED | `cap:data.bars`, `cap:data.line`, `cap:data.ring`, `recipe:proof-metric` | — |
 
@@ -276,7 +276,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Fonturi (fontkit) | P1 | IMPLEMENTED | `module:src/assets/ingest.ts#ingestFile` | — |
 | Video și fotografii | P1 | IMPLEMENTED | `cap:media.video`, `cap:media.image` | — |
 | Poarta de drepturi | P0 | IMPLEMENTED | `module:src/assets/ingest.ts#setRights`, `check:timeline.validate` | — |
-| Text din imagini (OCR) | P2 | MISSING | — | **Următorul pas:** OCR offline prin Windows (WinRT), ca vocea; zonele găsite intră în regiuni și în detecția datelor personale. |
+| Text din imagini (OCR offline): zone de zoom pe capturile utilizatorului, date personale din imagini | P2 | PARTIAL | `module:src/assets/ocr.ts#ocrImage`, `module:src/core/schema/assets.ts#assetRegions` | Disponibil doar pe Windows (Windows.Media.Ocr); pe macOS/Linux materialul nu primește zone din OCR. **Următorul pas:** Pe macOS: Vision framework printr-un script Swift, cu aceeași ieșire JSON. |
 | Calitatea materialului față de folosire (mărire peste rezoluție) | P1 | IMPLEMENTED | `check:ui.legibility` | — |
 | Materiale generate | P3 | PARTIAL | `module:src/core/schema/assets.ts#AssetOrigin` | Originea „generated” există; grafica lui Claude e cod (capabilități), nu fișiere generate. **Următorul pas:** Doar dacă apare un generator cu licență clară. |
 

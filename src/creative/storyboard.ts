@@ -3,7 +3,7 @@
  * o rețetă, materialele potrivite (cea mai potrivită captură pentru textul scenei) și punctul de interes.
  * Rezultatul e executabil (compilatorul îl transformă în timeline), nu proză.
  */
-import { isClaimUsable, type Asset, type Brief, type Claim, type Research, type Script, type ScriptLine, type Storyboard, type StoryboardScene } from "../core/schema";
+import { assetRegions, isClaimUsable, type Asset, type Brief, type Claim, type Research, type Script, type ScriptLine, type Storyboard, type StoryboardScene } from "../core/schema";
 import { bestRegion, norm } from "../recipes/kit";
 import { getRecipe } from "../recipes/recipes";
 import type { AdTemplate, TemplateScene } from "./templates";
@@ -63,7 +63,7 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
   const bestScreen = (text: string, avoid: string | null): { asset: Asset; region: string | undefined } | null => {
     if (!screenshots.length) return null;
     const scored = screenshots.map((a) => {
-      const r = bestRegion(a.capture?.regions ?? [], text);
+      const r = bestRegion(assetRegions(a), text, ["input", "button", "custom", "heading", "text"]);
       const words = norm(text).split(/\s+/).filter((w) => w.length > 3);
       const label = norm(`${r?.label ?? ""} ${r?.text ?? ""}`);
       const score = (r ? words.filter((w) => label.includes(w.slice(0, Math.max(4, w.length - 2)))).length : 0) + (a.id === avoid ? -0.5 : 0) + (a.analysis.importance ?? 0) * 0.1;

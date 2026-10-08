@@ -6,7 +6,7 @@
 import { MmsError } from "../core/errors";
 import { parseTimeToSec } from "../core/time";
 import type { Brief, CreativeDirection, Script, Storyboard, StoryboardScene, Timeline } from "../core/schema";
-import type { AssetManifest } from "../core/schema";
+import { assetRegions, type AssetManifest } from "../core/schema";
 import { bestRegion } from "../recipes/kit";
 
 export type Op =
@@ -128,7 +128,7 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
         const assetId = (Array.isArray(s.slots.screen) ? s.slots.screen[0] : s.slots.screen) ?? s.focus?.assetId;
         const asset = ctx.assets.assets.find((a) => a.id === assetId);
         if (!asset) throw new MmsError("ZOOM_NO_SCREEN", `Scena de la ${o.sec}s (${s.id}) nu are o captură pe care să se facă zoom.`);
-        const region = bestRegion(asset.capture?.regions ?? [], o.target, ["input", "button", "custom", "heading", "nav", "image", "text"]);
+        const region = bestRegion(assetRegions(asset), o.target, ["input", "button", "custom", "heading", "nav", "image", "text"]);
         if (!region) throw new MmsError("ZOOM_NO_REGION", `Nu găsesc în captură o zonă potrivită pentru „${o.target}”.`);
         s.focus = { assetId: asset.id, region: region.id };
         const tl = ctx.timeline.scenes.find((x) => x.id === s.id)!;

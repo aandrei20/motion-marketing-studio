@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { z } from "zod";
+import { findPii, PII_CANDIDATE_SOURCE, PII_LABEL } from "../assets/pii";
 import { ffmpeg } from "../core/binaries";
 import { MmsError } from "../core/errors";
 import { PATHS } from "../core/paths";
@@ -98,7 +99,7 @@ const slug = (s: string) =>
 
 /** Extrage zonele interesante (butoane, câmpuri, titluri, navigație) cu cutiile lor, în pixeli CSS ai documentului. */
 async function extractRegions(page: Page, fullPage: boolean): Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }> {
-  return page.evaluate((full) => {
+  return page.evaluate(({ full, piiSource }) => {
     const out: Array<{ idHint: string; label: string; kind: string; rect: { x: number; y: number; w: number; h: number }; text?: string; selector?: string }> = [];
     const pii: typeof out = [];
     const sx = full ? window.scrollX : 0;
@@ -150,16 +151,21 @@ async function extractRegions(page: Page, fullPage: boolean): Promise<{ regions:
       const r = el.getBoundingClientRect();
       if (r.width * r.height > 20000) push(el, "image");
     });
-    // date personale: emailuri și conturi vizibile
+    // date personale: candidați largi aici (email, șiruri de cifre, saluturi cu nume, ID-uri); validarea
+    // (sume de control, excluderea datelor și prețurilor) se face în Node, cu src/assets/pii.ts
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const emailRe = /[\w.+-]+@[\w-]+\.[\w.-]+/;
+    const candRe = new RegExp(piiSource, "i");
     let n: Node | null;
     while ((n = walker.nextNode())) {
-      const t = n.textContent ?? "";
-      if (emailRe.test(t) && n.parentElement) push(n.parentElement, "pii", pii);
+      const t = (n.textContent ?? "").trim();
+      if (t && candRe.test(t) && n.parentElement) {
+        push(n.parentElement, "pii", pii);
+        const last = pii[pii.length - 1];
+        if (last) last.text = t.slice(0, 200);
+      }
     }
     return { regions: out.slice(0, 120), pii };
-  }, fullPage) as Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }>;
+  }, { full: fullPage, piiSource: PII_CANDIDATE_SOURCE }) as Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }>;
 }
 
 async function extractPageData(page: Page): Promise<PageData> {
@@ -400,7 +406,11 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
       width: Math.round(dims.w * vp.dpr),
       height: Math.round(dims.h * vp.dpr),
       regions: raw.regions.map(toRegion),
-      pii: raw.pii.map(toRegion),
+      // doar candidații confirmați de validatori; eticheta spune ce fel de dată personală e
+      pii: raw.pii
+        .map((r) => ({ r, hits: findPii(r.text ?? r.label) }))
+        .filter((x) => x.hits.length)
+        .map((x) => toRegion({ ...x.r, idHint: `pii-${x.hits[0].kind}`, label: [...new Set(x.hits.map((h) => PII_LABEL[h.kind]))].join(", ") })),
       page: pageData,
       capturedAt: new Date().toISOString(),
     };

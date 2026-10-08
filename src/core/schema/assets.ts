@@ -111,11 +111,18 @@ export const Asset = z.object({
     blurApproved: false,
     keepApproved: false,
   }),
+  /** textul din imagine (OCR offline): zone pentru zoom pe capturile date de utilizator; null = OCR indisponibil */
+  ocr: z.object({ language: z.string().nullable(), regions: z.array(Region).default([]), reason: z.string().optional() }).optional(),
   tags: z.array(z.string()).default([]),
   notes: z.string().default(""),
   addedAt: IsoDate,
 });
 export type Asset = z.infer<typeof Asset>;
+
+/** Zonele unui material: din DOM (captură reală) sau, pentru capturile date de utilizator, din OCR. */
+export function assetRegions(a: Pick<Asset, "capture" | "ocr">): Region[] {
+  return a.capture?.regions.length ? a.capture.regions : (a.ocr?.regions ?? []);
+}
 export type AssetInput = z.input<typeof Asset>;
 
 export const AssetManifest = z.object({

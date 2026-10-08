@@ -12,7 +12,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { ingestFile } from "../src/assets/ingest";
+import { ingestFile, updateAsset } from "../src/assets/ingest";
 import { listVoices } from "../src/audio/voice";
 import { readJsonLoose } from "../src/core/json";
 import { makeFormat } from "../src/core/formats";
@@ -22,7 +22,7 @@ import { validateScript } from "../src/creative/script";
 import { runQuality } from "../src/quality/run";
 import { autoFixLoop } from "../src/quality/autofix";
 import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepScript, stepStoryboard, stepVoice } from "../src/pipeline/steps";
-import { createProject, loadBrief, loadProject, loadResearch, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
+import { createProject, loadAssets, loadBrief, loadProject, loadResearch, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
 import { setClaimStatus } from "../src/research/extract";
 
 const ex = path.join(PATHS.examples, "demo-product");
@@ -75,6 +75,11 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
     log,
   );
   await ingestFile(ID, path.join(ex, "site", "logo.svg"), { origin: "user_provided", role: "logo", tags: ["logo"] });
+  // datele personale găsite (nume din salut, email): în produsul demo sunt fictive; „utilizatorul” decide să rămână vizibile
+  for (const a of loadAssets(ID).assets.filter((x) => x.pii.regions.length)) {
+    updateAsset(ID, a.id, { keepApproved: true, notes: "Date personale fictive (produs demo): rămân vizibile." });
+    log(`   date personale în ${a.id}: ${a.pii.regions.map((r) => r.label).join("; ")} → rămân vizibile (fictive)`);
+  }
   // fraza obligatorie conține o cifră („5 minute”): „utilizatorul” o confirmă explicit
   setClaimStatus(ID, "c-poz-planifica-saptamana-in-5-minute-", "approved-by-user", "Promisiunea oficială a produsului de test.");
   log(`   ${loadResearch(ID).claims.length} afirmații, ${loadResearch(ID).claims.filter((c) => c.status === "needs-confirmation").length} de confirmat`);

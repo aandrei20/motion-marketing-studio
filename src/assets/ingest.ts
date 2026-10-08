@@ -8,6 +8,8 @@ import type { CaptureResult } from "../capture/capture";
 import { MmsError } from "../core/errors";
 import type { Asset, AssetOrigin, AssetRole, RightsStatus } from "../core/schema";
 import { loadAssets, now, projectDir, saveAssets, updateState } from "../projects/store";
+import { findPii, PII_LABEL } from "./pii";
+import { ocrImage } from "./ocr";
 import { dhash, focalPoint, hamming, meanLuma, palette, probe, svgColors, thumbnail, type ProbeResult } from "./analyze";
 
 export interface IngestOptions {
@@ -22,6 +24,10 @@ export interface IngestOptions {
   capture?: CaptureResult;
   /** dacă e o înregistrare de captură (mp4) și nu captura statică */
   captureRecording?: boolean;
+  /** limba pentru OCR (de ex. ro); implicit limbile profilului Windows */
+  ocrLanguage?: string;
+  /** fără OCR (de ex. capturi de research, care nu devin materiale vizibile) */
+  skipOcr?: boolean;
 }
 
 const slug = (s: string) =>
@@ -124,6 +130,32 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
       analysis.focalSource = "capture";
     }
   }
+  // textul din imagine (OCR offline): date personale randate în imagini/canvas și, pentru capturile date de
+  // utilizator (fără DOM), zone de text pentru zoom și callout
+  let ocr: Asset["ocr"];
+  const ocrPii: Asset["pii"]["regions"] = [];
+  if (p.type === "image" && (cls.role === "screenshot" || cls.role === "product-image" || cls.role === "photo") && !opts.captureRecording && !opts.skipOcr) {
+    const r = await ocrImage(dest, { language: opts.ocrLanguage, cacheDir: path.join(projectDir(projectId), "cache", "ocr") });
+    if (r.available) {
+      const used = new Set<string>();
+      const sid = (base: string) => {
+        let id = slug(base).slice(0, 40) || "text";
+        for (let k = 2; used.has(id); k++) id = `${slug(base).slice(0, 36)}-${k}`;
+        used.add(id);
+        return id;
+      };
+      const regions = cap ? [] : r.lines.filter((l) => l.text.trim().length >= 3 && l.rect.w > 4).slice(0, 150).map((l) => ({ id: sid(`text-${l.text}`), label: l.text.slice(0, 80), kind: "text" as const, rect: l.rect, text: l.text }));
+      for (const l of r.lines) {
+        const hits = findPii(l.text);
+        if (hits.length) ocrPii.push({ id: sid(`pii-ocr-${hits[0].kind}`), label: [...new Set(hits.map((h) => PII_LABEL[h.kind]))].join(", "), kind: "pii", rect: { x: l.rect.x - 4, y: l.rect.y - 4, w: l.rect.w + 8, h: l.rect.h + 8 }, text: l.text });
+      }
+      ocr = { language: r.language, regions };
+    } else ocr = { language: null, regions: [], reason: r.reason };
+  }
+  // datele personale din DOM și din OCR, fără dubluri (aceeași zonă găsită de ambele)
+  const domPii = cap && !opts.captureRecording ? cap.pii : [];
+  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const piiRegions = [...domPii, ...ocrPii.filter((o) => !domPii.some((d) => overlaps(d.rect, o.rect)))];
   const orientation = p.width && p.height ? (p.width / p.height > 1.15 ? "landscape" : p.width / p.height < 0.87 ? "portrait" : "square") : undefined;
   const importance = cls.role === "logo" ? 1 : cls.role === "screenshot" || cls.role === "screen-recording" ? 0.9 : cls.role === "music" || cls.role === "voiceover" ? 0.8 : 0.5;
   const asset: Asset = {
@@ -166,7 +198,8 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
           regions: opts.captureRecording ? [] : cap.regions,
         }
       : undefined,
-    pii: { regions: cap && !opts.captureRecording ? cap.pii : [], blurApproved: false, keepApproved: false },
+    pii: { regions: piiRegions, blurApproved: false, keepApproved: false },
+    ...(ocr ? { ocr } : {}),
     tags: opts.tags ?? [],
     notes: opts.notes ?? "",
     addedAt: now(),

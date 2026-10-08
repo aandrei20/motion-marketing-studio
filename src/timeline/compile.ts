@@ -8,6 +8,7 @@ import { projectPublicPath } from "../core/paths";
 import { hashString } from "../core/random";
 import {
   Timeline,
+  assetRegions,
   isClaimUsable,
   type AssetManifest,
   type AudioCue,
@@ -130,7 +131,7 @@ function resolveAsset(projectId: string, manifest: AssetManifest, id: string): R
     w,
     h,
     kind: a.type === "video" ? "video" : a.type === "svg" ? "svg" : "image",
-    regions: a.capture?.regions ?? [],
+    regions: assetRegions(a),
     focal: a.analysis.focalPoint ?? { x: 0.5, y: 0.5 },
   };
 }
