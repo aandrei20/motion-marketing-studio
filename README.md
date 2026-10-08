@@ -11,20 +11,22 @@ Un studio local de producție video pentru aplicații, site-uri și software. Î
 ## 1. Ce este
 
 - Un **motor reutilizabil**, fără nimic specific vreunui produs. Reclamele sunt proiecte separate, în `projects/`.
-- O **interfață web locală** (Studio) în care vezi și controlezi tot: proiecte, brief, materiale, research, brand, script, storyboard, preview cu timeline, audio, critică, versiuni, export.
+- O **interfață web locală** (Studio) în care vezi și controlezi tot: proiecte, brief, materiale, research, brand, concept, script, storyboard, preview cu timeline și editor de scene, audio, calitate, critică, versiuni, export.
 - O **linie de comandă** (`mms`) și **comenzi pentru Claude Code** (`/make-ad`, `/fix-at`, `/add-effect`, `/new-version`).
 
 ## 2. Ce poate face
 
 - **Captură reală** a produsului cu un browser automat (Playwright): capturi 2×, pagina întreagă, înregistrări de flux (tastare, clicuri) și zonele din pagină (butoane, câmpuri, carduri), ca efectele să poată ținti „câmpul de căutare”. Interfața produsului nu se redesenează niciodată.
-- **Research cu surse**: faptele de pe site, cu citat, dată și nivel de încredere. Prețurile și cifrele intră în lista „de confirmat” și nu apar în video fără acordul tău.
-- **Brand kit** dedus din CSS-ul site-ului și din logo (culori exacte, fonturi), editabil.
+- **Research cu surse**: faptele de pe site (pagina capturată și paginile relevante ale site-ului), cu citat, dată și nivel de încredere, legate într-un graf (coroborare, conflicte, afirmații despre concurenți). Prețurile și cifrele intră în lista „de confirmat” și nu apar în video fără acordul tău.
+- **Brand kit** dedus din CSS-ul site-ului și din logo (culori exacte, fonturi, colțuri, umbre, spațiere), editabil.
+- **Concepte creative** din dovezi, cu scor pe 10 criterii; ideea ta are prioritate, iar celelalte rămân sugestii.
 - **Script și storyboard structurate**: hook-ul și frazele tale se păstrează cuvânt cu cuvânt; fiecare scenă are scop, rol, energie, rețetă, materiale și cameră.
 - **124 de efecte reale** (cameră, tranziții, tipografie cinetică, cursor/clic/tastare/spotlight/callout peste capturi, rame de dispozitiv, 3D CSS, lumină, particule, distorsiuni, logo, grafice) și **16 rețete** care le combină. Lista completă: [`docs/BIBLIOTECA.md`](docs/BIBLIOTECA.md).
 - **Formate multiple din același storyboard**: 9:16, 16:9, 1:1, 4:5, 4K și personalizat; 24, 25, 30, 50, 60 fps. Zonele de siguranță ale platformelor (TikTok, Reels, Shorts…) sunt respectate automat.
 - **Audio complet**: voce (Windows offline, inclusiv română; ElevenLabs/OpenAI cu cheie; vocea ta din fișier), muzică originală sintetizată pe structura reclamei sau muzica ta (cu tempo detectat), 35 de efecte sonore sintetizate, ducking sub voce, −14 LUFS, true peak ≤ −1 dBTP, subtitrări arse și `.srt`.
-- **Verificări automate**: validarea timeline-ului (footage real, drepturi, cifre cu sursă, zone sigure, lizibilitate la 360 px, flash-uri, cadre goale), verificarea mixului și a video-ului randat (cadre negre, flash-uri, înghețări), critică cu rubrică fixă (hook, claritate, ritm, ierarhie, varietate, brand, CTA).
-- **Iterație în limbaj natural**: „la 00:14 zoom pe câmpul de căutare”, „CTA-ul să stea 3 secunde”, „tranziții mai rapide”, „mai puțină muzică sub voce”, „folosește fraza mea exactă”, „fă hook-ul mai agresiv”, „fă-l mai premium”. Fiecare comandă creează o versiune nouă; cele vechi nu se ating.
+- **Bucla de calitate adaptivă**: 10 pase (plan, poveste, vizual, mișcare, interfață, tipografie, audio, brand, platformă, final), fiecare cu metoda cea mai ieftină care poate răspunde. Randează doar ce s-a schimbat și refolosește restul din cache. Scor pe 11 categorii, verdict PASS / POLISH / FIX / FAIL, probleme cu timestamp, „de ce contează” și corectura propusă, corecturi automate sigure cu rollback. Rubrica fixă a regulii 7 (hook, claritate, ritm, ierarhie, varietate, brand, CTA) rămâne. Detalii: [`docs/CALITATE.md`](docs/CALITATE.md).
+- **Verificări automate**: validarea timeline-ului (footage real, drepturi, cifre cu sursă, zone sigure, lizibilitate la 360 px, flash-uri, cadre goale), contrastul măsurat pe pixeli, reîncadrarea pe fiecare format, verificarea mixului și a video-ului randat (cadre negre, flash-uri, înghețări).
+- **Iterație în limbaj natural**: „la 00:14 zoom pe câmpul de căutare”, „CTA-ul să stea 3 secunde”, „tranziții mai rapide”, „mai puțină muzică sub voce”, „folosește fraza mea exactă”, „fă hook-ul mai agresiv”, „fă-l mai premium”. Fiecare comandă creează o versiune nouă; cele vechi nu se ating. În Studio, scena se poate edita direct (durată, ordine, tranziție, cameră, text, straturi), cu undo/redo.
 
 ## 3. Cerințe
 
@@ -81,7 +83,7 @@ Varianta recomandată, în Claude Code (în folderul repo-ului):
 /make-ad https://produsul-tau.ro "vreau o reclamă energică de 30 s cu hook-ul: «…»"
 ```
 
-Claude pune toate întrebările de început (grupele A–H: produs și obiectiv, platformă și format, poveste, materiale, limbă, audio, livrare), îți arată rezumatul și începe doar după ce scrii **aprob**.
+Claude acoperă toate grupele de întrebări de început (A–H: produs și obiectiv, platformă și format, poveste, materiale, limbă, audio, livrare). Ce se poate deduce sigur din site și din ce ai scris apare deja completat, cu sursa (`npm run mms -- intake`); te întreabă doar ce e incert și contează. Îți arată rezumatul și începe doar după ce scrii **aprob**.
 
 În Studio: **+ Proiect nou** (nume, produs, tip, limbi, formate) → tabul **Brief** (completezi formularul, salvezi, scrii „aprob”).
 
@@ -101,7 +103,7 @@ Un brief complet de exemplu: [`examples/demo-product/brief.json`](examples/demo-
 - **Pagini cu cont**: `npm run mms -- login --url <adresă> --profile <nume>` deschide un browser; te autentifici tu, sesiunea rămâne doar pe calculatorul tău. Apoi capturi cu `--profile <nume>`.
 - **Fișierele tale** (logo, capturi, video, muzică, voce, fonturi, PDF, referințe): Studio → Materiale → Încarcă, sau `npm run mms -- add-asset <proiect> <fișier> [--role logo]`. Duplicatele se recunosc după conținut.
 - **Drepturi**: pentru materialele altcuiva ești întrebat o dată „Ai dreptul să-l folosești?”. Fără confirmare, preview-ul e marcat „concept” și exportul final e blocat.
-- **Date personale** găsite în capturi (de ex. emailuri) sunt marcate; se estompează doar cu acordul tău.
+- **Date personale** găsite în capturi (emailuri, telefoane, carduri, IBAN, CNP, nume din salut; și în imaginile tale, prin OCR offline pe Windows) sunt marcate; se estompează doar cu acordul tău.
 - **Video de referință**: `npm run mms -- reference <proiect> <assetId>` extrage ritmul (tăieturi, durata cadrelor), mișcarea, culoarea și tempo-ul muzicii, ca direcție creativă (nu se copiază nimic).
 
 ## 9. Preview
@@ -116,7 +118,9 @@ Un brief complet de exemplu: [`examples/demo-product/brief.json`](examples/demo-
 - Bara de comenzi din Studio sau `npm run mms -- iterate <proiect> "la 00:14 zoom pe câmpul de căutare"`.
 - În Claude Code: `/fix-at <proiect> "7,3: logo-ul e prea mic; 14: push-in agresiv"` – corectează doar zonele notate, într-o versiune nouă.
 - Editare directă: Studio → Script / Storyboard (dacă versiunea e înghețată, se creează automat următoarea).
-- Critica: `npm run mms -- critique <proiect>` (rubrica fixă, prag 8/10; bilanț la fiecare 3 runde; oprire după 2 runde fără progres).
+- Calitatea: Studio → **Calitate**, sau `npm run mms -- quality <proiect> [--depth fast|standard|deep|final]`. Corecturile automate: `npm run mms -- autofix <proiect>`. Ce s-a schimbat între versiuni și ce trebuie refăcut: `npm run mms -- impact <proiect>`.
+- Critica: `npm run mms -- critique <proiect>` (aceeași buclă, fără randare; rubrica fixă, prag 8/10; bilanț la fiecare 3 runde; oprire după 2 runde fără progres).
+- Revizuirea vizuală a lui Claude: `npm run mms -- critique-pack <proiect>` pregătește cadrele-cheie și foaia de contact; Claude le vede în Claude Code și trimite observațiile cu `review`.
 
 ## 11. Exportul
 
@@ -131,9 +135,9 @@ Exportul se oprește dacă există blocaje de validare, materiale fără dreptur
 ## 12. Teste
 
 ```powershell
-npm run check          # typecheck + reguli + teste unitare și de integrare (~1 min)
-npm run test:render    # randează toate efectele din catalog, determinism, MP4 real (~3 min)
-npm run e2e -- --fresh # producție completă pe produsul demo fictiv, cu preview MP4 (~3–5 min)
+npm run check          # typecheck + reguli + teste unitare și de integrare (~2 min)
+npm run test:render    # catalogul întreg, determinism, MP4 real, regresia vizuală (~5 min)
+npm run e2e -- --fresh # producție completă pe produsul demo fictiv, cu preview MP4 (~4–7 min)
 npm run doctor         # instalarea
 ```
 
@@ -149,7 +153,8 @@ brief → captură + materiale + research + brand → script → storyboard
 - `src/creative`, `src/editing`, `src/recipes` – direcții, șabloane, script, storyboard, gramatică de montaj, rețete
 - `src/motion` – capabilitățile (registry) · `src/timeline` – compilator și validator
 - `src/audio` – voce, muzică, efecte, beat grid, loudness, mix · `src/renderer` – compoziția Remotion și randarea
-- `src/critique`, `src/iterate`, `src/pipeline` – critică, comenzi, pașii · `src/studio`, `src/cli` – interfețele
+- `src/quality`, `src/critique` – bucla de calitate, scorul, corecturile automate, criticul pe pixeli
+- `src/iterate`, `src/pipeline` – comenzi, pașii, graful de dependențe și impactul · `src/studio`, `src/cli` – interfețele
 
 Detalii: [`docs/ARHITECTURA.md`](docs/ARHITECTURA.md).
 
@@ -172,6 +177,6 @@ Primul pas: `npm run doctor`. Problemele frecvente și soluțiile: [`docs/DEPANA
 
 ---
 
-Documentație: [Fluxul de lucru](docs/FLUX.md) · [Arhitectura](docs/ARHITECTURA.md) · [Biblioteca](docs/BIBLIOTECA.md) · [Decizii](docs/DECIZII.md) · [Licențe](docs/LICENTE.md) · [Stare](docs/IMPLEMENTATION_STATUS.md) · [Audit inițial](docs/AUDIT.md) · [Plan](PLAN.md) · [Reguli](CLAUDE.md)
+Documentație: [Fluxul de lucru](docs/FLUX.md) · [Arhitectura](docs/ARHITECTURA.md) · [Calitatea](docs/CALITATE.md) · [Testarea](docs/TESTARE.md) · [Biblioteca](docs/BIBLIOTECA.md) · [Inventarul](docs/INVENTAR.md) · [Sistemul](docs/SISTEM.md) · [Decizii](docs/DECIZII.md) · [Licențe](docs/LICENTE.md) · [Stare](docs/IMPLEMENTATION_STATUS.md) · [Audit](docs/AUDIT.md) · [Plan](PLAN.md) · [Reguli](CLAUDE.md)
 
 Licență: toate drepturile rezervate (repo privat). Componentele terțe au licențele lor: [`docs/LICENTE.md`](docs/LICENTE.md).

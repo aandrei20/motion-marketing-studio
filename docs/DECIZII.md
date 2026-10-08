@@ -66,3 +66,36 @@ Fiecare decizie are motivul ei. Deciziile de produs (ce face studioul, regulile)
 ## Determinism
 
 38. **Garanția de determinism e pe două niveluri.** Timeline-ul (toate deciziile, pozițiile, timpii, sunetele) e identic octet cu octet la fiecare compilare. Pixelii sunt identici în aproape toate randările, dar rasterizarea Chrome poate varia rar cu cel mult 2/255. Am observat asta pe GPU (o bandă la marginea plăcilor de 256 px) și în randarea software (filtrul SVG al tranziției glitch). Testele tolerează exact această diferență și nimic peste ea. Un bug real (aleator nefixat, timp real) produce diferențe mari și e prins.
+
+## Bucla de calitate (Production OS, 2026-10-08)
+
+39. **Pasele 0–9 sunt porți, nu randări.** Fiecare verificare declară metoda și costul (de la `schema` la `full-render`), iar adâncimea rundei (`fast`, `standard`, `deep`, `final`) stabilește ce e permis. Motiv: majoritatea problemelor se văd în date (timeline, mix, afirmații), iar randarea e partea scumpă. O verificare sărită apare ca sărită, iar categoria neevaluată rămâne `null`, nu 100.
+40. **Cache pe conținut, nu pe timp.** Cadrele-cheie au cheia conținutului scenei plus hash-ul codului de randare, mixul cheia `audioKey`, preview-ul cheia timeline-ului. O scenă mutată în timp, dar neschimbată, nu se mai randează. Motiv: corecturile ating de obicei 1–3 scene, iar restul trebuie refolosit.
+41. **Scorul `quality-v1` se adaugă rubricii regulii 7, nu o înlocuiește.** Rubrica (`rubric-v1`, `mms-auto-critic-v1`) rămâne aceeași în toate rundele, iar pragul de 8/10 pe scenă e o condiție a verdictului PASS. Pragurile 92/95, ponderile și penalizările sunt configurabile per proiect (`project.json`, `quality`).
+42. **Penalizări descrescătoare pe categorie** (×0,85 pentru fiecare problemă în plus din aceeași categorie) și ponderate cu încrederea. Motiv: zece observații mici nu trebuie să valoreze cât o problemă mare, iar o euristică nesigură nu trebuie să coste cât o măsurătoare.
+43. **Corecturile automate ating doar ce e mecanic și sigur:** durate, tranziții, cameră, decalaje, poziția subtitrărilor, culoarea lizibilă din paletă. Textul utilizatorului, afirmațiile și conceptul rămân decizii de om (regula 14). Fiecare iterație e o versiune nouă; dacă scorul scade sau apare o problemă mare nouă, versiunea se marchează `rejected` (nu se șterge, regula 9) și se revine la cea bună.
+44. **Contrastul se măsoară pe pixeli, nu pe culorile declarate.** Fundalul de sub text se citește din cadrul randat, fără culorile de design ale textului însuși (marker, accent). Motiv: un text alb pe o captură deschisă la culoare trecea verificarea pe culori și era ilizibil.
+45. **Fără apel automat la un model de vedere prin API.** Revizuirea vizuală o face Claude în sesiunea Claude Code, pe pachetul `critique-pack` (cadre-cheie, foaie de contact, listă de verificat, schema răspunsului). Motiv: fără chei în cod (regula 19), fără cadre trimise în afara calculatorului, fără o funcție netestabilă în acest mediu.
+46. **Subtitrările ocolesc zona demonstrată, nu interfața întreagă.** Zona demonstrată vine din focusul scenei (zona din captură, spotlight, drag, cursor), urmărită prin cameră. Dacă nu există loc liber în zona sigură, problema rămâne raportată pentru o decizie de om.
+47. **Mișcarea reală se citește din preview-ul existent la Final QA**, nu din cadre randate separat. Motiv: o randare de 150 de cadre dura ~140 s; preview-ul există deja și are toate cadrele.
+
+## Materiale, research, referințe
+
+48. **OCR offline prin Windows (WinRT)**, doar pentru capturile fără DOM (date de utilizator, poze cu interfață). Zonele de text din OCR se folosesc ca zonele din DOM (zoom, focus) și pentru datele personale. Pe alte sisteme, OCR-ul lipsește și se spune asta. Motiv: fără dependențe noi și fără trimiterea imaginilor în afară.
+49. **Datele personale se validează, nu doar se caută cu expresii:** cardul cu Luhn, IBAN-ul cu mod 97, CNP-ul cu cifra de control, numele doar după un salut și cu majusculă. Motiv: mai puține alarme false pe cifre obișnuite.
+50. **Citirea site-ului rămâne pe același domeniu** și ocolește paginile de cont, de aplicație și juridice. Afirmațiile despre concurenți intră „de confirmat” și blochează dacă sunt folosite fără aprobare.
+51. **Reference DNA ignoră ultimul cadru al referinței** (de obicei cartonașul final), ca ritmul să nu fie mascat de el. Tempo-ul cu încredere sub 0,35 nu aliniază tăieturi și nu inventează structură.
+
+## Studio și joburi
+
+52. **Protecția Studio-ului: Host local + Origin local + antetul `X-MMS`.** Motiv: serverul ascultă doar pe 127.0.0.1, dar o pagină deschisă în browser ar putea trimite cereri spre el (CSRF, DNS rebinding). Un antet propriu nu poate fi trimis de un formular străin fără preflight.
+53. **Joburile au manifest pe disc** (`.cache/jobs/`), timeout pe tip și oprire până la randare. Un job întrerupt de oprirea procesului nu se reia singur: apare „întrerupt” și îl reiei tu. Motiv: o randare reluată fără să știi ar consuma timp fără acord.
+54. **Editorul de scene folosește aceleași operații ca corecturile automate și CLI-ul** (`src/core/schema/edit.ts`). Motiv: o singură implementare testată, un singur jurnal, undo/redo pentru toate.
+
+## Teste
+
+55. **Regresia vizuală compară grile RGB de 32 × N, nu imagini întregi.** Pragurile (medie 6/255, bloc 60/255) sunt mult peste variația de rasterizare (2/255) și sub o schimbare vizibilă; un test arată că prind un element dispărut și unul mutat. Referințele se actualizează doar explicit (`MMS_UPDATE_GOLDEN=1`), după o verificare vizuală.
+
+## Contribuitori
+
+56. **Fără co-autori și fără atribuiri automate.** Commit-urile nu au trailere `Co-authored-by` sau „Generated with”, iar repo-ul nu are fișier sau secțiune de contribuitori. `.claude/settings.json` dezactivează atribuirea, iar `npm run lint` refuză commit-urile noi cu astfel de trailere (de la `f6cb12c` încoace). Istoricul mai vechi nu a fost rescris.

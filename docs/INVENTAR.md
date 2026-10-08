@@ -160,7 +160,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Tăcere intenționată | P2 | IMPLEMENTED | `module:src/audio/mixer.ts#mix` | — |
 | Speed ramp | P2 | IMPLEMENTED | `cap:tr.speed-ramp` | — |
 | Operații de editare: durată, ștergere, duplicare, mutare, blocare, sunet, text, material, cameră, tranziție, straturi | P0 | IMPLEMENTED | `module:src/editing/ops.ts#applyEditOps`, `op:scene-duplicate`, `op:scene-move`, `op:layer-hide` | — |
-| Undo / redo (jurnal de operații + snapshot-uri) | P0 | IMPLEMENTED | `module:src/editing/history.ts#undo`, `module:src/editing/history.ts#redo` | — |
+| Undo / redo (jurnal de operații + snapshot-uri), în CLI și în Studio | P0 | IMPLEMENTED | `module:src/editing/history.ts#undo`, `module:src/editing/history.ts#redo` | — |
 | Comenzi în limbaj natural | P1 | IMPLEMENTED | `module:src/iterate/intents.ts#parseCommand` | — |
 
 ## Cameră și limbaj cinematic (12)

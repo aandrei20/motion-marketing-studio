@@ -30,8 +30,13 @@ brief.json ──┐     │  capturi 2× + zone din DOM + înregistrări + text
               ▼
      [Remotion] src/renderer → preview MP4 + foaie de contact + verificarea video
               ▼
-     critică (rubrica fixă) → iterație (versiune nouă) → … → „render final” → exports/
+     bucla de calitate (src/quality): pase 0–9, metoda cea mai ieftină, cache pe conținut
+       → scor quality-v1 (11 categorii) + rubrica regulii 7 → probleme cu corecturi
+       → corecturi automate (versiune nouă, rollback) → revizuirea vizuală a lui Claude + notele tale
+       → … → „render final” → exports/
 ```
+
+Înainte de script, conceptul creativ (`src/creative/concepts.ts`) alege structura și direcția din dovezi; conceptul utilizatorului are prioritate (regula 14). `mms make` (`src/pipeline/produce.ts`) leagă pașii: concepte → script → storyboard → voce → compilare → mix → calitate (standard) → corecturi automate → Final QA cu un singur preview. Detaliile buclei: `docs/CALITATE.md`.
 
 ## Modulele
 
@@ -39,23 +44,26 @@ brief.json ──┐     │  capturi 2× + zone din DOM + înregistrări + text
 | --- | --- |
 | `src/core/schema/` | Toate entitățile, cu zod: proiect, brief, research, brand, materiale, script, storyboard, timeline, audio, critică, versiuni, stare. Fișierele de proiect se citesc și se scriu doar prin scheme. |
 | `src/core/` | Căi (`paths.ts`), binarele FFmpeg/FFprobe din Remotion (`binaries.ts`), formate și zone sigure cu sursă (`formats.ts`), aleator determinist (`random.ts`), timp, JSON atomic, `.env`, erori. |
-| `src/projects/` | Depozitul de proiecte: structura pe disc, versiuni imuabile, aprobări, `STATE.md`. |
+| `src/projects/` | Depozitul de proiecte: structura pe disc, versiuni imuabile (inclusiv `rejected` la rollback), aprobări, `STATE.md`, instantaneele intrărilor (`snapshots.ts`). |
 | `src/capture/` | Captura reală cu Playwright: capturi, pagină întreagă, zone din DOM, date de pagină, date personale, înregistrare cadru cu cadru, profil persistent pentru autentificare. |
-| `src/assets/` | Ingestie (sha256, nume stabil), ffprobe, fontkit, SVG, miniaturi prin FFmpeg, punct focal, paletă, dHash, cadre video pentru analiză. |
-| `src/research/` | Surse și afirmații extrase din pagini (fapt/inferență/interpretare, citat, încredere, „de confirmat”). |
-| `src/brand/` | Brand kit dedus din CSS și logo; potrivirea cu fonturile bibliotecii. |
-| `src/references/` | Profilul unui video de referință (tăieturi, mișcare, culoare, tempo). |
-| `src/creative/` | Direcțiile A–F (profiluri executabile), șabloanele, întrebările A–H, schița și validarea scriptului, constructorul de storyboard. |
-| `src/editing/` | Gramatica de montaj: timp de citire, durata scenei, alegerea tranziției, J-cut, hold pe CTA. |
+| `src/assets/` | Ingestie (sha256, nume stabil), ffprobe, fontkit, SVG, miniaturi prin FFmpeg, punct focal, paletă, dHash, cadre video pentru analiză; OCR offline (Windows) pentru capturile fără DOM (`ocr.ts`); datele personale cu validatori (`pii.ts`: email, telefon, card, IBAN, CNP, nume din salut). |
+| `src/research/` | Surse și afirmații extrase din pagini (fapt/inferență/interpretare, citat, încredere, „de confirmat”); citirea paginilor relevante ale site-ului (`crawl.ts`); graful de afirmații: coroborare, conflicte, concurenți (`graph.ts`). |
+| `src/brand/` | Brand kit dedus din CSS și logo; potrivirea cu fonturile bibliotecii; forma brandului (colțuri, umbre, spațiere, gradienți) folosită de rețete. |
+| `src/references/` | Profilul unui video de referință (tăieturi, mișcare, culoare, tempo) și Reference DNA (`dna.ts`): ritmul, camera și culoarea aplicate pe direcție și ritm. |
+| `src/creative/` | Direcțiile A–F (profiluri executabile), șabloanele, întrebările A–H, intake-ul inteligent (`smart-intake.ts`), conceptele creative cu scor pe 10 criterii (`concepts.ts`), schița și validarea scriptului, constructorul de storyboard. |
+| `src/editing/` | Gramatica de montaj: timp de citire, durata scenei, alegerea tranziției, J-cut, hold pe CTA. Operațiile de editare (`ops.ts`, schema în `src/core/schema/edit.ts`) și istoricul cu undo/redo (`history.ts`), folosite de Studio, CLI și corecturile automate. |
 | `src/motion/` | Capabilitățile (registry): straturi, modificatori, camere, tranziții + nucleul (easing, text, filtre, context, fonturi) + catalogul. Rulează în browser. |
 | `src/recipes/` | Rețetele (combinații de nivel înalt) și uneltele lor (zone pe format, ecrane, zone din captură, adaptoare de layout). |
 | `src/timeline/` | Compilatorul storyboard → timeline, măsurarea textului cu fontkit, validatorul. |
 | `src/audio/` | WAV, DSP, efecte sintetizate, muzică generativă, voce (TTS), decodare, beat grid, loudness BS.1770, mixer. |
 | `src/renderer/` | Compoziția Remotion (`TimelineComposition`), foaia de contact, randarea din Node (bundle cache-uit, folder public pregătit doar cu fișierele folosite), analiza video-ului randat. |
-| `src/critique/` | Critica automată (rubrica fixă) și regulile buclei de calitate. |
+| `src/critique/` | Rubrica fixă a regulii 7 (`auto.ts`), criticul pe pixeli (`pixel.ts`), pachetul de revizuire vizuală pentru Claude (`pack.ts`). |
+| `src/quality/` | Bucla de calitate: verificările pe pase și metode (`checks.ts`), rularea cu cache (`run.ts`), problemele (`issues.ts`), scorul `quality-v1` (`score.ts`), corecturile automate cu rollback (`autofix.ts`). |
+| `src/platform/` | Profilurile de platformă (durată, hook, subtitrări, densitate), ajustabile per proiect. |
+| `src/inventory/` | Inventarul de design și producție (stare, prioritate, referințe spre cod verificate de lint) → `docs/INVENTAR.md`. |
 | `src/iterate/` | Comenzile în limbaj natural → operații locale pe storyboard/script. |
-| `src/pipeline/` | Pașii de producție (captură, brand, script, storyboard, voce, compilare, audio, preview, final, critică, iterație). |
-| `src/studio/` | Serverul local (API, fișiere cu Range, joburi, SSE) și interfața React (Player + timeline). |
+| `src/pipeline/` | Pașii de producție (captură, brand, script, storyboard, voce, compilare, audio, preview, final, critică, iterație), `produce.ts` (`mms make`), graful de dependențe (`graph.ts`) și motorul de impact (`impact.ts`). |
+| `src/studio/` | Serverul local (API, fișiere cu Range, joburi recuperabile, SSE, protecții) și interfața React (Player, timeline, editorul scenei, Calitate, Concept). |
 | `src/cli/` | `mms` – linia de comandă. |
 
 ## Timeline-ul
@@ -109,8 +117,10 @@ Un șablon (`templates/<id>.json`, schema în `src/creative/templates.ts`) descr
 ## Studio
 
 - Server Node fără framework (`src/studio/server.ts`), doar pe 127.0.0.1: API JSON, fișiere cu Range (pentru video/audio în Player), joburi rulate pe rând (o randare odată), evenimente SSE.
+- Protecții: se acceptă doar Host-ul local (contra DNS rebinding); cererile care modifică cer Origin local și antetul `X-MMS` (contra CSRF); încărcările acceptă doar tipuri de fișier cunoscute, maximum 500 MB; scrierile JSON sunt atomice.
+- Joburile (`src/studio/jobs.ts`) au etapă, progres, timeout pe tip și oprire (semnalul ajunge până la randarea Remotion). Fiecare job are un manifest în `.cache/jobs/`; un job întrerupt de oprirea procesului apare „întrerupt” și se poate relua cu aceiași parametri.
 - Interfața (`src/studio/ui/`) e construită cu esbuild la pornire și folosește `@remotion/player` cu aceeași `TimelineComposition` ca randarea. Fișierele se servesc prin `/files/<cale publică>` (contextul `AssetBaseContext`).
-- Timeline-ul din interfață e o vizualizare a datelor reale (inspectare + navigare). Editarea se face prin storyboard, script, comenzi în limbaj natural sau Claude.
+- Timeline-ul din interfață arată datele reale (scene, straturi, voce, efecte, subtitrări, bătăi; clic = salt). Scena de sub cursor se editează în panoul alăturat prin operațiile de editare, cu undo/redo; o versiune înghețată duce editarea în versiunea următoare. Nu există tragere de clipuri cu mouse-ul.
 
 ## Formate și zone de siguranță
 

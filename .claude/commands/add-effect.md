@@ -14,6 +14,7 @@ Respectă CLAUDE.md (secțiunile „Biblioteca de efecte” și „Reguli de ing
    - `status: "experimental"` până trec testele.
 3. Înregistreaz-o în `src/motion/registry.ts` (dacă e într-un fișier nou) și rulează `npm run registry`.
 4. Verifică: `npm run typecheck`, `npm test`, apoi randează exemplul: `npm run test:render` (catalogul îl include automat). Uită-te la cadrul randat.
-5. Doar după ce randarea și testele trec, schimbă `status` în `"tested"`, rulează din nou `npm run registry`, actualizează CHANGELOG.md.
-6. Tehnologii noi (GSAP, Three.js etc.) doar dacă efectul nu se poate face altfel; scrie motivul în docs/DECIZII.md și adaugă dependența în `install.ps1` și în `doctor`.
-7. Commit mic, pe o ramură, cu mesaj clar.
+5. Capabilitatea nouă nu are încă referință vizuală, deci testul de catalog o raportează „fără referință”. Uită-te la cadrul randat (`npm run remotion`, compoziția „Catalog”), apoi scrie referința: `$env:MMS_UPDATE_GOLDEN="1"; npm run test:render; Remove-Item Env:MMS_UPDATE_GOLDEN`. Rulează din nou `npm run test:render` fără variabilă: trebuie să treacă.
+6. Doar după ce randarea și testele trec, schimbă `status` în `"tested"`, rulează din nou `npm run registry`, actualizează CHANGELOG.md.
+7. Tehnologii noi (GSAP, Three.js etc.) doar dacă efectul nu se poate face altfel; scrie motivul în docs/DECIZII.md și adaugă dependența în `install.ps1` și în `doctor`.
+8. Commit mic, pe o ramură, cu mesaj clar, fără trailere de co-autor.

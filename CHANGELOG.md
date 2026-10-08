@@ -2,6 +2,53 @@
 
 Formatul: o secțiune pe versiune; în fiecare: Adăugat, Schimbat, Reparat. Versiunile stabile primesc o etichetă Git (`v0.1.0`…).
 
+## [Nelansat] – ramura `build/production-os`
+
+Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Auditul și motivele: `docs/AUDIT.md` (secțiunea 2); bucla: `docs/CALITATE.md`.
+
+### Adăugat
+
+- **Bucla de calitate adaptivă** (`mms quality`): pase 0–9 ca porți, fiecare verificare cu metoda și costul ei, adâncimi fast / standard / deep / final; verificările scumpe rulează doar când adâncimea o permite.
+- **Cache pe conținut și motorul de impact** (`mms impact`): amprente pe artefacte și pe scene; cadrele-cheie, mixul și preview-ul se refolosesc când intrările nu s-au schimbat; graful de dependențe al sistemului.
+- **Scorul `quality-v1`**: 11 categorii (poveste, creativ, vizual, mișcare, tipografie, interfață, audio, brand, afirmații, tehnic, platformă), verdict PASS / POLISH / FIX / FAIL, praguri și ponderi configurabile per proiect; rubrica regulii 7 rămâne și face parte din PASS.
+- **Probleme structurate**: gravitate, categorie, timestamp, durată, scenă, strat, format, de ce contează, recomandare, încredere, corectură propusă (operații reale).
+- **Corecturi automate** (`mms autofix`, pas în `mms make`): doar corecturi mecanice sigure, fiecare iterație într-o versiune nouă, rollback dacă scorul scade, limite de iterații și de corecturi.
+- **Operații de editare, undo/redo** (`mms edit`, `undo`, `redo`), comune pentru Studio, CLI și corecturile automate.
+- **Criticul pe pixeli**: contrastul real dintre text și fundal, aglomerarea, ocuparea, prezența culorilor brandului; **pachetul de revizuire vizuală** pentru Claude (`mms critique-pack`).
+- **Directorul creativ**: concepte din dovezi cu scor pe 10 criterii (`mms concepts`, `concept`); conceptul utilizatorului are prioritate. **Intake inteligent** (`mms intake`): deduce din site ce se poate și întreabă doar ce e incert.
+- **Research pe site** (`mms research-crawl`) și **graful de afirmații** (`mms claims`): coroborare, conflicte, afirmații despre concurenți.
+- **Reference DNA** (ritm, cameră, culoare) aplicat pe direcție; **structura muzicii** (secțiuni, drop-uri); **forma brandului** (colțuri, umbre, spațiere) folosită de rețete.
+- **OCR offline** (Windows) pe capturile fără DOM; **date personale** cu validatori: telefon, card (Luhn), IBAN, CNP, nume din salut.
+- **Verificarea reîncadrării** pe fiecare format și **profiluri de platformă** configurabile.
+- **Studio**: tab-urile Calitate și Concept, editorul de scene cu undo/redo în Preview & timeline, etapa și oprirea joburilor, reluarea joburilor întrerupte.
+- **Inventarul de design și producție** (`docs/INVENTAR.md`, `docs/SISTEM.md`), cu referințe spre cod verificate de lint.
+- **Regresia vizuală**: referințe pentru tot catalogul și pentru toate rețetele (16:9 și 9:16), cu test de sensibilitate.
+- Documentație: `docs/CALITATE.md`, `docs/TESTARE.md`, deciziile 39–56, auditul etapei.
+
+### Schimbat
+
+- `mms critique` rulează aceeași buclă la adâncimea „fast” (fără randare). `mms make` face un singur preview, la predare.
+- Subtitrările ocolesc zona demonstrată (nu interfața întreagă) și nu se mai ard când replica e deja scrisă pe ecran.
+- Cuvântul marcat de `text.highlight` primește o culoare lizibilă pe culoarea markerului.
+- Tăieturile pe beat se aplică doar când tempo-ul e sigur; tăieturile spre dezvăluire cad pe drop-uri.
+- Efectele sonore se coboară sub voce (−4 dB).
+- Studio-ul acceptă doar Host-ul local; cererile care modifică cer Origin local și antetul `X-MMS`; încărcările acceptă doar tipuri cunoscute, maximum 500 MB.
+- Joburile au manifest pe disc, timeout pe tip și oprire până la randarea Remotion.
+
+### Reparat
+
+- Mișcarea reală la Final QA se citește din preview-ul existent (înainte: ~140 s de cadre randate separat).
+- Contrastul se judeca pe culorile declarate: textul alb pe capturi deschise trecea verificarea.
+- Intake-ul lua verbul „ai” drept „AI” și alegea butonul de autentificare drept CTA.
+- Citirea site-ului relua pagina de start pe `file://` și urma legăturile spre aplicație.
+- Ritmul din Reference DNA era mascat de cartonașul final.
+- Brand kit-ul folosea o captură veche, fără datele de formă.
+- O versiune nouă nu primea fișierele vocii.
+
+### Contribuitori
+
+- Fără co-autori și fără atribuiri automate: atribuirea e dezactivată în `.claude/settings.json`, iar `npm run lint` refuză commit-urile noi cu trailere de co-autor. Istoricul vechi nu a fost rescris.
+
 ## [0.1.0] – 2026-10-08
 
 Prima versiune funcțională a studioului.

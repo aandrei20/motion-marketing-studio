@@ -66,6 +66,7 @@ Planul complet, cu toate deciziile, este în `PLAN.md`. Dacă o regulă de aici 
 - `npm run typecheck`, `npm run lint` (regulile verificabile automat), `npm run registry` (regenerează library/registry.json) (PowerShell)
 - `npm run e2e -- --fresh` – testul cap-coadă pe produsul demo fictiv (PowerShell)
 - `npm run update` – aduce versiunea nouă și instalează ce lipsește (PowerShell)
+- `npm run mms -- quality <proiect> [--depth fast|standard|deep|final]`, `autofix`, `impact`, `edit`/`undo`/`redo`, `critique-pack` – bucla de calitate și editarea (docs/CALITATE.md) (PowerShell)
 - `/make-ad`, `/fix-at`, `/add-effect`, `/new-version` – se scriu în Claude Code (`.claude/commands/`)
 
 ## Git
@@ -101,6 +102,8 @@ Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și
 - Hook-urile, povestea și frazele obligatorii ale utilizatorului se păstrează exact (`origin: "user-verbatim"`). Dacă le modifici la cererea lui, marchează `user-polished`.
 - Textul de pe ecran: un singur mesaj, de preferat sub 8 cuvinte. Vocea: sub 25 de cuvinte pe replică.
 - Variantele tale de hook stau în `hooks` cu `origin: "ai"` (sugestii), nu înlocuiesc hook-ul utilizatorului.
+- Intake-ul inteligent (`mms intake`) completează din site și din cererea utilizatorului ce se poate deduce sigur, cu sursa. Regula 10 rămâne: toate grupele A–H se arată, cu variante, iar răspunsurile deduse se pot schimba; întrebi explicit doar ce e incert și contează (plus limbile și drepturile). Începi doar după „aprob”.
+- Conceptul creativ al utilizatorului are prioritate (regula 14); conceptele tale sunt sugestii, cu scor pe 10 criterii.
 
 ## Storyboard și montaj
 
@@ -128,6 +131,10 @@ Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și
 - Testul de 360 px: latura scurtă a video-ului afișată la 360 px; textul principal ≥ 12 px, cel secundar ≥ 9 px.
 - Nu spune că ceva merge fără să fi rulat testul sau randarea. Nu marca nimic „tested” fără randare. Raportează eșecurile cu mesajul real.
 - Critica automată folosește aceeași rubrică (`rubric-v1`) și același reviewer (`mms-auto-critic-v1`) în toate rundele; revizuirea ta vizuală e o rundă separată (`claude-visual`).
+- Bucla de calitate (`src/quality`, docs/CALITATE.md): pasele 0–9 sunt porți, nu randări. Folosește metoda cea mai ieftină (date → cadre-cheie → video) și refolosește din cache tot ce nu s-a schimbat. Nu randa un video întreg ca să verifici ce se vede în timeline.
+- Scorul `quality-v1` (11 categorii) se adaugă rubricii regulii 7, nu o înlocuiește: PASS cere ≥ 95, nicio problemă critică sau mare și minimum 8/10 pe fiecare scenă în rubrică. Nu declara 100/100 sau PASS fără runda care o arată.
+- Corecturile automate ating doar ce e mecanic (durate, tranziții, cameră, decalaje, culoarea lizibilă din paletă), fiecare într-o versiune nouă, cu rollback dacă scorul scade. Textul utilizatorului, afirmațiile și conceptul rămân decizii de om.
+- Regresia vizuală (`tests/golden/`) se actualizează doar după ce te-ai uitat la cadre (`MMS_UPDATE_GOLDEN=1`).
 
 ## Versiuni
 
@@ -136,8 +143,9 @@ Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și
 ## Securitate
 
 - Chei doar în `.env` (vezi `.env.example`); nu apar în cod, loguri, commit-uri. `npm run lint` caută chei în fișierele urmărite de Git.
+- Fără co-autori și fără atribuiri: niciun trailer `Co-authored-by`, „Generated with”, fișier sau secțiune de contribuitori. `.claude/settings.json` dezactivează atribuirea, iar `npm run lint` refuză commit-urile noi care o au.
 - Sesiunile de browser pentru capturi cu cont stau în `.browser-profiles/` (ignorat de Git); utilizatorul se autentifică singur.
-- Studio-ul ascultă doar pe 127.0.0.1. Remotion Studio (`npm run remotion`) ascultă pe toate interfețele (limită a Remotion): se pornește doar la nevoie și se oprește după.
+- Studio-ul ascultă doar pe 127.0.0.1, acceptă doar Host-ul local și cere Origin local + antetul `X-MMS` pe cererile care modifică. Remotion Studio (`npm run remotion`) ascultă pe toate interfețele (limită a Remotion): se pornește doar la nevoie și se oprește după.
 
 ## Nu falsifica
 

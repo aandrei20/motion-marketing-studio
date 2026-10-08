@@ -425,6 +425,26 @@ Limite 3D: arată foarte bine stilizat; fotorealismul de film nu se atinge din c
 - [x] Motorul și proiectele stau în `C:\dev\`, în afara OneDrive
 - [x] Fiecare utilizator răspunde de drepturile și de conținutul reclamelor lui; nu se adaugă nicio notă automată de „concept”
 
+## Faza 17 – Video Production OS (adăugată pe 2026-10-08)
+
+Calitatea înaintea numărului de funcții: o buclă care verifică ieftin, corectează sigur și randează doar ce s-a schimbat. Detalii: `docs/CALITATE.md`; starea: `docs/IMPLEMENTATION_STATUS.md`; inventarul complet: `docs/INVENTAR.md`.
+
+- [x] Bucla de calitate adaptivă: pase 0–9 ca porți, metoda cea mai ieftină, adâncimi fast / standard / deep / final
+- [x] Graful de dependențe și motorul de impact: amprente pe artefacte și pe scene, cache pe conținut (cadre-cheie, mix, preview)
+- [x] Scorul `quality-v1`: 11 categorii, verdict PASS / POLISH / FIX / FAIL, praguri configurabile; rubrica regulii 7 rămâne
+- [x] Probleme structurate (gravitate, categorie, timestamp, scenă, strat, de ce contează, încredere, corectură propusă)
+- [x] Corecturi automate cu limite, rollback și instantanee
+- [x] Criticul vizual: contrastul măsurat pe pixeli + pachetul de revizuire pentru Claude + notele utilizatorului
+- [x] Inventarul de design și producție (stare și prioritate, referințe verificate de lint)
+- [x] Directorul creativ: concepte din dovezi, scor pe 10 criterii, conceptul utilizatorului are prioritate; intake inteligent
+- [x] Research pe mai multe pagini ale site-ului și graful de afirmații; Reference DNA; structura muzicii; forma brandului
+- [x] OCR offline și date personale dincolo de email
+- [x] Operații de editare, undo/redo, editorul de scene în Studio
+- [x] Verificarea reîncadrării pe fiecare format; profiluri de platformă configurabile
+- [x] Studio: protecții (Host, Origin, antet propriu), limite la încărcare, joburi cu manifest, oprire, timeout și reluare
+- [x] Regresie vizuală pe catalog și pe rețete
+- [ ] Testul pe un produs real, ales de utilizator (rămâne pasul 10 din ordinea de construcție)
+
 ---
 
 ## Ordinea de construcție
