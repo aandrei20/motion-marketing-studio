@@ -42,7 +42,7 @@ Fiecare decizie are motivul ei. Deciziile de produs (ce face studioul, regulile)
 24. **Muzica originală e compusă pe structura reclamei**: tempo după direcție, accente pe tăieturi, final pe CTA. Muzica utilizatorului primește beat grid detectat (comb pe faze + faza benzii joase pentru prima bătaie).
 25. **Ducking cu rampă de 500 ms, normalizare la −14 LUFS, limitator cu plafon −1 dBTP măsurat cu interpolare 4×.** Mixerul raportează; exportul final cere raport „ok”.
 26. **TTS offline prin Windows OneCore** (PowerShell + WinRT), cu marcaje de cuvinte pentru subtitrări. Textul se transmite printr-un fișier UTF-8, altfel se pierd diacriticele. Pentru folosirea comercială a vocilor Windows, vezi `docs/LICENTE.md`.
-27. **Subtitrările pe vertical au un fundal discret**, pentru că zona media continuă sub banda lor. Pe orizontal, media se oprește deasupra subtitrărilor.
+27. **Subtitrările au un fundal discret** pe toate formatele: pe vertical zona media continuă sub banda lor, iar pe orizontal push-ul camerei poate aduce captura sub ele.
 
 ## Siguranță și calitate
 
@@ -51,3 +51,14 @@ Fiecare decizie are motivul ei. Deciziile de produs (ce face studioul, regulile)
 30. **Versiunile se îngheață** la crearea unei versiuni-copil, la preview, la aprobare și la final. Rapoartele de randare se pot scrie și pe o versiune înghețată, pentru că descriu randarea, nu o schimbă. Exporturile nu se suprascriu niciodată.
 31. **Randarea folosește un bundle cache-uit** (hash pe surse) și un folder public pregătit doar cu fișierele folosite (hard links). Motiv: randări repetate rapide, fără copierea proiectului.
 32. **Nimic nu se instalează în timpul lucrului.** `doctor` doar verifică și spune comanda; `install.ps1` instalează Node/Git doar cu acordul utilizatorului.
+
+## Așezarea peste capturi (după revizuirea vizuală)
+
+33. **Callout-urile au mărime constantă pe ecran**: compensează și scara capturii, și zoom-ul camerei (`CameraZoomContext`). Partea pe care stau se alege după poziția finală a zonei pe ecran, după push, în limitele capturii vizibile și ale zonei media.
+34. **Materialul nu trece peste textul fix.** Zoom-ul push-urilor se limitează (`limitZoomForText`), iar centrul camerei din demonstrații se mută cât e nevoie (`clearOfText`). Dacă limita lasă un zoom neglijabil, camera nu mai traversează captura, ci face un push lent pe centru.
+35. **Capturile de pagină întreagă se derulează automat** până la zona țintită, când aceasta e sub partea vizibilă.
+
+## Versiuni și voce
+
+36. **Vocea are o amprentă** (setările din brief + textul rostit). Compilarea refolosește vocea doar dacă amprenta e aceeași; altfel o reface (TTS-ul e în cache, deci e rapid). Motiv: un script editat manual nu trebuie să ajungă cu vocea veche.
+37. **Compilarea pe o versiune înghețată creează versiunea următoare**, cu jurnal („recompilare”), ca orice altă modificare.

@@ -1,6 +1,6 @@
 # Cum folosești Motion Marketing Studio, pas cu pas
 
-Acest ghid presupune că ai terminat instalarea din `README_instalare.md` și că `npm run doctor` a ieșit fără erori.
+Acest ghid presupune că ai terminat instalarea (secțiunea „Instalare” din `README.md`) și că `npm run doctor` a ieșit fără erori.
 
 **Unde scrii fiecare comandă.** Fiecare rând de mai jos are o etichetă:
 - **[PowerShell]** înseamnă că scrii în fereastra neagră PowerShell.
@@ -8,14 +8,12 @@ Acest ghid presupune că ai terminat instalarea din `README_instalare.md` și c�
 
 Dacă greșești locul, nu se strică nimic, dar comanda nu merge.
 
-Notă: comenzile `/make-ad`, `/fix-at`, `/add-effect` și `/new-version` se creează în pasul 9 al construcției. Acest ghid se verifică și se completează după ce există.
-
 ---
 
 ## 1. Deschide proiectul
 
 1. **[PowerShell]** Scrie: `cd C:\dev\motion-marketing-studio` și apasă Enter.
-2. **[PowerShell]** Verifică instalarea: `npm run doctor`. Dacă apare ceva roșu, rulează din nou instalarea (vezi `README_instalare.md`) și repetă.
+2. **[PowerShell]** Verifică instalarea: `npm run doctor`. Dacă apare ceva roșu, rulează comanda afișată lângă problemă (sau din nou `install.ps1`) și repetă.
 3. **[PowerShell]** Pornește Claude: `claude`.
 
 ## 2. Începe o reclamă nouă
@@ -34,7 +32,7 @@ Nimic nu începe înainte de „aprob”.
 
 ## 4. Lasă-l să lucreze
 
-10. Claude face capturile, cercetarea, scriptul, storyboard-ul și o primă versiune rapidă (animatic). Dacă pentru captură trebuie să te loghezi, se deschide o fereastră de browser: te loghezi tu acolo, iar parola nu o vede Claude.
+10. Claude face capturile, cercetarea, scriptul, storyboard-ul și un prim preview. Dacă pentru captură trebuie să te loghezi, se deschide o fereastră de browser: te loghezi tu acolo, iar parola nu o vede Claude.
 11. Dacă apar cifre sau prețuri fără sursă clară, Claude le pune într-o listă „de confirmat”. Nu intră în video fără acordul tău.
 12. La fiecare 3 runde de verificare îți arată progresul. Tu decizi dacă mai continuă.
 13. Starea fiecărui pas se salvează în `projects/<nume>/STATE.md`. Dacă te oprești sau se termină tokenii, poți relua oricând.
@@ -42,13 +40,13 @@ Nimic nu începe înainte de „aprob”.
 ## 5. Vezi previewul
 
 14. Deschide o a doua fereastră **[PowerShell]**, intră în folder (`cd C:\dev\motion-marketing-studio`) și scrie: `npm run studio`.
-15. Deschide în browser adresa afișată (de obicei `http://localhost:3000`) și alege proiectul tău.
+15. Se deschide singur browserul la `http://127.0.0.1:4321`. Alege proiectul tău din stânga și deschide tabul **Preview & timeline**.
 16. **Ascultă cu sunetul pornit.** Claude nu poate auzi, deci ce auzi tu este singura verificare reală pentru muzică, voce și sincronizare.
-17. Dacă poți, exportă un MP4 de probă și vezi-l pe telefon, la volum normal.
+17. MP4-ul de preview e în `projects/<nume>/versions/<versiune>/renders/`. Dacă poți, vezi-l pe telefon, la volum normal.
 
 ## 6. Dă note
 
-18. **[Claude Code]** Scrie notele pe secundă, de exemplu:
+18. **[Claude Code]** Scrie notele pe secundă (sau în Studio → Audio → „Notele tale după ascultare”), de exemplu:
     - `la 7,3 logo-ul e prea mic`
     - `la 11 muzica sună ciudat`
     - `la 14 vreau un push-in agresiv`
@@ -59,7 +57,7 @@ Nimic nu începe înainte de „aprob”.
 
 21. **[Claude Code]** Scrie exact: `render final`.
 22. Așteaptă. Randarea durează de la câteva minute la mai mult, în funcție de lungime și de efecte.
-23. Videoul final este în `projects/<nume>/out/`. Vechile versiuni rămân intacte.
+23. Videoul final este în `projects/<nume>/exports/`. Vechile versiuni rămân intacte.
 24. Dacă ai ales pachetul de postare sau subtitrările, sunt în același folder.
 
 ## 8. Reia sau continuă
@@ -72,5 +70,5 @@ Nimic nu începe înainte de „aprob”.
 ## Dacă ceva nu merge
 
 1. **[PowerShell]** Rulează `npm run doctor`.
-2. Caută mesajul în `DEPANARE.md`.
+2. Caută codul erorii (de ex. `[FINAL_NOT_APPROVED]`) în `docs/DEPANARE.md`.
 3. Dacă nu găsești, copiază mesajul de eroare întreg și scrie-l în Claude Code.
