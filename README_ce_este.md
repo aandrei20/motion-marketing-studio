@@ -10,8 +10,8 @@ Nu este un generator de clipuri la întâmplare. Este un mic studio de producți
 
 - Un video MP4 gata de postat (TikTok, Reels, Shorts, YouTube, feed, LinkedIn, X).
 - Opțional: subtitrări (arse în video și fișier `.srt`).
-- Opțional: un pachet de postare cu imagine de copertă, titlu, descriere și hashtag-uri.
-- Opțional: 2–3 variante de hook, ca să alegi cea mai bună.
+- Opțional: un pachet de postare cu imagine de copertă, titlu și descriere (hashtag-urile le propune Claude și le aprobi tu).
+- Opțional: 2–3 variante de hook, fiecare ca versiune separată, ca să alegi cea mai bună.
 
 ## De ce are nevoie de la tine
 
@@ -29,7 +29,7 @@ Nu este un generator de clipuri la întâmplare. Este un mic studio de producți
 4. **Cercetare.** Claude adună faptele despre produs (funcții, prețuri, public), cu sursă și dată. Ce nu poate verifica îți arată într-o listă și nu apare în video fără acordul tău.
 5. **Script și storyboard.** Claude scrie scriptul (hook, voce, text pe ecran, apel la acțiune) și planul scenă cu scenă.
 6. **Producție.** Se alege din biblioteca de efecte (cameră, text, tranziții, interfață, lumină, 3D, sunet) și se construiește reclama.
-7. **Preview și corecții.** Vezi videoul în Remotion Studio. Asculți. Îmi dai note pe secundă („la 7,3 logo-ul e prea mic”) și se repară doar ce ai notat.
+7. **Preview și corecții.** Vezi videoul în Studio (`npm run studio`), cu timeline-ul dedesubt. Asculți. Îmi dai note pe secundă („la 7,3 logo-ul e prea mic”) și se repară doar ce ai notat.
 8. **Export.** Când ești mulțumit, scrii „render final” și se face MP4-ul.
 
 ## Reguli de care ne ținem mereu
@@ -53,7 +53,8 @@ Nu este un generator de clipuri la întâmplare. Este un mic studio de producți
 
 ## Unde continui
 
-- Instalare: `README_instalare.md`
-- Folosire pas cu pas: `README_flux.md`
-- Termeni necunoscuți: `GLOSAR.md`
-- Ceva nu merge: `DEPANARE.md`
+- Instalare și prezentare completă: `README.md`
+- Folosire pas cu pas: `README_flux.md` (referința completă: `docs/FLUX.md`)
+- Termeni necunoscuți: `docs/GLOSAR.md`
+- Ceva nu merge: `docs/DEPANARE.md`
+- Ce funcționează și ce nu încă: `docs/IMPLEMENTATION_STATUS.md`

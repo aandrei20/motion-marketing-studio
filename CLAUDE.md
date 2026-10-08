@@ -136,7 +136,7 @@ Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și
 
 - Chei doar în `.env` (vezi `.env.example`); nu apar în cod, loguri, commit-uri. `npm run lint` caută chei în fișierele urmărite de Git.
 - Sesiunile de browser pentru capturi cu cont stau în `.browser-profiles/` (ignorat de Git); utilizatorul se autentifică singur.
-- Studio-ul ascultă doar pe 127.0.0.1.
+- Studio-ul ascultă doar pe 127.0.0.1. Remotion Studio (`npm run remotion`) ascultă pe toate interfețele (limită a Remotion): se pornește doar la nevoie și se oprește după.
 
 ## Nu falsifica
 

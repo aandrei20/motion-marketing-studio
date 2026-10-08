@@ -91,7 +91,7 @@ Vezi catalogul vizual: `npm run remotion` (compoziția „Catalog”).
 | `ui.typing` | **Scriere într-un câmp real.** Text scris literă cu literă peste câmpul (input) găsit în captură, cu cursor de text. Fiecare tastă are sunet. | key (each) | tested |
 | `ui.spotlight` | **Spotlight pe o zonă.** Restul ecranului se întunecă; zona aleasă rămâne luminată, cu margine moale. | whoosh-soft (start) | tested |
 | `ui.highlight` | **Contur desenat în jurul unei zone.** Un dreptunghi, o elipsă sau o subliniere se desenează în jurul zonei (animație de trasare). | marker (start) | tested |
-| `ui.callout` | **Callout cu linie spre element.** O etichetă scurtă legată printr-o linie de o zonă din captură. Textul rămâne lizibil la orice zoom. | pop (start) | tested |
+| `ui.callout` | **Callout cu linie spre element.** O etichetă scurtă legată printr-o linie de o zonă din captură. Eticheta și linia păstrează aceeași mărime pe ecran la orice zoom (al capturii sau al camerei). | pop (start) | tested |
 | `ui.tooltip` | **Tooltip.** O bulă mică cu săgeată, deasupra unei zone, pentru o explicație de 2–4 cuvinte. | pop (start) | tested |
 | `ui.drag` | **Drag and drop.** O bucată din captură (zona sursă) este ridicată și mutată la o țintă, cu umbră; pixelii sunt cei reali. | tick-soft (param:at), drop (param:dropAt) | tested |
 | `ui.blur-region` | **Estompare date personale.** Estompează o zonă cu date personale (email, nume de cont). Se aplică doar cu acordul utilizatorului (pii.blurApproved). | — | tested |
