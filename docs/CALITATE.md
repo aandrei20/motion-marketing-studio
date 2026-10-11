@@ -38,7 +38,7 @@ O verificare mai scumpă decât adâncimea e raportată „sărită”, cu motiv
 | 1 Poveste | `critique.rubric` (rubrica regulii 7), `story.structure`, `story.energy-arc`, `story.brand-reveal`, `story.pacing`, `creative.concept` |
 | 2 Vizual | `visual.pixels`: contrast WCAG măsurat pe pixelii randați, densitatea marginilor, ocuparea, ponderea culorilor brandului |
 | 3 Mișcare | `motion.grammar` (odihnă vizuală, varietatea animațiilor de text, raportul dintre tranziții și tăieturi simple), `motion.scene` (mișcarea reală dintre cadre, înghețări) |
-| 4 Interfață | `ui.legibility` (interfața la testul de 360 px), `ui.caption-occlusion` (subtitrări peste zona demonstrată) |
+| 4 Interfață | `ui.legibility` (interfața la testul de 360 px), `ui.caption-occlusion` (subtitrări peste zona demonstrată), `ui.material-over-text` (materialul mărit de cameră peste titlu) |
 | 5 Tipografie | `typography.caption-redundancy`, `typography.consistency` |
 | 6 Audio | `audio.mix` (−14 LUFS, ≤ −1 dBTP, clipping, tăceri) |
 | 7 Brand | `brand.stale` (brand kit mai vechi decât capturile sau referințele), `brand.rules` (logo: doar scară uniformă), `brand.color-presence` |

@@ -26,11 +26,11 @@ Argumentele utilizatorului: $ARGUMENTS
 6. Așteaptă ca utilizatorul să scrie exact „aprob”. Abia apoi: `npm run mms -- approve <id> brief "aprob"`.
 
 ## 2. Materiale reale, research și concept
-7. Captură reală: `npm run mms -- capture <id> --url <url> --id landing` (+ `--full` pentru pagina întreagă, `--viewport mobile` pentru aplicații mobile). Pentru pagini cu cont: `npm run mms -- login --url … --profile <nume>` (utilizatorul se autentifică singur), apoi capturi cu `--profile <nume> --no-research`.
+7. Captură reală: `npm run mms -- capture <id> --url <url> --id landing` (+ `--full` pentru pagina întreagă, `--viewport mobile` pentru aplicații mobile, `--third-party` dacă site-ul nu e al utilizatorului: capturile intră cu drepturi neconfirmate, poarta de drepturi). Pentru pagini cu cont: `npm run mms -- login --url … --profile <nume>` (utilizatorul se autentifică singur), apoi capturi cu `--profile <nume> --no-research`.
    Înregistrare de flux: `--record --type "#selector=text"`.
 8. Fișierele utilizatorului: `npm run mms -- add-asset <id> <fișier> [--role logo] [--tag nume] [--third-party]`. Pentru materiale ale terților întreabă de drepturi și notează: `npm run mms -- rights <id> <assetId> confirmed|denied`.
 9. `npm run mms -- research <id>`: arată lista „de confirmat” (prețuri, cifre). Nimic din ea nu intră în video fără `npm run mms -- claim <id> <claimId> approved`.
-    Pentru mai multe pagini ale site-ului: `npm run mms -- research-crawl <id> [--max 6]`; graful (coroborare, conflicte, concurenți): `npm run mms -- claims <id>`.
+    Pentru mai multe pagini ale site-ului: `npm run mms -- research-crawl <id> [--max 6] [--third-party]` (paginile citite devin și materiale); graful (coroborare, conflicte, concurenți): `npm run mms -- claims <id>`.
 10. `npm run mms -- brand <id>`. Verifică culorile, fonturile și forma (colțuri, umbre); corectează `brand.json` dacă utilizatorul are ghid de brand.
 10b. `npm run mms -- concepts <id>`: conceptele din dovezi, cu scor pe 10 criterii. Conceptul utilizatorului (viziunea lui) are prioritate; arată-i 1–2 alternative ca sugestii. Poți adăuga conceptul tău în `concepts.json` (origin „ai”), care se scorează la fel. Alegerea: `npm run mms -- concept <id> <conceptId>`.
 

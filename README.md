@@ -138,6 +138,7 @@ Exportul se oprește dacă există blocaje de validare, materiale fără dreptur
 npm run check          # typecheck + reguli + teste unitare și de integrare (~2 min)
 npm run test:render    # catalogul întreg, determinism, MP4 real, regresia vizuală (~5 min)
 npm run e2e -- --fresh # producție completă pe produsul demo fictiv, cu preview MP4 (~4–7 min)
+npm run e2e:real -- --url https://site-public.example --fresh --lang en   # același flux pe un site real (internet)
 npm run doctor         # instalarea
 ```
 

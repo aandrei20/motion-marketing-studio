@@ -11,6 +11,7 @@ Ce verifică fiecare poartă, cum se rulează și ce înseamnă când pică. Rez
 | `npm test` | ~1–2 min | testele unitare și de integrare (fără randare video, cu excepția celor marcate) |
 | `npm run test:render` | ~10–20 min | randarea: catalogul întreg, determinismul pixelilor, MP4, regresia vizuală |
 | `npm run e2e -- --fresh` | ~4–7 min | testul de acceptanță cap-coadă pe produsul demo fictiv |
+| `npm run e2e:real -- --url <site> --fresh` | ~2–6 min | același flux pe un site public real (cere internet); opțional, nu face parte din `check` |
 
 Nimic din acestea nu instalează ceva (regula 11). Dacă lipsește o dependență, `npm run doctor` spune ce trebuie rulat.
 
@@ -67,6 +68,20 @@ captură reală → research → brand → script și storyboard (curate sau `--
 
 Opțiuni: `--fresh` (șterge doar proiectul `e2e-kolibri`), `--auto`, `--no-render`, `--autofix`.
 
+## Testul pe un produs real (`npm run e2e:real`)
+
+Ca studioul să nu fie verificat doar pe un produs fictiv. Adresa vine la rulare; codul nu conține niciun nume de produs.
+
+```powershell
+npm run e2e:real -- --url https://site-public.example --fresh --lang en [--no-render] [--duration 20] [--vision "…"] [--max-pages 4]
+```
+
+Flux: intake inteligent pe pagina reală → proiect și brief deduse → aprobarea de test → captură reală (pagina, pagina întreagă, logo-ul) → research pe site (paginile relevante devin și materiale) → brand → concepte → `produce` (calitate standard, corecturi automate cu rollback, un preview, Final QA).
+
+Ce verifică pe lângă flux: site-ul e al altcuiva, deci capturile au drepturi neconfirmate; reclama trebuie să iasă marcată „concept” pe toate formatele, iar exportul final trebuie refuzat. Proiectul se cheamă `e2e-…` (`--fresh` șterge doar un astfel de proiect).
+
+Limba: `--lang` alege limba reclamei (implicit `ro`). Dacă e alta decât a site-ului, citatele de pe site apar ca probleme mari „de tradus”: traducerea e decizia utilizatorului, nu a testului.
+
 ## Ce nu se testează automat (și de ce)
 
 - **Sunetul** îl judecă omul (regula 15): testele verifică doar măsurătorile (LUFS, true peak, clipping, tăceri).
@@ -75,6 +90,7 @@ Opțiuni: `--fresh` (șterge doar proiectul `e2e-kolibri`), `--auto`, `--no-rend
 - **Comenzile Claude Code** (`/make-ad` etc.): sunt instrucțiuni pentru Claude, cer o sesiune.
 - **Revizuirea vizuală a lui Claude**: se face în sesiune, pe pachetul `critique-pack`; testele verifică doar pachetul și primirea observațiilor.
 - **Exportul final**: cere „render final” de la utilizator (regula 6). Poarta e testată (refuză fără aprobare); randarea folosește același motor ca preview-ul.
+- **Testul pe produsul real** cere internet și depinde de site (se poate schimba oricând): nu intră în `npm run check`. Rezultatul ultimei rulări e în `docs/IMPLEMENTATION_STATUS.md`.
 
 ## Când pică o poartă
 

@@ -23,7 +23,11 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
 - **Studio**: tab-urile Calitate și Concept, editorul de scene cu undo/redo în Preview & timeline, etapa și oprirea joburilor, reluarea joburilor întrerupte.
 - **Inventarul de design și producție** (`docs/INVENTAR.md`, `docs/SISTEM.md`), cu referințe spre cod verificate de lint.
 - **Regresia vizuală**: referințe pentru tot catalogul și pentru toate rețetele (16:9 și 9:16), cu test de sensibilitate.
-- Documentație: `docs/CALITATE.md`, `docs/TESTARE.md`, deciziile 39–56, auditul etapei.
+- **Testul pe un produs real** (`npm run e2e:real -- --url <site>`): intake, captură, research, brand, concepte și producția pe un site public, cu verificarea porții de drepturi (reclama „concept”, export refuzat).
+- **Logo-ul din pagină** (SVG inline cu culoarea lui sau imaginea din antet), doar cu semnal clar; **paginile citite la research devin materiale**; captura cu `--third-party` pentru site-ul altcuiva.
+- **Verificarea limbii replicilor** (offline): citatele de pe site în altă limbă decât reclama apar ca problemă mare, de tradus cu acordul utilizatorului.
+- În Studio, banda „Unde e reclama”: etapele cap-coadă (brief → … → export), calculate din datele reale, cu etapa curentă și marcajul „concept”.
+- Documentație: `docs/CALITATE.md`, `docs/TESTARE.md`, deciziile 39–68, auditul etapei.
 
 ### Schimbat
 
@@ -44,6 +48,24 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
 - Ritmul din Reference DNA era mascat de cartonașul final.
 - Brand kit-ul folosea o captură veche, fără datele de formă.
 - O versiune nouă nu primea fișierele vocii.
+- Găsite de testul pe produsul real:
+  - CTA-ul nu era găsit pe site-urile unde butonul e un link, iar „de confirmat” ajungea pe cardul final și în voce. Acum linkurile stilizate ca butoane contează, CTA-ul nestabilit e critic, iar „free” nu mai alege un element de meniu.
+  - Categoria devenea „produs AI” la o singură mențiune; acum semnalele au greutăți.
+  - Titlurile din meniu și subsol apăreau ca funcții.
+  - Pe ecran apărea un paragraf întreg din jurnalul de schimbări, cu data în față.
+  - Documentația dădea „funcții” din textul de navigare.
+  - Toate capturile intrau într-o singură scenă de montaj.
+  - Drepturile apăreau o dată pe fiecare strat și format, nu pe material.
+  - Durata peste ținta din brief nu era o problemă.
+  - Platforma unui format din intake era aceeași pentru toate formatele (un 16:9 primea zonele TikTok).
+  - Intake-ul promitea „logo din pagină” fără să-l extragă.
+  - O corectură automată a camerei relua zoom-ul complet și captura intra peste titlu pe 16:9; acum păstrează zoom-ul limitat al rețetei, iar verificarea nouă `ui.material-over-text` prinde suprapunerea.
+  - Cuvântul rostit din subtitrări dispărea când accentul brandului e închis; textul secundar (adresa de pe cardul final) avea contrast 2,3:1. Ambele se fac lizibile din aceeași nuanță.
+  - Hold-ul de pe CTA era raportat ca „imagine înghețată”.
+  - Scena de dezvăluire cu turul paginii nu arăta logo-ul.
+  - Corecturile de cameră pentru odihnă vizuală și pentru lizibilitate se anulau una pe alta.
+  - Adresa de pe cardul final păstra „/” la sfârșit.
+  - Schița de script lua „funcții” din documentație și din paginile concurenților.
 
 ### Contribuitori
 

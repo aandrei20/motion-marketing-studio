@@ -12,7 +12,7 @@ Toate comenzile se scriu în **PowerShell**, în folderul repo-ului, ca `npm run
 | 2 | Întrebări A–H | `questions` | Brief | lista întrebărilor cu variante |
 | 3 | Brief | `brief <id> --file brief.json` | Brief → Salvează | `brief.json` |
 | 4 | Aprobare | `approve <id> brief "aprob"` | Brief → Aprobare | aprobarea în `approvals.json` |
-| 5 | Captură reală | `capture <id> --url … [--full] [--viewport mobile] [--record --type "#q=text"] [--click …] [--hide …] [--wait ms] [--steps pasi.json]` | Materiale → Captură | `captures/<cap>.png/.mp4/.json` (zone din DOM, date de pagină), materiale în `assets.json`, afirmații în `research.json` |
+| 5 | Captură reală | `capture <id> --url … [--full] [--viewport mobile] [--record --type "#q=text"] [--click …] [--hide …] [--wait ms] [--steps pasi.json] [--third-party]` | Materiale → Captură | `captures/<cap>.png/.mp4/.json` (zone din DOM, date de pagină), materiale în `assets.json`, afirmații în `research.json` |
 | 6 | Fișierele tale | `add-asset <id> <fișier> [--role logo] [--tag nume] [--third-party]` | Materiale → Încarcă | material analizat (dimensiuni, culori, punct focal) |
 | 7 | Drepturi | `rights <id> <assetId> confirmed\|denied` | Materiale | `rights` în manifest |
 | 8 | Research | `research <id>` · `claim <id> <claimId> approved\|rejected` · `add-claim <id> "text" --category … --source …` | Research | afirmații cu sursă; lista „de confirmat” |
