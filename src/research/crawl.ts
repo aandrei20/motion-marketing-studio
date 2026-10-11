@@ -8,10 +8,11 @@
  * captures/research/ pentru trasabilitate.
  */
 import path from "node:path";
+import { ingestCapture } from "../assets/ingest";
 import { capture } from "../capture/capture";
 import { MmsError } from "../core/errors";
 import type { Research, SourceKind } from "../core/schema";
-import { loadResearch, projectDir, saveResearch, updateState } from "../projects/store";
+import { loadAssets, loadResearch, projectDir, saveResearch, updateState } from "../projects/store";
 import { extractFromPage, mergeIntoResearch, sourceKindFor } from "./extract";
 
 /** Ce pagini merită citite, în ordinea valorii pentru o reclamă. */
@@ -77,8 +78,16 @@ export interface CrawlResult {
   skipped: string[];
 }
 
-export async function crawlSite(projectId: string, startUrl: string, o: { max?: number; competitors?: string[]; log?: (m: string) => void } = {}): Promise<CrawlResult> {
+/**
+ * Citește paginile relevante ale site-ului. Capturile paginilor produsului (fără pagina de start, deja
+ * capturată, și fără concurenți) devin și materiale: o funcție citată de pe pagina ei se poate arăta pe
+ * captura ei reală. Drepturile urmează capturile existente de pe același site (`thirdParty` explicit altfel).
+ */
+export async function crawlSite(projectId: string, startUrl: string, o: { max?: number; competitors?: string[]; log?: (m: string) => void; ingest?: boolean; thirdParty?: boolean } = {}): Promise<CrawlResult> {
   const log = o.log ?? (() => undefined);
+  const host = new URL(startUrl).hostname.replace(/^www\./, "");
+  const sameSite = (u: string | undefined) => !!u && /^https?:/.test(u) && new URL(u).hostname.replace(/^www\./, "") === host;
+  const thirdParty = o.thirdParty ?? loadAssets(projectId).assets.some((a) => a.origin === "real_capture" && a.rights.thirdParty && sameSite(a.capture?.url));
   const dir = path.join(projectDir(projectId), "captures", "research");
   log(`Research: pagina principală ${startUrl}`);
   const home = await capture({ id: "r-home", url: startUrl, viewport: "desktop", research: true }, dir);
@@ -93,6 +102,7 @@ export async function crawlSite(projectId: string, startUrl: string, o: { max?: 
       const r = await capture({ id: `r-${i + 1}`, url: p.url, viewport: "desktop", research: true }, dir);
       const ex = extractFromPage(r.page, { capturedAt: r.capturedAt });
       mergeIntoResearch(projectId, ex, r.page.fullText);
+      if (o.ingest !== false) await ingestCapture(projectId, r, { thirdParty });
       pages.push({ url: p.url, kind: ex.source.kind, claims: ex.claims.length });
     } catch (e) {
       skipped.push(`${p.url}: ${(e as Error).message.split("\n")[0]}`);

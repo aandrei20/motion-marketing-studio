@@ -286,7 +286,7 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "research-crawl": {
           const url = String(params.url ?? p.product.url ?? "");
           if (!url) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului.");
-          const r = await crawlSite(id, url, { max: typeof params.max === "number" ? params.max : undefined, competitors: Array.isArray(params.competitors) ? params.competitors.map(String) : [], log });
+          const r = await crawlSite(id, url, { max: typeof params.max === "number" ? params.max : undefined, competitors: Array.isArray(params.competitors) ? params.competitors.map(String) : [], thirdParty: params.thirdParty === true ? true : undefined, log });
           return { pages: r.pages, skipped: r.skipped };
         }
         case "concepts":

@@ -210,11 +210,18 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
   return { asset, duplicate: false };
 }
 
-/** Ingerează rezultatul unei capturi: captura statică și, dacă există, înregistrarea. */
-export async function ingestCapture(projectId: string, cap: CaptureResult): Promise<Asset[]> {
+/**
+ * Ingerează rezultatul unei capturi: captura statică, înregistrarea și logo-ul găsit în pagină, dacă există.
+ * Captura intră ca material: implicit e a produsului utilizatorului („owned”). Pentru site-ul altcuiva
+ * (`thirdParty`), drepturile rămân neconfirmate până la răspunsul utilizatorului (regula 3).
+ */
+export async function ingestCapture(projectId: string, cap: CaptureResult, o: { thirdParty?: boolean } = {}): Promise<Asset[]> {
   const out: Asset[] = [];
-  out.push((await ingestFile(projectId, cap.screenshot, { origin: "real_capture", role: "screenshot", capture: cap, tags: [cap.id, cap.fullPage ? "full-page" : "viewport"] })).asset);
-  if (cap.recording) out.push((await ingestFile(projectId, cap.recording.file, { origin: "real_capture", role: "screen-recording", capture: cap, captureRecording: true, tags: [cap.id, "recording"] })).asset);
+  const rights = o.thirdParty ? { thirdParty: true } : {};
+  out.push((await ingestFile(projectId, cap.screenshot, { origin: "real_capture", role: "screenshot", capture: cap, tags: [cap.id, cap.fullPage ? "full-page" : "viewport"], ...rights })).asset);
+  if (cap.recording) out.push((await ingestFile(projectId, cap.recording.file, { origin: "real_capture", role: "screen-recording", capture: cap, captureRecording: true, tags: [cap.id, "recording"], ...rights })).asset);
+  // logo-ul găsit în pagină (același fișier pe mai multe pagini se deduplică după conținut)
+  if (cap.logo && fs.existsSync(cap.logo.file)) out.push((await ingestFile(projectId, cap.logo.file, { origin: "real_capture", role: "logo", tags: ["logo", cap.id], ...rights })).asset);
   return out;
 }
 

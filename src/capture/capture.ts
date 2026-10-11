@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { z } from "zod";
 import { findPii, PII_CANDIDATE_SOURCE, PII_LABEL } from "../assets/pii";
@@ -80,6 +81,8 @@ export interface CaptureResult {
   pii: Region[];
   page: PageData;
   recording?: { file: string; fps: number; frames: number; durationSec: number; width: number; height: number };
+  /** logo-ul găsit în pagină (SVG inline sau imaginea din antet), salvat lângă captură; lipsește dacă nu e sigur */
+  logo?: { file: string; source: "inline-svg" | "img"; url?: string };
   capturedAt: string;
 }
 
@@ -168,6 +171,88 @@ async function extractRegions(page: Page, fullPage: boolean): Promise<{ regions:
   }, { full: fullPage, piiSource: PII_CANDIDATE_SOURCE }) as Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }>;
 }
 
+/**
+ * Logo-ul din pagină: imaginea sau SVG-ul din partea de sus cu cel mai mare scor („logo” în id, clasă, alt
+ * sau aria-label, pe el sau pe părinți; link spre pagina principală; în antet sau meniu). Fără un semnal
+ * clar (scor sub 3) nu se întoarce nimic: un logo greșit e mai rău decât niciunul.
+ */
+async function extractLogo(page: Page): Promise<{ kind: "svg"; svg: string } | { kind: "img"; src: string } | null> {
+  return page.evaluate(() => {
+    const mentions = (el: Element | null, depth: number): boolean => {
+      for (let e = el, d = 0; e && d <= depth; e = e.parentElement, d++) {
+        const attrs = [e.id, e.getAttribute("class") ?? "", e.getAttribute("alt") ?? "", e.getAttribute("aria-label") ?? "", e.getAttribute("title") ?? ""].join(" ");
+        if (/logo|brand/i.test(attrs)) return true;
+      }
+      return false;
+    };
+    const homeLink = (el: Element) => {
+      const a = el.closest("a[href]") as HTMLAnchorElement | null;
+      if (!a) return false;
+      try {
+        const u = new URL(a.href, location.href);
+        return u.origin === location.origin && /^\/?(index\.html?)?$/.test(u.pathname.replace(/^\//, ""));
+      } catch {
+        return false;
+      }
+    };
+    let best: { el: Element; score: number } | null = null;
+    for (const el of Array.from(document.querySelectorAll("img, svg"))) {
+      if (el.tagName.toLowerCase() === "svg" && el.parentElement?.closest("svg")) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 16 || r.height < 12 || r.width > 600 || r.top + window.scrollY > 260) continue;
+      const score = (mentions(el, 3) ? 3 : 0) + (homeLink(el) ? 2 : 0) + (el.closest("header, nav, [role=banner]") ? 1 : 0);
+      if (!best || score > best.score) best = { el, score };
+    }
+    if (!best || best.score < 3) return null;
+    if (best.el.tagName.toLowerCase() === "img") {
+      const img = best.el as HTMLImageElement;
+      return img.currentSrc || img.src ? { kind: "img" as const, src: img.currentSrc || img.src } : null;
+    }
+    const svg = best.el.cloneNode(true) as SVGSVGElement;
+    // simbolurile externe (<use href="#…">) nu se văd în afara paginii: atunci nu se salvează
+    if (svg.querySelector("use")) return null;
+    const r = best.el.getBoundingClientRect();
+    if (!svg.getAttribute("xmlns")) svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", `0 0 ${Math.round(r.width)} ${Math.round(r.height)}`);
+    svg.setAttribute("width", String(Math.round(r.width)));
+    svg.setAttribute("height", String(Math.round(r.height)));
+    // currentColor rămâne culoarea din pagină (logo-ul nu se recolorează)
+    svg.setAttribute("style", `color: ${getComputedStyle(best.el).color}`);
+    const out = svg.outerHTML;
+    return out.length < 400_000 ? { kind: "svg" as const, svg: out } : null;
+  });
+}
+
+async function saveLogo(page: Page, found: NonNullable<Awaited<ReturnType<typeof extractLogo>>>, base: string): Promise<CaptureResult["logo"] | undefined> {
+  if (found.kind === "svg") {
+    fs.writeFileSync(`${base}.svg`, found.svg);
+    return { file: `${base}.svg`, source: "inline-svg" };
+  }
+  const ext = (type: string, url: string) => (/svg/.test(type) || /\.svg(\?|$)/i.test(url) ? "svg" : /png/.test(type) || /\.png(\?|$)/i.test(url) ? "png" : /webp/.test(type) ? "webp" : /jpe?g/.test(type) || /\.jpe?g(\?|$)/i.test(url) ? "jpg" : null);
+  let bytes: Buffer | null = null;
+  let type = "";
+  if (found.src.startsWith("data:")) {
+    const m = found.src.match(/^data:([^;,]+)(;base64)?,(.*)$/s);
+    if (m) {
+      type = m[1];
+      bytes = m[2] ? Buffer.from(m[3], "base64") : Buffer.from(decodeURIComponent(m[3]));
+    }
+  } else if (found.src.startsWith("file:")) {
+    const p = fileURLToPath(found.src);
+    if (fs.existsSync(p)) bytes = fs.readFileSync(p);
+  } else {
+    const r = await page.request.get(found.src, { timeout: 15_000 }).catch(() => null);
+    if (r?.ok()) {
+      type = r.headers()["content-type"] ?? "";
+      bytes = await r.body();
+    }
+  }
+  const e = ext(type, found.src);
+  if (!bytes || !e || bytes.length > 3_000_000) return undefined;
+  fs.writeFileSync(`${base}.${e}`, bytes);
+  return { file: `${base}.${e}`, source: "img", url: found.src.startsWith("data:") ? undefined : found.src };
+}
+
 async function extractPageData(page: Page): Promise<PageData> {
   return page.evaluate(() => {
     const txt = (el: Element) => ((el as HTMLElement).innerText || "").trim().replace(/\s+/g, " ");
@@ -231,6 +316,19 @@ async function extractPageData(page: Page): Promise<PageData> {
         if (!Number.isNaN(g) && g > 0) count(gaps, String(Math.round(g)), 1);
       }
     });
+    // meniul și subsolul nu descriu produsul: titlurile lor nu intră în titlurile paginii
+    const chrome = (el: Element) => !!el.closest("nav, footer, [role=navigation], [role=contentinfo]");
+    // pe site-urile reale, CTA-ul e de obicei un link stilizat ca buton (fundal sau contur, padding, text scurt)
+    const buttonLike = (a: Element) => {
+      const t = txt(a);
+      if (!t || t.split(/\s+/).length > 6) return false;
+      if (/(btn|button|cta)/i.test(a.getAttribute("class") ?? "")) return true;
+      const st = getComputedStyle(a);
+      const filled = !!st.backgroundColor && st.backgroundColor !== "transparent" && !/rgba\([^)]*,\s*0\)$/.test(st.backgroundColor);
+      const bordered = parseFloat(st.borderTopWidth) > 0 && st.borderTopStyle !== "none";
+      const padded = parseFloat(st.paddingLeft) + parseFloat(st.paddingRight) >= 16 && parseFloat(st.paddingTop) >= 4;
+      return (filled || bordered) && padded;
+    };
     const og: Record<string, string> = {};
     document.querySelectorAll("meta[property^='og:']").forEach((m) => (og[m.getAttribute("property") ?? ""] = m.getAttribute("content") ?? ""));
     return {
@@ -238,11 +336,12 @@ async function extractPageData(page: Page): Promise<PageData> {
       title: document.title,
       description: document.querySelector("meta[name=description]")?.getAttribute("content") ?? "",
       og,
-      headings: Array.from(document.querySelectorAll("h1, h2, h3, h4")).map((h) => ({ level: Number(h.tagName[1]), text: txt(h) })).filter((h) => h.text),
+      headings: Array.from(document.querySelectorAll("h1, h2, h3, h4")).filter((h) => !chrome(h)).map((h) => ({ level: Number(h.tagName[1]), text: txt(h) })).filter((h) => h.text),
       paragraphs: Array.from(document.querySelectorAll("p")).map(txt).filter((t) => t.length > 20).slice(0, 80),
       listItems: Array.from(document.querySelectorAll("li")).map(txt).filter(Boolean).slice(0, 120),
       links: Array.from(document.querySelectorAll("a[href]")).map((a) => ({ text: txt(a), href: (a as HTMLAnchorElement).href })).slice(0, 150),
-      buttons: Array.from(document.querySelectorAll("button, .btn, [role=button]")).map(txt).filter(Boolean).slice(0, 40),
+      // textul unui buton e scurt; cardurile de meniu cu rol de buton (titlu + descriere) nu sunt butoane de acțiune
+      buttons: [...new Set([...Array.from(document.querySelectorAll("button, .btn, [role=button]")), ...Array.from(document.querySelectorAll("a[href]")).filter(buttonLike)].map((el) => txt(el).replace(/^[-–•·]\s*/, "")).filter((t) => t && t.split(/\s+/).length <= 6))].slice(0, 40),
       colors: { backgrounds: top(bgs, 8), texts: top(fgs, 6), accents: top(acc, 6) },
       fonts: top(fonts, 5),
       shapes: { radii: top(radii, 5), shadows: top(shadows, 4), gradients: top(grads, 4), gaps: top(gaps, 5) },
@@ -386,6 +485,8 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
     await page.screenshot({ path: shotFile, fullPage: req.fullPage, animations: "disabled", caret: "hide" });
     const raw = await extractRegions(page, req.fullPage);
     const pageData = await extractPageData(page);
+    const foundLogo = req.record ? null : await extractLogo(page).catch(() => null);
+    const logo = foundLogo ? await saveLogo(page, foundLogo, path.join(outDir, `${req.id}-logo`)).catch(() => undefined) : undefined;
     const dims = await page.evaluate((full) => ({ w: window.innerWidth, h: full ? document.documentElement.scrollHeight : window.innerHeight }), req.fullPage);
     const used = new Set<string>();
     const toRegion = (r: Omit<Region, "id"> & { idHint: string }): Region => {
@@ -412,6 +513,7 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
         .filter((x) => x.hits.length)
         .map((x) => toRegion({ ...x.r, idHint: `pii-${x.hits[0].kind}`, label: [...new Set(x.hits.map((h) => PII_LABEL[h.kind]))].join(", ") })),
       page: pageData,
+      ...(logo ? { logo } : {}),
       capturedAt: new Date().toISOString(),
     };
     if (req.record) {
