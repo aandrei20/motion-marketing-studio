@@ -48,7 +48,8 @@ export function autoCritique(inp: CritiqueInput, round: number, versionId: strin
   const camCaps = t.scenes.map((s) => (s.camera.keys.length > 1 ? `${s.camera.keys[0].zoom.toFixed(2)}→${s.camera.keys[s.camera.keys.length - 1].zoom.toFixed(2)}` : "fix") + (s.camera.handheld ? "h" : "") + (s.camera.punches.length ? "p" : ""));
   const transitions = t.scenes.map((s) => s.transitionIn?.capability ?? "start");
   const textContrast = contrastRatio(t.palette.text, t.palette.background);
-  const altCamera = (current: string) => [inp.dir.camera.calm, inp.dir.camera.active, inp.dir.camera.ui, "camera.parallax-drift", "camera.push"].find((c) => c !== current && c !== "camera.static") ?? "camera.push";
+  // o altă mișcare decât cea curentă; o scenă care deja împinge spre zonă nu primește iar „camera.push” (ar ieși la fel)
+  const altCamera = (current: string, pushing = false) => [inp.dir.camera.calm, inp.dir.camera.active, inp.dir.camera.ui, "camera.parallax-drift", "camera.push"].find((c) => c !== current && c !== "camera.static" && !(pushing && c === "camera.push")) ?? "camera.parallax-drift";
   const pool = [...inp.dir.transitions.calm, ...inp.dir.transitions.rise];
   t.scenes.forEach((s, i) => {
     const scores: Record<RubricKey, number> = { hook: 10, clarity: 10, rhythm: 10, hierarchy: 10, variety: 10, brand: 10, cta: 10 };
@@ -126,7 +127,7 @@ export function autoCritique(inp: CritiqueInput, round: number, versionId: strin
       ded("hierarchy", 2, "Textul principal nu e destul de mare față de cel secundar.", { layerId: sup?.id ?? null, severity: "medium", problem: `Raport ${(heroSize / supSize).toFixed(2)} între textul principal și cel secundar.`, recommendation: "Măcar 1,4× diferență de mărime între niveluri.", suggestedFix: sup ? [{ op: "layer-params", sceneId: s.id, slot: sup.id, params: { maxSize: Math.max(12, Math.floor(heroSize / 1.5)) } }] : [], confidence: 0.75 });
     // varietate: aceeași rețetă/cameră/tranziție de mai multe ori la rând
     if (i > 0 && recipes[i] === recipes[i - 1] && camCaps[i] === camCaps[i - 1] && s.meta.narrativeRole !== "cta")
-      ded("variety", 3, "Aceeași rețetă și aceeași mișcare ca scena anterioară.", { severity: "medium", problem: "Două scene la rând arată la fel (aceeași rețetă și cameră).", recommendation: "Schimbă camera sau rețeta (de ex. walkthrough în loc de spotlight).", suggestedFix: [{ op: "set-camera", sceneId: s.id, capability: altCamera(inp.dir.camera.ui), params: {} }], confidence: 0.65 });
+      ded("variety", 3, "Aceeași rețetă și aceeași mișcare ca scena anterioară.", { severity: "medium", problem: "Două scene la rând arată la fel (aceeași rețetă și cameră).", recommendation: "Schimbă camera sau rețeta (de ex. walkthrough în loc de spotlight).", suggestedFix: [{ op: "set-camera", sceneId: s.id, capability: altCamera(inp.dir.camera.ui, s.camera.keys.length > 1 && s.camera.keys[s.camera.keys.length - 1].zoom > s.camera.keys[0].zoom), params: {} }], confidence: 0.65 });
     if (i > 1 && transitions[i] === transitions[i - 1] && transitions[i] === transitions[i - 2]) {
       const alt = pool.find((x) => x !== transitions[i]) ?? "tr.cut";
       ded("variety", 2, "Aceeași tranziție de 3 ori la rând.", { problem: `Tranziția ${transitions[i]} se repetă de 3 ori la rând.`, recommendation: "Alternează tranziția (aceeași tranziție nu se repetă de două ori la rând).", suggestedFix: [{ op: "set-transition", sceneId: s.id, capability: alt, durationFrames: null }], confidence: 0.75 });

@@ -50,6 +50,19 @@ export function readableOn(bg: string, light = "#ffffff", dark = "#0b0b0f"): str
   return contrastRatio(bg, light) >= contrastRatio(bg, dark) ? light : dark;
 }
 
+/**
+ * Aceeași nuanță, deschisă sau închisă cât trebuie ca să aibă contrastul cerut pe fundal (pașii de 5%,
+ * spre alb pe fundal închis, spre negru pe fundal deschis). Culoarea de brand rămâne recognoscibilă.
+ */
+export function readableTint(color: string, bg: string, min = 4.5): string {
+  const toward = luminance(bg) < 0.18 ? "#ffffff" : "#000000";
+  for (let t = 0; t <= 1; t += 0.05) {
+    const c = mix(color, toward, t);
+    if (contrastRatio(c, bg) >= min) return c;
+  }
+  return toward;
+}
+
 export function isDark(hex: string): boolean {
   return luminance(hex) < 0.25;
 }

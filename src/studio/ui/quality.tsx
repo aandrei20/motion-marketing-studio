@@ -322,3 +322,62 @@ export function SceneEditor({ ctx, t, scene, transitions, cameras }: { ctx: Ctx;
     </div>
   );
 }
+
+interface FlowStage {
+  id: string;
+  label: string;
+  done: boolean;
+  detail: string;
+}
+
+/** Etapele fluxului cap-coadă, deduse din datele reale ale proiectului și ale versiunii curente. */
+export function flowStages(ctx: Ctx): FlowStage[] {
+  const b = ctx.bundle;
+  const v = ctx.version;
+  const vid = ctx.versionId;
+  const claims = b.research.claims;
+  const toConfirm = claims.filter((c) => c.status === "needs-confirmation").length;
+  const concept = b.concepts?.concepts.find((c) => c.id === b.concepts?.selectedId);
+  const formats = Object.keys(v?.timelines ?? {});
+  const previews = (v?.renders ?? []).filter((r) => /preview-[^/]+\.mp4$/.test(r));
+  const reviews = (v?.critique.rounds ?? []).filter((r) => r.reviewer !== "mms-auto-critic-v1");
+  const q = v?.quality ?? null;
+  const finalApproved = b.approvals.items.some((a) => a.kind === "render-final" && a.versionId === vid);
+  return [
+    { id: "brief", label: "Brief", done: b.project.status !== "intake", detail: b.project.status !== "intake" ? "aprobat" : "așteaptă „aprob”" },
+    { id: "research", label: "Research", done: claims.length > 0, detail: claims.length ? `${claims.length} afirmații, ${toConfirm} de confirmat` : "fără captură" },
+    { id: "concept", label: "Concept", done: !!concept, detail: concept ? `${concept.title} (${concept.total})` : "neales" },
+    { id: "storyboard", label: "Storyboard", done: !!v?.storyboard, detail: v?.storyboard ? `${v.storyboard.scenes.length} scene` : "—" },
+    { id: "build", label: "Timeline + mix", done: formats.length > 0 && !!v?.mixReport, detail: formats.length ? `${formats.join(", ")}${v?.mixReport ? ` · ${v.mixReport.integratedLufs} LUFS` : " · fără mix"}` : "—" },
+    { id: "quality", label: "Calitate", done: !!q, detail: q ? `${q.score.overall} · ${q.score.verdict} (${q.depth})` : "—" },
+    { id: "polish", label: "Corecturi", done: !!v?.autofix || q?.score.verdict === "PASS", detail: v?.autofix ? `${v.autofix.iterations.length} iterații` : q?.score.verdict === "PASS" ? "nu e nevoie" : "—" },
+    { id: "preview", label: "Preview", done: previews.length > 0, detail: previews.length ? `${previews.length} formate` : "—" },
+    { id: "review", label: "Revizuire (Claude + tu)", done: reviews.length > 0, detail: reviews.length ? reviews.map((r) => r.reviewer).join(", ") : "ascultă și notează" },
+    { id: "approve", label: "Aprobare", done: finalApproved, detail: finalApproved ? "„render final” scris" : "scrie „render final”" },
+    { id: "final-qa", label: "Final QA", done: q?.depth === "final", detail: q?.depth === "final" ? `${q.score.verdict}` : "—" },
+    { id: "export", label: "Export", done: v?.meta.status === "final", detail: v?.meta.status === "final" ? "exportat" : "blocat până la aprobare" },
+  ];
+}
+
+export function ProductionFlow({ ctx }: { ctx: Ctx }) {
+  const stages = flowStages(ctx);
+  const current = stages.find((s) => !s.done)?.id ?? null;
+  const concept = Object.values(ctx.version?.timelines ?? {}).some((t) => t.concept);
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Unde e reclama</h2>
+        <span className="muted small">{current ? `etapa curentă: ${stages.find((s) => s.id === current)!.label}` : "toate etapele sunt făcute"}{ctx.versionId ? ` · ${ctx.versionId}` : ""}</span>
+      </div>
+      <ol className="flow">
+        {stages.map((s) => (
+          <li key={s.id} className={s.done ? "done" : s.id === current ? "current" : ""}>
+            <b>{s.label}</b>
+            <span className="small muted">{s.detail}</span>
+          </li>
+        ))}
+      </ol>
+      {concept ? <p className="warn small">Se folosesc materiale fără drepturi confirmate: preview-ul e marcat „concept”, iar exportul final e blocat (regula 3).</p> : null}
+    </div>
+  );
+}

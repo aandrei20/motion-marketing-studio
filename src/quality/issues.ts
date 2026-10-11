@@ -118,15 +118,37 @@ export function prioritize(list: Finding[]): Finding[] {
   return [...list].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.confidence - a.confidence || (a.frame ?? 1e9) - (b.frame ?? 1e9));
 }
 
-/** Aceeași problemă raportată de două verificări (de ex. validatorul și critica) se păstrează o dată, la gravitatea maximă. */
-export function dedupe(list: Finding[]): Finding[] {
+/**
+ * Aceeași problemă raportată de două verificări (de ex. validatorul și critica) se păstrează o dată, la
+ * gravitatea maximă. Cu `formats`: aceeași problemă, cu exact același text, pe fiecare format devine una
+ * singură „pe toate formatele” (formatId null), de exemplu drepturile unui material sau o replică.
+ */
+export function dedupe(list: Finding[], formats: string[] = []): Finding[] {
   const by = new Map<string, Finding>();
   for (const f of list) {
     const k = issueKey(f);
     const prev = by.get(k);
     if (!prev || SEVERITY_ORDER[f.severity] < SEVERITY_ORDER[prev.severity]) by.set(k, f);
   }
-  return [...by.values()];
+  const out = [...by.values()];
+  if (formats.length < 2) return out;
+  const across = (f: Finding) => `${f.dimension}|${f.sceneId ?? "-"}|${f.layerId ?? "-"}|${f.problem}`;
+  const groups = new Map<string, Finding[]>();
+  for (const f of out) if (f.formatId) (groups.get(across(f)) ?? groups.set(across(f), []).get(across(f))!).push(f);
+  const done = new Set<string>();
+  const result: Finding[] = [];
+  for (const f of out) {
+    const g = f.formatId ? groups.get(across(f))! : null;
+    if (!g || new Set(g.map((x) => x.formatId)).size < formats.length) {
+      result.push(f);
+      continue;
+    }
+    if (done.has(across(f))) continue;
+    done.add(across(f));
+    const worst = g.reduce((a, b) => (SEVERITY_ORDER[b.severity] < SEVERITY_ORDER[a.severity] ? b : a));
+    result.push({ ...worst, formatId: null });
+  }
+  return result;
 }
 
 export function countBySeverity(list: Finding[]): Record<Severity, number> {

@@ -31,7 +31,7 @@ import {
 } from "../core/schema";
 import { DIRECTIONS, type DirectionProfile } from "../creative/directions";
 import { chooseTransition, sceneDuration, transitionFrames, voiceLeadFrames } from "../editing/grammar";
-import { mix as mixColor } from "../motion/core/color";
+import { contrastRatio, mix as mixColor, readableTint } from "../motion/core/color";
 import { fontSpecFor } from "../motion/typography/shared";
 import { layoutText } from "../motion/core/text-layout";
 import { libraryFont, toTimelineFont } from "../motion/fonts-library";
@@ -105,6 +105,22 @@ function fontsAndTypography(brand: Brand, projectId: string, assets: AssetManife
   return { fonts, typography: { display, body, mono }, warnings };
 }
 
+/**
+ * Culoarea cuvântului rostit din subtitrări: nuanța accentului (sau a culorii principale), cât de deschisă
+ * trebuie ca să se citească pe fundalul subtitrărilor (în cel mai rău caz, fundalul translucid peste alb)
+ * și să se deosebească de restul frazei, care e albă.
+ */
+export function captionActiveColor(p: Palette): string {
+  const worst = mixColor("#ffffff", "#080a14", 0.62);
+  // dintre accent și culoarea principală, nuanța care rămâne mai colorată după deschidere
+  const chroma = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    return Math.max(r, g, b) - Math.min(r, g, b);
+  };
+  const tints = [p.accent, p.primary].map((c) => readableTint(c, worst, 3)).filter((c) => contrastRatio(c, "#ffffff") >= 1.25);
+  return tints.reduce<string | null>((best, c) => (!best || chroma(c) > chroma(best) ? c : best), null) ?? readableTint(p.accent, worst, 3);
+}
+
 function paletteOf(brand: Brand): Palette {
   const c = brand.colors;
   return {
@@ -114,7 +130,8 @@ function paletteOf(brand: Brand): Palette {
     background: c.background,
     surface: c.surface ?? mixColor(c.background, c.text, 0.08),
     text: c.text,
-    textMuted: c.textMuted ?? mixColor(c.text, c.background, 0.4),
+    // textul secundar (subtitluri, adresa de pe cardul final) rămâne lizibil pe fundal: minimum 4,5:1
+    textMuted: readableTint(c.textMuted ?? mixColor(c.text, c.background, 0.4), c.background, 4.5),
   };
 }
 
@@ -369,8 +386,10 @@ export function compileTimeline(input: CompileInput): CompileResult {
     };
     const layers = out.layers.map(layoutLayer).map(blurPii).map((l) => parseLayer(l, sc.id));
     // camera
+    // o cameră aleasă explicit (editor, corectură automată) păstrează reglajele rețetei când e aceeași mișcare
+    // (de ex. zoom-ul limitat ca materialul să nu intre peste titlu); parametrii dați explicit au prioritate
     const camCap = getCamera(sc.camera?.capability ?? out.camera.capability);
-    const camParams = camCap.params.parse(sc.camera?.params ?? out.camera.params);
+    const camParams = camCap.params.parse(sc.camera ? { ...(sc.camera.capability === out.camera.capability ? out.camera.params : {}), ...sc.camera.params } : out.camera.params);
     const built = camCap.build(camParams as never, { duration, width: W, height: H, focus: out.focus ? { x: out.focus.x, y: out.focus.y } : null, focusZoom: out.focus?.zoom ?? 1.5, energy: sc.energy, target: out.focus?.target });
     const camera = {
       keys: out.cameraKeys ?? built.keys,
@@ -455,7 +474,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const h = orientation === "portrait" ? H * 0.075 : H * 0.11;
     const box = { x: s.x, y: s.y + s.h - h, w: s.w, h };
     const segments = captionSegments(scenes, box, safe.rect, { width: W, height: H, fps });
-    captions = { words, box, segments, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: "accent", size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: true } };
+    captions = { words, box, segments, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: captionActiveColor(palette), size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: true } };
   }
 
   // 7. materiale fără drepturi confirmate → marcaj „concept”

@@ -227,7 +227,8 @@ export const uiSpotlight = defineRecipe({
     if (h) layers.push(h);
     const sub = subline(ctx, z0.sub, 8);
     if (sub) layers.push(sub);
-    return { layers, camera: cam("camera.push", { from: 1, to, start: 0.22, end: 0.85, ease: "inOut" }), focus: aimAtRegion ? focus : undefined };
+    // zoom-ul din focus e cel limitat: o cameră aleasă altfel (editor, corectură automată) nu trece de el
+    return { layers, camera: cam("camera.push", { from: 1, to, start: 0.22, end: 0.85, ease: "inOut" }), focus: aimAtRegion && focus ? { ...focus, zoom: to } : undefined };
   },
 });
 
@@ -237,7 +238,7 @@ export const uiSpotlight = defineRecipe({
  */
 function pushClearOfText(sp: Record<string, unknown>, box: Rect, f: ReturnType<typeof regionFocus>, wanted: number, text: Rect[]): { to: number; focus?: ReturnType<typeof regionFocus> } {
   const to = limitZoomForText(screenRectInScene(sp, box), f, f.target, wanted, text);
-  return to >= 1.15 || wanted < 1.15 ? { to, focus: f } : { to: 1.06 };
+  return to >= 1.15 || wanted < 1.15 ? { to, focus: { ...f, zoom: to } } : { to: 1.06 };
 }
 
 export const uiWalkthrough = defineRecipe({
@@ -398,12 +399,12 @@ export const featureMontage = defineRecipe({
 export const scrollTour = defineRecipe({
   id: "scroll-tour",
   title: "Tur prin pagină (scroll real)",
-  description: "O captură de pagină întreagă într-o ramă de browser, derulată lin de sus până la o zonă-țintă.",
+  description: "O captură de pagină întreagă într-o ramă de browser, derulată lin de sus până la o zonă-țintă. Ca dezvăluire, logo-ul stă deasupra titlului.",
   tags: ["scroll", "website", "landing", "tour", "browser", "establishing"],
   roles: ["feature", "demo", "reveal", "solution"],
   slots: [{ name: "page", kind: "tall-screenshot", required: true }],
   minSec: 2.5,
-  capabilities: ["media.screen", "camera.push", "text.word-reveal"],
+  capabilities: ["media.screen", "camera.push", "text.word-reveal", "logo.reveal"],
   params: z.object({ to: z.number().min(0).max(1).default(0.45) }),
   build: (ctx, p) => {
     const z0 = zones(ctx);
@@ -413,7 +414,17 @@ export const scrollTour = defineRecipe({
     const visibleH = vp ? (vp.height / vp.width) * a.w : a.w * 0.6;
     const target = ctx.focusRegion ? Math.max(0, ctx.focusRegion.rect.y - visibleH * 0.2) : (a.h - visibleH) * p.to;
     layers.push(layer(ctx, "media.screen", z0.media, screenParams(a, { frame: "browser", scroll: { from: 0, to: Math.max(0, Math.min(a.h - visibleH, target)), start: 0.15, end: 0.85, ease: "inOut" } }), { z: 20, role: "hero", modifiers: [{ capability: "mod.enter", params: { style: "rise", spring: "soft", exit: "none" } }] }));
-    const h = headline(ctx, z0.text);
+    // ca dezvăluire: logo-ul deasupra titlului, aliniat cu el (cutia are proporțiile logo-ului, scară uniformă)
+    let textBox = z0.text;
+    const logo = ctx.scene.narrativeRole === "reveal" && !ctx.forbidden.includes("logo.reveal") ? ctx.logo : null;
+    if (logo) {
+      const ratio = logo.w / Math.max(1, logo.h);
+      const lh = Math.min(z0.text.h * 0.28, ctx.H * 0.08, z0.text.w / Math.max(0.01, ratio));
+      const gap = lh * 0.35;
+      layers.push(layer(ctx, "logo.reveal", { x: z0.text.x, y: z0.text.y, w: lh * ratio, h: lh }, { src: logo.src, mode: "rise", at: 2 }, { z: 51, depth: 0, role: "support" }));
+      textBox = { ...z0.text, y: z0.text.y + lh + gap, h: Math.max(z0.text.h * 0.5, z0.text.h - lh - gap) };
+    }
+    const h = headline(ctx, textBox);
     if (h) layers.push(h);
     const sub = subline(ctx, z0.sub, 8);
     if (sub) layers.push(sub);

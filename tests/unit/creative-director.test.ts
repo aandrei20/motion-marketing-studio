@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { Brief, CONCEPT_CRITERIA, Research, type AssetManifest } from "../../src/core/schema";
 import { generateConcepts, selectConcept, territories, type ConceptContext } from "../../src/creative/concepts";
-import { inferIntake } from "../../src/creative/smart-intake";
+import { inferIntake, projectFromIntake } from "../../src/creative/smart-intake";
 import type { PageData } from "../../src/capture/capture";
 
 const brief = (o: Partial<Brief["userVision"]> = {}, pains: string[] = ["Pierzi ore în ședințe"]) =>
@@ -109,5 +109,21 @@ describe("intake-ul inteligent", () => {
     const noLang = inferIntake({ url: page.url, formats: ["9x16"] }, page);
     expect(noLang.ask.map((x) => x.id)).toEqual(expect.arrayContaining(["e1", "e2"]));
     expect(noLang.project.language.text).toBeNull();
+  });
+  it("categoria vine din semnalele importante, nu dintr-o mențiune izolată; CTA-ul poate fi un link", () => {
+    const p: PageData = { ...page, title: "Metrics – Simple web analytics", description: "Privacy-friendly analytics with a clean dashboard and simple plans.", headings: [{ level: 1, text: "Simple analytics dashboard" }, { level: 3, text: "Pricing plans" }], fullText: "Simple analytics dashboard. See traffic from AI tools. Pricing plans for every team.", buttons: [], links: [{ text: "Start free trial", href: "https://x.test/register" }, { text: "Blog", href: "https://x.test/blog" }] };
+    const r = inferIntake({ url: "https://x.test/", formats: ["9x16"], textLanguage: "en" }, p);
+    expect(r.project.category).toBe("saas");
+    expect(r.brief.cta!.text).toBe("Start free trial");
+    expect(r.answers.find((a) => a.id === "a3")!.value).toBe("signups");
+  });
+  it("proiectul din intake dă fiecărui format platforma lui (16:9 nu primește zonele unei platforme verticale)", () => {
+    const r = inferIntake({ url: page.url, formats: ["9x16", "16x9"], textLanguage: "ro", voiceLanguage: "ro", durationSec: 20 }, page);
+    const p = projectFromIntake("test", r);
+    expect(p.formats.map((x) => [x.id, x.platform])).toEqual([["9x16", "tiktok"], ["16x9", "youtube"]]);
+    expect(p.formats.every((x) => x.durationSec === 20 && x.fps === 30)).toBe(true);
+    // platformele cerute explicit au prioritate, tot pe formatul potrivit
+    const reels = projectFromIntake("test", inferIntake({ url: page.url, formats: ["16x9", "9x16"], platforms: ["reels", "youtube"], textLanguage: "ro" }, page));
+    expect(reels.formats.map((x) => x.platform)).toEqual(["youtube", "reels"]);
   });
 });

@@ -48,7 +48,7 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 
 ## Pasele buclei de calitate și verificările lor
 
-### PASS 0 – Plan: brief, afirmații, drepturi, validare
+### Pasul 0 – Plan: brief, afirmații, drepturi, validare
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
@@ -56,7 +56,7 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 | `claims.script` – Scriptul: fraze obligatorii exacte, afirmații verificate, cifre cu sursă, interdicții | static | claims, story | nu (formatul principal) |
 | `claims.confidence` – Afirmațiile folosite: încredere și stare | static | claims | nu (formatul principal) |
 
-### PASS 1 – Poveste: structură, hook, arc de energie, ritm
+### Pasul 1 – Poveste: structură, hook, arc de energie, ritm
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
@@ -67,40 +67,41 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 | `story.pacing` – Ritmul: durata medie a scenelor față de platformă și direcție | timeline | story, motion | da |
 | `creative.concept` – Conceptul creativ: ales, susținut de dovezi, respectat de storyboard | static | creative | nu (formatul principal) |
 
-### PASS 2 – Vizual: contrast real, compoziție, aglomerare
+### Pasul 2 – Vizual: contrast real, compoziție, aglomerare
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `visual.pixels` – Cadre-cheie randate: contrast real al textului, compoziție, spațiu gol, aglomerare | stills | visual, typography | da |
 
-### PASS 3 – Mișcare: gramatică, repetiții, mișcare reală
+### Pasul 3 – Mișcare: gramatică, repetiții, mișcare reală
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `motion.grammar` – Gramatica mișcării: odihnă vizuală, varietate de animații, tranziții | timeline | motion | nu (formatul principal) |
 | `motion.scene` – Mișcarea reală în scene (secvențe de cadre): scene statice, mișcare excesivă | scene-render | motion | nu (formatul principal) |
 
-### PASS 4 – Interfață: footage real, lizibilitate, rezoluție
+### Pasul 4 – Interfață: footage real, lizibilitate, rezoluție
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `ui.legibility` – Lizibilitatea interfeței reale pe ecran (scara capturii × zoom-ul camerei, la 360 px) | timeline | ui | da |
 | `ui.caption-occlusion` – Subtitrările nu acoperă elementul demonstrat (zona țintită, pe ecran, cu decupaj, scroll și cameră) | timeline | ui, typography | da |
+| `ui.material-over-text` – Materialul mărit de cameră nu intră peste titlu (geometria pe ecran la zoom-ul maxim al scenei) | timeline | ui | da |
 
-### PASS 5 – Tipografie: lizibilitate, consecvență
+### Pasul 5 – Tipografie: lizibilitate, consecvență
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `typography.caption-redundancy` – Subtitrările nu repetă textul deja scris pe ecran | timeline | typography | nu (formatul principal) |
 | `typography.consistency` – Consecvența tipografică: familii, mărimi, densitate | timeline | typography | da |
 
-### PASS 6 – Audio: mix, ritm, voce
+### Pasul 6 – Audio: mix, ritm, voce
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `audio.mix` – Raportul mixului: −14 LUFS, true peak, clipping, tăceri; voce acoperită; beat grid sigur | audio | audio | nu (formatul principal) |
 
-### PASS 7 – Brand: consecvență, logo, culori, date la zi
+### Pasul 7 – Brand: consecvență, logo, culori, date la zi
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
@@ -108,14 +109,14 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 | `brand.rules` – Regulile logo-ului (fără recolorare/rotire) și culorile din brand | timeline | brand | da |
 | `brand.color-presence` – Culorile brandului se văd efectiv în cadrele randate | stills | brand | nu (formatul principal) |
 
-### PASS 8 – Platformă: durată, hook, subtitrări, densitate
+### Pasul 8 – Platformă: durată, hook, subtitrări, densitate
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `platform.profile` – Profilul platformei: durată, format, hook, subtitrări, densitatea textului, hold pe CTA | timeline | platform | da |
 | `platform.reframing` – Reîncadrarea pe format: zona demonstrată rămâne în cadru și în zona sigură la momentul de hold | timeline | platform, ui | da |
 
-### PASS 9 – Final QA: determinism, fișiere, video randat, porți de export
+### Pasul 9 – Final QA: determinism, fișiere, video randat, porți de export
 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |

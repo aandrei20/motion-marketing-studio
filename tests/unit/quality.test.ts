@@ -35,6 +35,16 @@ describe("sistemul de probleme", () => {
     expect(f.category).toBe("claims");
     expect(Finding.parse({ ...old, severity: "nit", dimension: "variety" }).severity).toBe("low");
   });
+  it("aceeași problemă, cu același text, pe toate formatele devine una singură; diferențele de format rămân", () => {
+    const mk = (formatId: string, problem: string) => makeIssue({ frame: 10, sceneId: "s1", dimension: "rights", severity: "high", problem, recommendation: "r", formatId }, `i-${formatId}-${problem.length}`, 1, 30);
+    const same = dedupe([mk("9x16", "„a.png” aparține unui terț."), mk("16x9", "„a.png” aparține unui terț.")], ["9x16", "16x9"]);
+    expect(same).toHaveLength(1);
+    expect(same[0].formatId).toBeNull();
+    const diff = dedupe([mk("9x16", "Interfața se vede la 3.5 px."), mk("16x9", "Interfața se vede la 4.9 px.")], ["9x16", "16x9"]);
+    expect(diff.map((x) => x.formatId).sort()).toEqual(["16x9", "9x16"]);
+    // doar pe un format din două: rămâne pe formatul lui
+    expect(dedupe([mk("9x16", "x")], ["9x16", "16x9"])[0].formatId).toBe("9x16");
+  });
   it("prioritizează, deduplică și numără", () => {
     const a = issue({ severity: "medium" });
     const b = issue({ severity: "critical", problem: "Text prea mic: 6 px" });

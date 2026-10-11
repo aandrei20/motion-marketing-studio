@@ -39,6 +39,10 @@ describe("lanțul de producție pe produsul demo", () => {
     const assets = store.loadAssets(r.id).assets;
     expect(assets.some((a) => a.origin === "real_capture" && (a.capture?.regions.length ?? 0) > 5)).toBe(true);
     expect(assets.some((a) => a.role === "screen-recording")).toBe(true);
+    // logo-ul din antetul paginii reale e găsit și e același fișier cu cel dat de utilizator (deduplicare pe conținut)
+    const logos = assets.filter((a) => a.role === "logo");
+    expect(logos).toHaveLength(1);
+    expect(logos[0].origin).toBe("real_capture");
     const research = store.loadResearch(r.id);
     expect(research.claims.every((c) => c.sourceIds.length > 0)).toBe(true);
     expect(research.claims.some((c) => c.status === "needs-confirmation")).toBe(true);
@@ -72,6 +76,37 @@ describe("lanțul de producție pe produsul demo", () => {
       const val = validateTimeline(r.timeline, { assets: base.assets, research: base.research, format });
       expect(val.findings.filter((f) => f.severity === "critical")).toEqual([]);
     }
+  }, 120_000);
+
+  it("o cameră aleasă de o corectură păstrează zoom-ul limitat al rețetei: materialul nu intră peste titlu", async () => {
+    const store = await import("../../src/projects/store");
+    const { makeFormat } = await import("../../src/core/formats");
+    const { compileTimeline } = await import("../../src/timeline/compile");
+    const { CHECKS } = await import("../../src/quality/checks");
+    const id = "it-e2e";
+    const v = store.loadProject(id).currentVersion!;
+    const voice = JSON.parse(fs.readFileSync(path.join(tmp, id, "versions", v, "audio", "voice.json"), "utf8"));
+    const sb = store.loadStoryboard(id, v);
+    const spot = sb.scenes.filter((s) => s.recipe.id === "ui-spotlight").map((s) => s.id);
+    expect(spot.length).toBeGreaterThan(0);
+    const format = makeFormat("16x9", { platform: "youtube", durationSec: 24, fps: 30 });
+    const base = { project: store.loadProject(id), versionId: v, brief: store.loadBrief(id), brand: store.loadBrand(id), research: store.loadResearch(id), assets: store.loadAssets(id), script: store.loadScript(id, v), voice, beatGrid: null };
+    const check = CHECKS.find((c) => c.id === "ui.material-over-text")!;
+    const run = (storyboard: typeof sb) => {
+      const t = compileTimeline({ ...base, storyboard, format }).timeline;
+      return { t, issues: check.run({ timelines: { [format.id]: t } } as never, format.id) as Array<{ sceneId: string | null }> };
+    };
+    const plain = run(sb);
+    // corectura automată „set-camera camera.push” vine fără parametri: zoom-ul rămâne cel al rețetei
+    const fixed = run({ ...sb, scenes: sb.scenes.map((s) => (spot.includes(s.id) ? { ...s, camera: { capability: "camera.push", params: {} } } : s)) });
+    for (const sid of spot) {
+      const zoom = (t: typeof plain.t) => Math.max(...t.scenes.find((s) => s.id === sid)!.camera.keys.map((k) => k.zoom));
+      expect(zoom(fixed.t)).toBeLessThanOrEqual(zoom(plain.t) + 1e-6);
+    }
+    expect(fixed.issues).toEqual([]);
+    // un zoom forțat pe centru, peste limită, e prins de verificare
+    const forced = run({ ...sb, scenes: sb.scenes.map((s) => (s.id === spot[0] ? { ...s, camera: { capability: "camera.static", params: { zoom: 3 } } } : s)) });
+    expect(forced.issues.some((x) => x.sceneId === spot[0])).toBe(true);
   }, 120_000);
 
   it("iterația și variantele de hook creează versiuni noi fără să atingă versiunea veche", async () => {

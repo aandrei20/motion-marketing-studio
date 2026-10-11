@@ -320,11 +320,11 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
     }
     passReports.push({ id: pass.id, n: pass.n, title: pass.title, checks });
     const total = checks.reduce((s, x) => s + x.issues, 0);
-    log(`  PASS ${pass.n} ${pass.title}: ${checks.filter((x) => x.status !== "skipped").length}/${checks.length} verificări, ${total} probleme${checks.some((x) => x.status === "cached") ? " (cache)" : ""}`);
+    log(`  Pas ${pass.n} ${pass.title}: ${checks.filter((x) => x.status !== "skipped").length}/${checks.length} verificări, ${total} ${total === 1 ? "problemă" : "probleme"}${checks.some((x) => x.status === "cached") ? " (cache)" : ""}`);
   }
 
   const fps = timelines[primary.id].fps;
-  const issues = prioritize(dedupe(drafts.map((d, i) => makeIssue(d, `q${round}-${i + 1}`, round, d.formatId ? timelines[d.formatId]?.fps ?? fps : fps))));
+  const issues = prioritize(dedupe(drafts.map((d, i) => makeIssue(d, `q${round}-${i + 1}`, round, d.formatId ? timelines[d.formatId]?.fps ?? fps : fps)), formats.map((f) => f.id)));
   const score = scoreQuality({ issues, evaluated, config, rubricMinScene: ctx.rubric.minScene });
   // observațiile lui Claude și ale utilizatorului pe această versiune: nu intră în scorul comparabil, dar blochează PASS
   const external = loadCritique(projectId, versionId).rounds.filter((r) => r.reviewer !== REVIEWER).flatMap((r) => r.findings.filter((f) => f.status === "open"));

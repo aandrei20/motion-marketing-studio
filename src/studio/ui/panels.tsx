@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ProductionFlow } from "./quality";
 import type { Asset, Brief, Claim, Script, Storyboard } from "../../core/schema";
 import type { Ctx } from "./App";
 import { api, fileUrl } from "./api";
@@ -59,6 +60,8 @@ export function OverviewPanel({ ctx }: { ctx: Ctx }) {
   const p = ctx.bundle.project;
   const approved = p.status !== "intake";
   return (
+    <>
+    <ProductionFlow ctx={ctx} />
     <div className="cols">
       <Section title="Pașii de producție">
         <p className="muted small">Fiecare pas e un job; progresul apare în stânga. Lucrul de producție începe doar după aprobarea brief-ului.</p>
@@ -108,6 +111,7 @@ export function OverviewPanel({ ctx }: { ctx: Ctx }) {
         <Markdownish text={ctx.bundle.stateMd} />
       </Section>
     </div>
+    </>
   );
 }
 

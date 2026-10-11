@@ -156,7 +156,7 @@ export const CHECKS: CheckDef[] = [
       validateScript(ctx.script, ctx.brief, ctx.research).map((i) => ({
         frame: null,
         sceneId: ctx.storyboard.scenes.find((s) => i.lineId && s.lineIds.includes(i.lineId))?.id ?? null,
-        dimension: /afirma|cifr/i.test(i.message) ? "claims" : /CTA|hook/i.test(i.message) ? "story" : "claims",
+        dimension: i.dimension ?? (/afirma|cifr/i.test(i.message) ? "claims" : /CTA|hook/i.test(i.message) ? "story" : "claims"),
         severity: i.severity,
         problem: i.message,
         recommendation: "Corectează scriptul (Claude în Claude Code sau Studio → Script); textul utilizatorului rămâne cuvânt cu cuvânt.",
@@ -329,7 +329,7 @@ export const CHECKS: CheckDef[] = [
   // ─── PASS 3: mișcare
   {
     id: "motion.grammar",
-    version: 1,
+    version: 2,
     pass: "motion",
     title: "Gramatica mișcării: odihnă vizuală, varietate de animații, tranziții",
     categories: ["motion"],
@@ -340,7 +340,11 @@ export const CHECKS: CheckDef[] = [
       const out: IssueDraft[] = [];
       const body = t.scenes.filter((s) => s.meta.narrativeRole !== "cta");
       const moving = body.filter((s) => s.camera.keys.length > 1 || s.camera.handheld > 0 || s.camera.punches.length > 0);
-      if (body.length >= 4 && moving.length === body.length) out.push({ frame: null, sceneId: null, dimension: "motion", severity: "low", problem: "Camera se mișcă în toate scenele: nu există niciun moment de odihnă vizuală.", recommendation: "Lasă o scenă (de obicei dovada sau un detaliu) cu cameră fixă, ca mișcarea să aibă contrast.", suggestedFix: [{ op: "set-camera", sceneId: body[Math.floor(body.length / 2)].id, capability: "camera.static", params: {} }], confidence: 0.6 });
+      // odihna se pune pe o scenă fără demonstrație (nu pe hook și nu pe o funcție: acolo push-ul face interfața lizibilă,
+      // iar o cameră fixă ar fi întoarsă de verificarea de lizibilitate)
+      const calm = body.filter((s, i) => i > 0 && !["feature", "demo", "solution"].includes(s.meta.narrativeRole));
+      const rest = calm[Math.floor(calm.length / 2)];
+      if (body.length >= 4 && moving.length === body.length) out.push({ frame: null, sceneId: null, dimension: "motion", severity: "low", problem: "Camera se mișcă în toate scenele: nu există niciun moment de odihnă vizuală.", recommendation: "Lasă o scenă (de obicei dovada sau un detaliu) cu cameră fixă, ca mișcarea să aibă contrast.", suggestedFix: rest ? [{ op: "set-camera", sceneId: rest.id, capability: "camera.static", params: {} }] : [], confidence: 0.6 });
       if (body.length >= 4 && moving.length === 0) out.push({ frame: null, sceneId: null, dimension: "motion", severity: "medium", problem: "Nicio scenă nu are mișcare de cameră: reclama pare statică.", recommendation: "Adaugă push-in pe dezvăluire și pe funcții.", confidence: 0.7 });
       const textCaps = t.scenes.map((s) => s.layers.find((l) => READABLE_TEXT_CAPS.has(l.capability) && l.role === "hero")?.capability).filter((x): x is string => !!x);
       const counts = new Map<string, number>();
@@ -435,6 +439,37 @@ export const CHECKS: CheckDef[] = [
         const focus = focusRects(t, s, local);
         const hit = focus.map((r) => overlapArea(cap, r) / Math.max(1, area(r))).reduce((m, x) => Math.max(m, x), 0);
         if (hit > 0.1) out.push({ frame: s.from + local, sceneId: s.id, formatId: fid, dimension: "composition", category: "ui", severity: ["feature", "demo", "solution"].includes(s.meta.narrativeRole) ? "high" : "medium", problem: `Subtitrările acoperă ${Math.round(hit * 100)}% din elementul demonstrat în ${s.id}.`, recommendation: "Recompilează (banda se mută automat dacă există loc în zona sigură); altfel mută materialul sau dezactivează subtitrările arse pe această scenă.", confidence: 0.8 });
+      });
+      return out;
+    },
+  },
+  {
+    id: "ui.material-over-text",
+    version: 1,
+    pass: "ui",
+    title: "Materialul mărit de cameră nu intră peste titlu (geometria pe ecran la zoom-ul maxim al scenei)",
+    categories: ["ui"],
+    method: "timeline",
+    perFormat: true,
+    run: (ctx, fid) => {
+      const t = ctx.timelines[fid];
+      const out: IssueDraft[] = [];
+      t.scenes.forEach((s, i) => {
+        // textul fix al scenei (titlu, subtitlu) și materialele principale care se mișcă odată cu camera
+        const texts = s.layers.filter((l) => READABLE_TEXT_CAPS.has(l.capability) && l.depth === 0 && l.role !== "background");
+        const media = s.layers.filter((l) => (l.capability.startsWith("media.") || l.capability.startsWith("frame.")) && l.depth > 0 && l.role !== "background");
+        if (!texts.length || !media.length) return;
+        // momentul cu zoom-ul cel mai mare (de regulă ultima cheie a camerei), în fereastra de hold a scenei
+        const peak = s.camera.keys.reduce((a, k) => (k.zoom > a.zoom ? k : a), s.camera.keys[0] ?? { at: 0, zoom: 1 });
+        const local = Math.min(holdFrame(t, i, 1), Math.max(holdFrame(t, i, 0), Math.round(peak.at)));
+        let worst = 0;
+        let hit: TimelineLayer | null = null;
+        for (const tx of texts) {
+          if (tx.from > local || tx.from + tx.durationInFrames <= local) continue;
+          const covered = media.reduce((m, l) => Math.max(m, overlapArea(screenRect(t, s, l, local), tx.box)), 0) / Math.max(1, area(tx.box));
+          if (covered > worst) [worst, hit] = [covered, tx];
+        }
+        if (worst > 0.12 && hit) out.push({ frame: s.from + local, sceneId: s.id, layerId: hit.id, formatId: fid, dimension: "composition", category: "ui", severity: worst > 0.3 ? "high" : "medium", problem: `Materialul mărit de cameră acoperă ${Math.round(worst * 100)}% din textul „${String(hit.params.text ?? "").slice(0, 32)}” în ${s.id}.`, recommendation: "Lasă camera rețetei (zoom-ul ei e limitat sub titlu) sau scade zoom-ul; textul și materialul nu se suprapun.", confidence: 0.8 });
       });
       return out;
     },
@@ -579,6 +614,9 @@ export const CHECKS: CheckDef[] = [
       const prof = ctx.profiles[fid];
       const out: IssueDraft[] = [];
       const dur = t.durationInFrames / t.fps;
+      // durata cerută în brief: vocea și timpul de citire pot lungi reclama peste țintă
+      const target = ctx.brief.durationSec;
+      if (target && dur > target * 1.15) out.push({ frame: null, sceneId: null, formatId: fid, dimension: "pacing", category: "platform", severity: dur > target * 1.5 ? "high" : "medium", problem: `Reclama durează ${dur.toFixed(1)} s, iar ținta din brief e ${target} s (+${Math.round((dur / target - 1) * 100)}%).`, recommendation: "Scurtează scriptul: mai puține replici sau replici mai scurte (vocea și timpul de citire dictează durata). Sau acceptă durata nouă în brief.", confidence: 0.9 });
       if (dur > prof.durationSec.max) out.push({ frame: null, sceneId: null, formatId: fid, dimension: "platform", severity: "high", problem: `Durata ${dur.toFixed(1)} s depășește maximul pentru ${prof.label} (${prof.durationSec.max} s).`, recommendation: "Scurtează scriptul sau livrează o variantă separată." });
       else if (dur > prof.durationSec.idealMax * 1.1 || dur < prof.durationSec.idealMin * 0.9) out.push({ frame: null, sceneId: null, formatId: fid, dimension: "platform", severity: "low", problem: `Durata ${dur.toFixed(1)} s e în afara intervalului recomandat pentru ${prof.label} (${prof.durationSec.idealMin}–${prof.durationSec.idealMax} s).`, recommendation: "Ajustează durata țintă din brief dacă nu e o alegere conștientă.", confidence: 0.5 });
       if (!prof.aspects.includes(fmt.id.replace(/-4k$/, ""))) out.push({ frame: null, sceneId: null, formatId: fid, dimension: "format", severity: "low", problem: `Formatul ${fmt.id} nu e cel recomandat pentru ${prof.label} (${prof.aspects.join(", ")}).`, recommendation: "Adaugă formatul recomandat în proiect.", confidence: 0.6 });

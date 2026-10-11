@@ -14,7 +14,7 @@ import { readJsonLoose } from "../core/json";
 import { PATHS } from "../core/paths";
 import { Brief, type AssetRole, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
 import { intakeMarkdown } from "../creative/intake";
-import { inferIntake, intakeSummaryMarkdown } from "../creative/smart-intake";
+import { inferIntake, intakeSummaryMarkdown, projectFromIntake } from "../creative/smart-intake";
 import { listTemplates } from "../creative/templates";
 import { addReview, hookVariants, iterate } from "../pipeline/iterate";
 import { produce } from "../pipeline/produce";
@@ -93,7 +93,7 @@ PROIECT
 MATERIALE ȘI RESEARCH
   capture <id> --url <u> [--id nume] [--viewport desktop|laptop|tablet|mobile] [--full]
           [--wait 2000] [--click "#selector"] [--type "#selector=text"] [--hide "#cookie,.banner"]
-          [--steps pasi.json] [--record] [--profile nume] [--no-research]
+          [--steps pasi.json] [--record] [--profile nume] [--no-research] [--third-party]
   capture <id> --demo                    capturează produsul demo inclus (pentru test)
   login --url <u> --profile <nume>       deschide un browser; te autentifici tu, sesiunea rămâne local
   add-asset <id> <fișier> [--role logo|screenshot|music|…] [--tag nume] [--third-party] [--rights confirmed|not-confirmed|denied] [--origin user_provided|stock|generated]
@@ -103,7 +103,8 @@ MATERIALE ȘI RESEARCH
   blur-ok <id> <assetId>                 acord pentru estomparea datelor personale
   reference <id> <assetId>               profilul unui video de referință
   research <id>                          sursele și afirmațiile
-  research-crawl <id> [--url u] [--max 6] [--competitor u]   citește paginile relevante ale site-ului
+  research-crawl <id> [--url u] [--max 6] [--competitor u] [--third-party]
+                                         citește paginile relevante ale site-ului (paginile devin materiale)
   claims <id>                            graful de afirmații: dovadă, sursă, încredere, coroborare, conflicte
   claim <id> <claimId> approved|rejected|verified
   add-claim <id> "text" --category feature --source "titlul sursei"
@@ -186,7 +187,7 @@ async function main(): Promise<void> {
       console.log(intakeSummaryMarkdown(r));
       const createId = str(a.flags.create);
       if (createId) {
-        const p = createProject({ id: createId, name: r.project.name, product: { name: r.project.name, url: r.project.url, category: r.project.category }, formats: r.project.formats.map((x) => parseFormat(`${x}:${r.brief.platforms[0]}:${r.brief.durationSec}:30`)), language: r.project.language });
+        const p = createProject(projectFromIntake(createId, r));
         saveBrief(p.id, Brief.parse(r.brief));
         log(`
 Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, projectDir(p.id))}. Răspunde la întrebări, apoi „aprob”.`);
@@ -246,7 +247,7 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
           css: hideFlag ? hideFlag.split(",").map((sel) => `${sel.trim()}{display:none!important}`).join("\n") : "",
         });
       }
-      await stepCapture(pid, reqs, log, { headed: !!a.flags.headed });
+      await stepCapture(pid, reqs, log, { headed: !!a.flags.headed, thirdParty: !!a.flags["third-party"] });
       return;
     }
     case "login":
@@ -311,7 +312,7 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
       const pid = need(id, "proiectul");
       const url = str(a.flags.url) ?? loadProject(pid).product.url;
       if (!url) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului (--url).");
-      const r = await crawlSite(pid, url, { max: a.flags.max ? Number(str(a.flags.max)) : undefined, competitors: list(a.flags.competitor), log });
+      const r = await crawlSite(pid, url, { max: a.flags.max ? Number(str(a.flags.max)) : undefined, competitors: list(a.flags.competitor), thirdParty: a.flags["third-party"] ? true : undefined, log });
       for (const p of r.pages) log(`  ${p.kind.padEnd(14)} ${String(p.claims).padStart(3)} afirmații  ${p.url}`);
       for (const sk of r.skipped) log(`! ${sk}`);
       const g = claimGraph(r.research);
@@ -560,7 +561,7 @@ function printQuality(r: QualityRun): void {
   for (const p of r.passes) {
     const ran = p.checks.filter((c) => c.status !== "skipped");
     const skipped = p.checks.filter((c) => c.status === "skipped");
-    log(`  PASS ${p.n} ${p.title}: ${ran.map((c) => `${c.id}(${c.method}${c.status === "cached" ? ", cache" : ""})`).join(" ") || "—"}${skipped.length ? ` · sărite: ${skipped.map((c) => c.id).join(", ")}` : ""}`);
+    log(`  Pas ${p.n} ${p.title}: ${ran.map((c) => `${c.id}(${c.method}${c.status === "cached" ? ", cache" : ""})`).join(" ") || "—"}${skipped.length ? ` · sărite: ${skipped.map((c) => c.id).join(", ")}` : ""}`);
   }
   log(`\nProbleme (${r.issues.length}):`);
   for (const x of r.issues.slice(0, 40)) log(`  ${(x.timecode ?? "--:--").padEnd(8)} [${x.severity}] ${x.category}/${x.dimension}${x.formatId ? ` [${x.formatId}]` : ""}: ${x.problem}${x.autoFixable ? " (corectabil automat)" : ""}`);

@@ -6,12 +6,12 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 161 | 85 | 46 | 26 | 4 |
+| IMPLEMENTED | 164 | 85 | 49 | 26 | 4 |
 | PARTIAL | 24 | 0 | 10 | 9 | 5 |
 | MISSING | 12 | 0 | 0 | 9 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
-| **toate** | **197** | 85 | 56 | 44 | 12 |
+| **toate** | **200** | 85 | 59 | 44 | 12 |
 
 ## Design vizual (33)
 
@@ -228,7 +228,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Limbajul de mișcare al brandului | P1 | PARTIAL | `module:src/creative/directions.ts#DIRECTIONS` | Direcțiile A–F definesc mișcarea; brand.personality.motion nu ajustează încă direcția. **Următorul pas:** brand.personality.motion să moduleze viteza și tranzițiile direcției. |
 | Tonul vocii (copy) | P1 | PARTIAL | `module:src/core/schema/brief.ts#Brief` | Tonul vine din brief; nu se extrage din textul site-ului. **Următorul pas:** Claude rezumă tonul din research în brief (sugestie, aprobată de utilizator). |
 
-## Conținut publicitar (13)
+## Conținut publicitar (14)
 
 | Element | Prioritate | Stare | Implementare | Ce lipsește / pasul următor |
 | --- | --- | --- | --- | --- |
@@ -242,7 +242,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Răspuns la obiecții | P2 | MISSING | — | **Următorul pas:** Rol narativ „objection” și o linie de șablon. |
 | Dovadă socială (testimoniale) | P1 | PARTIAL | `module:src/core/schema/research.ts#Claim` | Categoria „testimonial” există în afirmații; nu există rețetă de testimonial. **Următorul pas:** Rețetă de citat cu sursă (fără chipuri, regula 2). |
 | Transformare | P1 | IMPLEMENTED | `recipe:before-after` | — |
-| CTA, hold pe CTA, card final | P0 | IMPLEMENTED | `recipe:cta-end`, `check:platform.profile` | — |
+| CTA, hold pe CTA, card final; CTA-ul nestabilit nu intră în video | P0 | IMPLEMENTED | `recipe:cta-end`, `check:platform.profile`, `check:claims.script` | — |
+| Limba replicilor față de limba reclamei (citatele de pe site de tradus, cu acordul utilizatorului) | P1 | IMPLEMENTED | `module:src/creative/language.ts#detectLanguage`, `check:claims.script` | — |
 | Reamintirea brandului (logo la dezvăluire și la final) | P0 | IMPLEMENTED | `check:story.brand-reveal` | — |
 | Structuri de reclamă (8 șabloane) | P0 | IMPLEMENTED | `template:saas`, `template:product-launch`, `template:teaser-15`, `template:cinematic` | — |
 
@@ -266,12 +267,14 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Profiluri configurabile: TikTok, Reels, Shorts, YouTube, LinkedIn, X, Feed | P0 | IMPLEMENTED | `module:src/platform/profiles.ts#platformProfile`, `check:platform.profile` | — |
 | Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#portraitCrop`, `module:src/recipes/kit.ts#zones`, `check:platform.reframing` | — |
 
-## Materiale și media (9)
+## Materiale și media (11)
 
 | Element | Prioritate | Stare | Implementare | Ce lipsește / pasul următor |
 | --- | --- | --- | --- | --- |
 | Capturi reale (2×, pagină întreagă, mobil) | P0 | IMPLEMENTED | `module:src/capture/capture.ts#capture` | — |
 | Înregistrări de ecran la FPS constant | P0 | IMPLEMENTED | `module:src/capture/capture.ts#capture` | — |
+| Logo-ul din pagină (SVG inline cu culoarea lui sau imaginea din antet), doar cu semnal clar | P1 | IMPLEMENTED | `module:src/capture/capture.ts#capture`, `module:src/assets/ingest.ts#ingestCapture` | — |
+| Paginile citite la research devin materiale, cu drepturile capturilor de pe același site | P1 | IMPLEMENTED | `module:src/research/crawl.ts#crawlSite` | — |
 | Ingestie: hash, duplicate, ffprobe, paletă, dHash, rol | P0 | IMPLEMENTED | `module:src/assets/ingest.ts#ingestFile` | — |
 | Fonturi (fontkit) | P1 | IMPLEMENTED | `module:src/assets/ingest.ts#ingestFile` | — |
 | Video și fotografii | P1 | IMPLEMENTED | `cap:media.video`, `cap:media.image` | — |

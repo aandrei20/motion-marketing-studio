@@ -60,16 +60,30 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
     return hit.l;
   };
 
-  const bestScreen = (text: string, avoid: string | null): { asset: Asset; region: string | undefined } | null => {
-    if (!screenshots.length) return null;
-    const scored = screenshots.map((a) => {
-      const r = bestRegion(assetRegions(a), text, ["input", "button", "custom", "heading", "text"]);
-      const words = norm(text).split(/\s+/).filter((w) => w.length > 3);
-      const label = norm(`${r?.label ?? ""} ${r?.text ?? ""}`);
-      const score = (r ? words.filter((w) => label.includes(w.slice(0, Math.max(4, w.length - 2)))).length : 0) + (a.id === avoid ? -0.5 : 0) + (a.analysis.importance ?? 0) * 0.1;
-      return { a, r, score };
-    });
-    scored.sort((x, y) => y.score - x.score);
+  // pagina din care vine o afirmație: o funcție citată de pe pagina ei se arată pe captura acelei pagini
+  const pageKey = (u: string | undefined) => (u ? u.replace(/[?#].*$/, "").replace(/\/$/, "") : "");
+  const sourceUrl = new Map(inp.research.sources.map((s) => [s.id, pageKey(s.url)]));
+  const uses = new Map<string, number>();
+  const rankScreens = (text: string, avoid: string | null, line: ScriptLine | null) => {
+    const pages = new Set((line?.claimIds ?? []).flatMap((id) => claims.get(id)?.sourceIds ?? []).map((s) => sourceUrl.get(s)).filter(Boolean));
+    const words = norm(text).split(/\s+/).filter((w) => w.length > 3);
+    // capturile de pagină întreagă intră doar cu o zonă care chiar se potrivește textului (camera derulează până la ea)
+    return [...screenshots, ...tall]
+      .map((a) => {
+        const r = bestRegion(assetRegions(a), text, ["input", "button", "custom", "heading", "text"]);
+        const label = norm(`${r?.label ?? ""} ${r?.text ?? ""}`);
+        const match = r ? words.filter((w) => label.includes(w.slice(0, Math.max(4, w.length - 2)))).length : 0;
+        const fromPage = pages.has(pageKey(a.capture?.url)) ? 2 : 0;
+        const score = match + fromPage + (a.id === avoid ? -0.5 : 0) - 0.75 * (uses.get(a.id) ?? 0) + (a.analysis.importance ?? 0) * 0.1;
+        return { a, r, score, ok: !a.capture?.fullPage || match >= 2 };
+      })
+      .filter((x) => x.ok)
+      .sort((x, y) => y.score - x.score);
+  };
+  const bestScreen = (text: string, avoid: string | null, line: ScriptLine | null): { asset: Asset; region: string | undefined } | null => {
+    const scored = rankScreens(text, avoid, line);
+    if (!scored.length) return null;
+    uses.set(scored[0].a.id, (uses.get(scored[0].a.id) ?? 0) + 1);
     return { asset: scored[0].a, region: scored[0].r?.id };
   };
 
@@ -90,14 +104,15 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       if (s.kind === "logo" && logo) slots[s.name] = logo.id;
       if ((s.kind === "screenshot" || s.kind === "screen") && !s.multiple) {
         const rec = s.kind === "screen" && recipeId === "ui-walkthrough" ? recordings[0] : undefined;
-        const pick = rec ? { asset: rec, region: undefined } : bestScreen(text, lastScreen);
+        const pick = rec ? { asset: rec, region: undefined } : bestScreen(text, lastScreen, l);
         if (pick) {
           slots[s.name] = pick.asset.id;
           lastScreen = pick.asset.id;
           if (pick.region) focus = { assetId: pick.asset.id, region: pick.region };
         }
       }
-      if (s.kind === "screenshot" && s.multiple && screenshots.length) slots[s.name] = screenshots.map((a) => a.id);
+      // mai multe ecrane: cele mai potrivite 3 capturi (nu toate), fără paginile întregi
+      if (s.kind === "screenshot" && s.multiple && screenshots.length) slots[s.name] = rankScreens(text, null, l).filter((x) => !x.a.capture?.fullPage).slice(0, 3).map((x) => x.a.id);
       if (s.kind === "tall-screenshot" && tall.length) slots[s.name] = tall[0].id;
     }
     const missing = recipe.slots.filter((s) => s.required && !slots[s.name]);
@@ -125,7 +140,7 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       shot: ts.shot,
       durationSec: null,
       lineIds: l ? [l.id] : [],
-      recipe: { id: recipeId, params: recipeId === "cta-end" && inp.brief.cta.url ? { url: inp.brief.cta.url.replace(/^https?:\/\//, "") } : {} },
+      recipe: { id: recipeId, params: recipeId === "cta-end" && inp.brief.cta.url ? { url: inp.brief.cta.url.replace(/^https?:\/\//, "").replace(/\/$/, "") } : {} },
       slots,
       text: sceneText,
       focus,
@@ -168,7 +183,7 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
     rationale.push(`Problema („${p.l.id}”) a primit o scenă imediat după hook.`);
   }
   for (const p of leftovers.filter((x) => !x.used)) {
-    const pick = bestScreen(`${p.l.onScreen} ${p.l.voiceover}`, lastScreen);
+    const pick = bestScreen(`${p.l.onScreen} ${p.l.voiceover}`, lastScreen, p.l);
     const recipeId = pick ? "ui-spotlight" : "hook-kinetic";
     const scene: StoryboardScene = {
       id: `s${scenes.length + 1}-extra`,

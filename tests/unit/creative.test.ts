@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Brief, Research, Script, type Claim } from "../../src/core/schema";
 import { DIRECTIONS, suggestDirections } from "../../src/creative/directions";
-import { draftScript, validateScript } from "../../src/creative/script";
+import { draftScript, featureTitle, validateScript } from "../../src/creative/script";
+import { detectLanguage } from "../../src/creative/language";
 import { chooseTemplate, listTemplates } from "../../src/creative/templates";
 import { chooseTransition, readingSec, sceneDuration } from "../../src/editing/grammar";
 import { parseCommand } from "../../src/iterate/intents";
@@ -77,6 +78,51 @@ describe("script", () => {
     expect(issues.some((m) => m.includes("în 5 minute"))).toBe(true);
     expect(issues.some((m) => m.includes("fără afirmație-sursă"))).toBe(true);
     expect(issues.some((m) => m.includes("c-cifra"))).toBe(true);
+  });
+  it("CTA-ul nestabilit („de confirmat”) nu poate intra în video", () => {
+    const b = Brief.parse({ ...brief, cta: { text: "de confirmat" } });
+    const s = draftScript(b, research, { textLanguage: "ro", voiceLanguage: null, productName: "Produs" });
+    const cta = validateScript(s, b, research).find((i) => i.dimension === "cta");
+    expect(cta?.severity).toBe("critical");
+    expect(cta?.message).toMatch(/A5/);
+  });
+  it("un citat în altă limbă decât reclama se semnalează (traducerea o aprobă utilizatorul); cuvintele utilizatorului nu", () => {
+    const en = Research.parse({ schemaVersion: 1, claims: [claim({ id: "c-en", text: "Simple analytics at a glance: It is easy to understand and cuts through the noise.", quote: "Simple analytics at a glance\nIt is easy to understand and cuts through the noise.", status: "verified" })] });
+    const s = draftScript(brief, en, { textLanguage: "ro", voiceLanguage: "ro", productName: "Produs" });
+    const lang = validateScript(s, brief, en).filter((i) => /tradus/.test(i.message));
+    expect(lang.length).toBeGreaterThan(0);
+    expect(lang.every((i) => i.severity === "high" && i.dimension === "story")).toBe(true);
+    // hook-ul utilizatorului rămâne cum l-a scris, fără semnalare
+    expect(lang.some((i) => i.lineId === s.lines[0].id)).toBe(false);
+  });
+  it("detectează limba textelor scurte și nu decide pe nume sau pe 1–2 cuvinte", () => {
+    expect(detectLanguage("Planifică săptămâna în 5 minute, fără ședințe").lang).toBe("ro");
+    expect(detectLanguage("It is easy to understand and cuts through the noise").lang).toBe("en");
+    expect(detectLanguage("Produs Test").lang).toBeNull();
+  });
+  it("titlul unei funcții e scurt: fără data din jurnalul de schimbări, partea dinaintea separatorului", () => {
+    expect(featureTitle("SEP 23, 2026: Flexible funnels – You can now choose Flexible funnels as a funnel type").title).toBe("Flexible funnels");
+    expect(featureTitle("SEP 23, 2026: Flexible funnels – You can now choose").dated).toBe(true);
+    expect(featureTitle("Căutare instantă\nGăsești orice în două secunde.").title).toBe("Căutare instantă");
+    expect(featureTitle("Căutare instantă\nGăsești orice.").rest).toBe("Găsești orice.");
+  });
+  it("schița ia funcțiile din pagina principală și paginile oficiale; noutățile datate la urmă; documentația deloc", () => {
+    const src = (id: string, kind: "official-site" | "docs" | "changelog" | "competitor") => ({ id, kind, url: `https://exemplu.ro/${id}`, title: id, fetchedAt: "2026-10-08", contentHash: id, reliability: "official" as const });
+    const r = Research.parse({
+      schemaVersion: 1,
+      sources: [src("home", "official-site"), src("docs", "docs"), src("noutati", "changelog"), src("rival", "competitor")],
+      claims: [
+        claim({ id: "c-doc", text: "Facturare: setări", quote: "Facturare\nSetările contului de facturare.", sourceIds: ["docs"], status: "verified" }),
+        claim({ id: "c-nou", text: "Export rapid", quote: "SEP 23, 2026: Export rapid – Exporți totul dintr-un clic.", sourceIds: ["noutati"], status: "verified" }),
+        claim({ id: "c-rival", text: "Rapoarte", quote: "Rapoarte\nRapoartele altui produs.", sourceIds: ["rival"], status: "verified" }),
+        claim({ id: "c-home", text: "Căutare instantă", quote: "Căutare instantă\nGăsești orice în două secunde.", sourceIds: ["home"], status: "verified" }),
+      ],
+    });
+    const used = draftScript(brief, r, { textLanguage: "ro", voiceLanguage: null, productName: "Produs" }).lines.flatMap((l) => l.claimIds);
+    expect(used).not.toContain("c-doc");
+    expect(used).not.toContain("c-rival");
+    expect(used.indexOf("c-home")).toBeGreaterThanOrEqual(0);
+    expect(used.indexOf("c-home")).toBeLessThan(used.indexOf("c-nou"));
   });
 });
 

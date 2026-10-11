@@ -30,6 +30,7 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
   const col = issueCollector("v", 0, t.fps);
   const findings: Finding[] = col.issues;
   const add = (d: IssueDraft) => col.add({ method: "timeline", ...d });
+  const unlicensed = new Map<string, { name: string; frame: number; sceneId: string; scenes: Set<string> }>();
   const safe = resolveSafeZone(ctx.format);
   const assetByPath = new Map(ctx.assets.assets.map((a) => [`projects/${t.projectId}/${a.file}`, a]));
   const claims = new Map(ctx.research.claims.map((c) => [c.id, c]));
@@ -76,7 +77,10 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
         add({ frame: sceneFrom + l.from, sceneId, dimension: "assets", severity: "critical", problem: `Fișierul ${p} nu e în manifestul de materiale.`, recommendation: "Ingerează fișierul cu mms add-asset." });
         continue;
       }
-      if (a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned") add({ frame: sceneFrom + l.from, sceneId, dimension: "rights", severity: t.concept ? "high" : "critical", problem: `„${a.originalName}” aparține unui terț și nu are drepturi confirmate.`, recommendation: "Întreabă utilizatorul „Ai dreptul să-l folosești?” și notează răspunsul (mms rights)." });
+      if (a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned") {
+        const u = unlicensed.get(a.id) ?? unlicensed.set(a.id, { name: a.originalName, frame: sceneFrom + l.from, sceneId, scenes: new Set<string>() }).get(a.id)!;
+        u.scenes.add(sceneId);
+      }
       if (SCREEN_CAPS.has(l.capability) && a.showsProductUI !== true && a.role !== "screenshot" && a.role !== "screen-recording") add({ frame: sceneFrom + l.from, sceneId, dimension: "real-footage", severity: "high", problem: `${l.capability} afișează „${a.originalName}”, care nu e marcat ca interfață reală.`, recommendation: "Folosește o captură reală sau un fișier dat de utilizator cu rolul screenshot." });
       if (SCREEN_CAPS.has(l.capability) && a.pii.regions.length) {
         if (!a.pii.blurApproved && !a.pii.keepApproved)
@@ -141,7 +145,10 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
     }
   }
   if (!t.scenes.some((s) => s.meta.narrativeRole === "cta")) add({ frame: null, sceneId: null, dimension: "cta", severity: "high", problem: "Nu există scenă de CTA.", recommendation: "Adaugă cardul final cu apelul la acțiune." });
-  if (t.concept) add({ frame: null, sceneId: null, dimension: "rights", severity: "high", problem: "Timeline-ul folosește materiale fără drepturi confirmate (preview „concept”).", recommendation: "Confirmă drepturile sau înlocuiește materialele înainte de exportul final." });
+  // drepturile: o problemă pe material (nu pe fiecare strat), cu scenele în care apare
+  for (const u of unlicensed.values())
+    add({ frame: u.frame, sceneId: u.sceneId, dimension: "rights", severity: t.concept ? "high" : "critical", problem: `„${u.name}” aparține unui terț și nu are drepturi confirmate (în ${u.scenes.size} ${u.scenes.size === 1 ? "scenă" : "scene"}: ${[...u.scenes].join(", ")}). Preview-ul e marcat „concept”, iar exportul final e blocat.`, recommendation: "Întreabă utilizatorul o singură dată: „Ai dreptul să-l folosești?”. Da: mms rights <proiect> <assetId> confirmed. Nu: înlocuiește materialul." });
+  if (t.concept && !unlicensed.size) add({ frame: null, sceneId: null, dimension: "rights", severity: "high", problem: "Timeline-ul folosește materiale fără drepturi confirmate (preview „concept”).", recommendation: "Confirmă drepturile sau înlocuiește materialele înainte de exportul final." });
   const ok = !findings.some((f) => f.severity === "critical");
   return { ok, findings, stats: { flashes: flashes.length, maxFlashesPerSec: maxPerSec, textLayers, minFontAt360: minAt360 === null ? null : Math.round(minAt360 * 10) / 10 } };
 }

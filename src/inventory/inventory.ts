@@ -262,7 +262,8 @@ export const INVENTORY: InventoryItem[] = [
     ["objections", "Răspuns la obiecții", "P2", "MISSING", [], undefined, "Rol narativ „objection” și o linie de șablon."],
     ["social-proof", "Dovadă socială (testimoniale)", "P1", "PARTIAL", ["module:src/core/schema/research.ts#Claim"], "Categoria „testimonial” există în afirmații; nu există rețetă de testimonial.", "Rețetă de citat cu sursă (fără chipuri, regula 2)."],
     ["transformation", "Transformare", "P1", "IMPLEMENTED", ["recipe:before-after"]],
-    ["cta", "CTA, hold pe CTA, card final", "P0", "IMPLEMENTED", ["recipe:cta-end", "check:platform.profile"]],
+    ["cta", "CTA, hold pe CTA, card final; CTA-ul nestabilit nu intră în video", "P0", "IMPLEMENTED", ["recipe:cta-end", "check:platform.profile", "check:claims.script"]],
+    ["language", "Limba replicilor față de limba reclamei (citatele de pe site de tradus, cu acordul utilizatorului)", "P1", "IMPLEMENTED", ["module:src/creative/language.ts#detectLanguage", "check:claims.script"]],
     ["brand-recall", "Reamintirea brandului (logo la dezvăluire și la final)", "P0", "IMPLEMENTED", ["check:story.brand-reveal"]],
     ["templates", "Structuri de reclamă (8 șabloane)", "P0", "IMPLEMENTED", ["template:saas", "template:product-launch", "template:teaser-15", "template:cinematic"]],
   ]),
@@ -283,6 +284,8 @@ export const INVENTORY: InventoryItem[] = [
   ...area("asset-media", [
     ["screenshots", "Capturi reale (2×, pagină întreagă, mobil)", "P0", "IMPLEMENTED", ["module:src/capture/capture.ts#capture"]],
     ["recordings", "Înregistrări de ecran la FPS constant", "P0", "IMPLEMENTED", ["module:src/capture/capture.ts#capture"]],
+    ["site-logo", "Logo-ul din pagină (SVG inline cu culoarea lui sau imaginea din antet), doar cu semnal clar", "P1", "IMPLEMENTED", ["module:src/capture/capture.ts#capture", "module:src/assets/ingest.ts#ingestCapture"]],
+    ["research-pages", "Paginile citite la research devin materiale, cu drepturile capturilor de pe același site", "P1", "IMPLEMENTED", ["module:src/research/crawl.ts#crawlSite"]],
     ["ingest", "Ingestie: hash, duplicate, ffprobe, paletă, dHash, rol", "P0", "IMPLEMENTED", ["module:src/assets/ingest.ts#ingestFile"]],
     ["fonts", "Fonturi (fontkit)", "P1", "IMPLEMENTED", ["module:src/assets/ingest.ts#ingestFile"]],
     ["video-photo", "Video și fotografii", "P1", "IMPLEMENTED", ["cap:media.video", "cap:media.image"]],

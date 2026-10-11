@@ -31,7 +31,7 @@ import { draftScript, validateScript } from "../creative/script";
 import { buildStoryboard } from "../creative/storyboard";
 import { chooseTemplate, getTemplate } from "../creative/templates";
 import { selectedConcept } from "../creative/concepts";
-import { analyzeVideo } from "../renderer/node/analyze-video";
+import { analyzeVideo, intendedHolds } from "../renderer/node/analyze-video";
 import { closeBrowser, renderContactSheet, renderStills, renderTimelineStill, renderTimelineVideo } from "../renderer/node/render";
 import { extractFromPage, mergeIntoResearch } from "../research/extract";
 import { compileTimeline, type VoiceClipRef } from "../timeline/compile";
@@ -71,20 +71,20 @@ const noop: Log = () => undefined;
 
 // ─── captură + research + brand ─────────────────────────────────────────────
 
-export async function stepCapture(projectId: string, reqs: CaptureRequestInput[], log: Log = noop, opts: { headed?: boolean } = {}): Promise<CaptureResult[]> {
+export async function stepCapture(projectId: string, reqs: CaptureRequestInput[], log: Log = noop, opts: { headed?: boolean; thirdParty?: boolean } = {}): Promise<CaptureResult[]> {
   const out: CaptureResult[] = [];
   const dir = path.join(projectDir(projectId), "captures");
   for (const r of reqs) {
     log(`Captură ${r.id}: ${r.url} (${r.viewport ?? "desktop"}${r.fullPage ? ", pagină întreagă" : ""}${r.record ? ", înregistrare" : ""})`);
     const res = await capture(r, dir, opts);
-    await ingestCapture(projectId, res);
+    await ingestCapture(projectId, res, { thirdParty: opts.thirdParty });
     let claims = 0;
     if (res.research && !r.record) {
       const ex = extractFromPage(res.page, { capturedAt: res.capturedAt });
       mergeIntoResearch(projectId, ex, res.page.fullText);
       claims = ex.claims.length;
     }
-    log(`  → ${res.regions.length} zone, ${claims} afirmații extrase, ${res.pii.length} zone cu date personale`);
+    log(`  → ${res.regions.length} zone, ${claims} afirmații extrase, ${res.pii.length} zone cu date personale${opts.thirdParty ? " · material al unui terț: drepturi neconfirmate" : ""}`);
     out.push(res);
   }
   updateState(projectId, { step: "capture", note: `${reqs.length} capturi`, log: `Capturi reale: ${reqs.map((r) => r.id).join(", ")}.` });
@@ -468,7 +468,7 @@ export async function stepPreview(projectId: string, versionId: string, formatId
   const pub = stills.map((s) => projectPublicPath(projectId, path.relative(projectDir(projectId), s).replace(/\\/g, "/")));
   const cell = t.width > t.height ? { w: 320, h: 180 } : t.width === t.height ? { w: 240, h: 240 } : { w: 180, h: 320 };
   const sheet = await renderContactSheet(pub, list.map((f) => formatTimecode(f, t.fps)), path.join(renders, `contact-${fmt}.png`), { cols: t.width > t.height ? 6 : 8, cellWidth: cell.w, cellHeight: cell.h, title: `${project.name} · ${versionId} · ${fmt}` });
-  const check = { ...(await analyzeVideo(file, t.fps)), renderKey };
+  const check = { ...(await analyzeVideo(file, t.fps, intendedHolds(t))), renderKey };
   // raportul descrie randarea; nu modifică versiunea, deci se scrie și pe o versiune înghețată
   writeJson(versionFile(projectId, versionId, `renders/check-${fmt}.json`), check);
   fs.mkdirSync(path.dirname(cacheBase), { recursive: true });
@@ -514,7 +514,7 @@ export async function stepFinalRender(projectId: string, versionId: string, form
     notes.push(`Vocea e generată cu TTS-ul sistemului (${vm.provider}). Drepturile de folosire comercială nu sunt clare; pentru publicare comercială folosește vocea ta sau un furnizor cu termeni comerciali (docs/LICENTE.md).`);
   for (const n of notes) log(`ATENȚIE: ${n}`);
   await renderTimelineVideo(t, { out, crf: 16 });
-  const check = await analyzeVideo(out, t.fps);
+  const check = await analyzeVideo(out, t.fps, intendedHolds(t));
   writeJson(path.join(exportsDir, `${projectId}-${versionId}-${fmt}-final.check.json`), { check, mix: rep, validation: val.stats, notes });
   if (fs.existsSync(versionFile(projectId, versionId, "audio/captions.srt"))) fs.copyFileSync(versionFile(projectId, versionId, "audio/captions.srt"), path.join(exportsDir, `${projectId}-${versionId}-${fmt}.srt`));
   if (loadBrief(projectId).delivery.postPack) {

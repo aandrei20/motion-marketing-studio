@@ -6,8 +6,12 @@
  * care le poate schimba înainte de „aprob”.
  */
 import type { PageData } from "../capture/capture";
-import type { BriefInput, CreativeDirection, Platform, ProductCategory } from "../core/schema";
+import { MmsError } from "../core/errors";
+import { FORMAT_PRESETS, makeFormat, type FormatPresetId } from "../core/formats";
+import type { BriefInput, CreativeDirection, FormatSpec, Platform, ProductCategory } from "../core/schema";
+import type { CreateProjectOptions } from "../projects/store";
 import { DIRECTIONS } from "./directions";
+import { CTA_PLACEHOLDER } from "./script";
 import { INTAKE_QUESTIONS } from "./intake";
 import { PLATFORM_PROFILES } from "../platform/profiles";
 
@@ -55,20 +59,27 @@ export interface IntakeResult {
 const q = (id: string) => INTAKE_QUESTIONS.find((x) => x.id === id)?.text ?? id;
 const has = (t: string, re: RegExp) => re.test(t.toLowerCase());
 
-function guessCategory(text: string): { category: ProductCategory; why: string } {
-  const t = text.toLowerCase();
-  // „AI” doar cu majuscule (în română „ai” e verb) sau în expresii clare
-  if (/\bAI\b|\bGPT\b|\bLLM\b/.test(text) || /inteligen[țt][ăa] artificial[ăa]|machine learning|copilot|ai-powered/.test(t)) return { category: "ai-product", why: "termeni AI pe pagină" };
-  const rules: Array<[RegExp, ProductCategory, string]> = [
-    [/\b(api|sdk|cli|developer|devops|github|deploy)\b/, "developer-tool", "termeni pentru dezvoltatori pe pagină"],
-    [/(app store|google play|descarc[ăa] aplica[țt]ia|download the app)/, "mobile-app", "trimiteri spre magazinele de aplicații"],
-    [/(download for (mac|windows)|descarc[ăa] pentru (mac|windows))/, "desktop-app", "descărcare pentru desktop"],
-    [/\b(co[șs]|cart|checkout|livrare|shipping|magazin)\b/, "ecommerce", "termeni de comerț"],
-    [/\b(factur|plat[ăa]|banc|invest|wallet|fintech)/, "fintech", "termeni financiari"],
-    [/\b(echip[ăa]|team|workspace|dashboard|abonament|plan(uri)?\b|pricing|sarcini|tasks|proiecte)\b/, "saas", "termeni de produs software pe abonament"],
+/**
+ * Categoria produsului din semnalele de pe pagină, cu greutăți: titlul, descrierea și titlurile de secțiune
+ * cântăresc de 3 ori mai mult decât textul. Câștigă categoria cu cel mai mare scor (minimum 2). Astfel un
+ * site care pomenește „AI” o dată, într-o funcție secundară, nu devine „produs AI”.
+ */
+function guessCategory(prominent: string, body: string): { category: ProductCategory; why: string } {
+  const rules: Array<[ProductCategory, RegExp[], string]> = [
+    // „AI” doar cu majuscule (în română „ai” e verb) sau în expresii clare
+    ["ai-product", [/\bAI\b|\bGPT\b|\bLLM\b/g, /inteligen[țt][ăa] artificial[ăa]|machine learning|ai-powered|copilot/gi], "termeni AI pe pagină"],
+    ["developer-tool", [/\b(api|sdk|cli|developer|devops|github|deploy)\b/gi], "termeni pentru dezvoltatori pe pagină"],
+    ["mobile-app", [/(app store|google play|descarc[ăa] aplica[țt]ia|download the app)/gi], "trimiteri spre magazinele de aplicații"],
+    ["desktop-app", [/(download for (mac|windows)|descarc[ăa] pentru (mac|windows))/gi], "descărcare pentru desktop"],
+    ["ecommerce", [/\b(co[șs]|cart|checkout|livrare|shipping|magazin)\b/gi], "termeni de comerț"],
+    ["fintech", [/\b(factur|plat[ăa]|banc|invest|wallet|fintech)/gi], "termeni financiari"],
+    ["saas", [/\b(echip[ăa]|team|workspace|dashboard|abonament|plan(uri)?|plans|pricing|sarcini|tasks|proiecte|analytics|free trial|subscription)\b/gi], "termeni de produs software pe abonament"],
   ];
-  for (const [re, category, why] of rules) if (re.test(t)) return { category, why };
-  return { category: "website", why: "nu am găsit semnale clare; categoria generală" };
+  const count = (t: string, res: RegExp[]) => res.reduce((n, re) => n + (t.match(re)?.length ?? 0), 0);
+  const scored = rules.map(([category, res, why]) => ({ category, why, score: 3 * count(prominent, res) + count(body, res) }));
+  const best = scored.reduce((a, b) => (b.score > a.score ? b : a));
+  if (best.score < 2) return { category: "website", why: "nu am găsit semnale clare; categoria generală" };
+  return { category: best.category, why: `${best.why} (scor ${best.score}${scored.filter((x) => x !== best && x.score > 0).map((x) => `; ${x.category} ${x.score}`).join("")})` };
 }
 
 function guessObjective(buttons: string[], vision: string): { objective: BriefInput["objective"]; why: string } {
@@ -113,16 +124,21 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   const host = req.url ? new URL(req.url).hostname.replace(/^www\./, "") : "";
   const name = page?.og["og:site_name"] || (page?.title.split(/\s[|–—-]\s/)[0] ?? "").trim() || host.split(".")[0] || "Produs";
   A("a1", `${name}${req.url ? ` · ${req.url}` : ""}`, page ? "site" : "user", page ? "medium" : "high", page ? "numele din titlul / og:site_name al paginii" : "din cerere");
-  const cat = guessCategory(text);
+  const prominent = page ? `${page.title} ${page.description} ${page.headings.filter((h) => h.level <= 3).map((h) => h.text).join(" ")}` : vision;
+  const cat = guessCategory(prominent, page ? page.fullText.slice(0, 12000) : "");
   A("a2", cat.category, "inferred", cat.category === "website" ? "low" : "medium", cat.why);
-  const buttons = page?.buttons ?? [];
+  // butoanele paginii; dacă nu se recunoaște niciunul, linkurile scurte de acțiune (pe multe site-uri CTA-ul e un link)
+  const actionLink = /[îi]ncearc|try|start|[îi]ncepe|sign ?up|[îi]nscrie|creeaz[ăa] cont|get started|free trial|descarc|download|cump[ăa]r|buy|demo/i;
+  const buttons = page?.buttons.length ? page.buttons : [...new Set((page?.links ?? []).map((l) => l.text).filter((t) => t && t.split(/\s+/).length <= 5 && actionLink.test(t)))];
   const obj = guessObjective(buttons, vision);
   A("a3", obj.objective, "inferred", "medium", obj.why);
   if (page?.description) Q("a4", "Publicul și durerea lui schimbă hook-ul și problema; nu le pot deduce sigur din site.", { suggestion: `Pe site: „${page.description.slice(0, 140)}”` });
   else Q("a4", "Publicul și durerea lui schimbă hook-ul și problema.");
-  // preferința: încercare / înscriere, apoi descărcare / cumpărare / demo; butonul de login vine ultimul
-  const prefs = [/[îi]ncearc|try|start|[îi]ncepe|sign ?up|[îi]nscrie|creeaz[ăa] cont|gratuit|free/i, /descarc|download|cump[ăa]r|buy|demo|rezerv/i, /cont|log ?in|autentific/i];
-  const cta = prefs.map((re) => buttons.find((b) => re.test(b))).find(Boolean) ?? buttons[0];
+  // preferința: încercare / înscriere (expresii clare), apoi „gratuit”, apoi descărcare / cumpărare / demo;
+  // butonul de login vine ultimul. Un CTA are cel mult 5 cuvinte.
+  const prefs = [/[îi]ncearc|\btry\b|\bstart|get started|[îi]ncepe|sign ?up|[îi]nscrie|creeaz[ăa] cont|free trial|perioad[ăa] de prob/i, /gratuit|\bfree\b/i, /descarc|download|cump[ăa]r|\bbuy\b|demo|rezerv/i, /\bcont\b|log ?in|autentific/i];
+  const ctaCandidates = buttons.filter((b) => b.split(/\s+/).length <= 5);
+  const cta = prefs.map((re) => ctaCandidates.find((b) => re.test(b))).find(Boolean) ?? ctaCandidates[0];
   Q("a5", "Textul CTA apare cuvânt cu cuvânt pe cardul final; îl confirm cu tine.", cta ? { suggestion: `Butonul de pe site: „${cta}”` } : {});
   A("a6", "nimic în plus față de regulile studioului", "default", "high", "fără interdicții declarate");
   // B. platformă și format
@@ -187,7 +203,7 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
     pacing,
     direction: dir.direction,
     visual: { effectsLevel: "medium", forbiddenCapabilities: [], allow3d: true, faces: false, notes: "" },
-    cta: { text: cta ?? "de confirmat", url: req.url },
+    cta: { text: cta ?? CTA_PLACEHOLDER, url: req.url },
     platforms,
     durationSec: duration,
     audio: {
@@ -199,6 +215,21 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
     captions: { burnIn: true, srt: true },
   };
   return { project: { name, url: req.url, category: cat.category, formats, language }, brief, answers, ask };
+}
+
+/**
+ * Datele proiectului din rezultatul intake-ului. Fiecare format primește platforma potrivită lui: prima
+ * platformă din brief care îl recomandă (9:16 → TikTok/Reels/Shorts, 16:9 → YouTube…), altfel cea implicită
+ * a formatului. Astfel un 16:9 nu primește zonele sigure ale unei platforme verticale.
+ */
+export function projectFromIntake(id: string, r: IntakeResult, o: { fps?: number } = {}): CreateProjectOptions {
+  const formats: FormatSpec[] = r.project.formats.map((f) => {
+    const base = f.replace(/-4k$/, "");
+    if (!(f in FORMAT_PRESETS)) throw new MmsError("FORMAT_INVALID", `Format necunoscut în intake: ${f}`, `Formatele disponibile: ${Object.keys(FORMAT_PRESETS).join(", ")}`);
+    const platform = r.brief.platforms?.find((p) => PLATFORM_PROFILES[p]?.aspects.includes(base)) ?? PLATFORM_FOR_FORMAT[base] ?? "generic";
+    return makeFormat(f as FormatPresetId, { platform, durationSec: r.brief.durationSec ?? 30, fps: o.fps ?? 30 });
+  });
+  return { id, name: r.project.name, product: { name: r.project.name, url: r.project.url, category: r.project.category }, formats, language: r.project.language };
 }
 
 /** Rezumatul pentru utilizator: ce am dedus (cu sursa) și ce întreb, grupat A–H. */

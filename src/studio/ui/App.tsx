@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/schema";
 import { api, type Job, type Meta, type ProjectBundle, type VersionBundle } from "./api";
 import { AssetsPanel, AudioPanel, BrandPanel, BriefPanel, CritiquePanel, ExportPanel, OverviewPanel, ResearchPanel, ScriptPanel, StoryboardPanel, VersionsPanel } from "./panels";
@@ -102,11 +102,18 @@ export function App() {
 
   // la terminarea unui job al proiectului curent, reîncărcăm datele
   const finishedKey = jobs.filter((j) => j.projectId === current && (j.state === "done" || j.state === "failed")).map((j) => j.id + j.state).join(",");
+  // joburile terminate înainte de deschiderea paginii (manifestele de pe disc) nu mai dau notificări
+  const seenFinished = useRef<{ project: string | null; key: string } | null>(null);
   useEffect(() => {
-    if (!finishedKey) return;
+    const prev = seenFinished.current;
+    seenFinished.current = { project: current, key: finishedKey };
+    // prima încărcare sau alt proiect deschis: doar datele, fără notificări
+    const before = prev && prev.project === current ? prev.key : null;
+    if (!finishedKey || before === null) return;
     const last = jobs.filter((j) => j.projectId === current).slice(-1)[0];
-    if (last?.state === "failed") notify(`${last.label}: ${last.error}`, "err");
-    if (last?.state === "done") notify(`${last.label}: gata`);
+    const fresh = last && !before.split(",").includes(last.id + last.state);
+    if (fresh && last.state === "failed") notify(`${last.label}: ${last.error}`, "err");
+    if (fresh && last.state === "done") notify(`${last.label}: gata`);
     void reload().then(loadProjects);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finishedKey]);

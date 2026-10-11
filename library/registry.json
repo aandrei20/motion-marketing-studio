@@ -7710,6 +7710,7 @@
       },
       "recipes": [
         "product-reveal",
+        "scroll-tour",
         "launch-burst",
         "cta-end"
       ],
@@ -12317,7 +12318,7 @@
     {
       "id": "scroll-tour",
       "title": "Tur prin pagină (scroll real)",
-      "description": "O captură de pagină întreagă într-o ramă de browser, derulată lin de sus până la o zonă-țintă.",
+      "description": "O captură de pagină întreagă într-o ramă de browser, derulată lin de sus până la o zonă-țintă. Ca dezvăluire, logo-ul stă deasupra titlului.",
       "tags": [
         "scroll",
         "website",
@@ -12343,7 +12344,8 @@
       "capabilities": [
         "media.screen",
         "camera.push",
-        "text.word-reveal"
+        "text.word-reveal",
+        "logo.reveal"
       ]
     },
     {

@@ -116,7 +116,7 @@ console.log("Scris docs/BIBLIOTECA.md");
   for (const c of SYSTEM_CAPABILITIES) sys.push(`| \`${c.id}\` v${c.version} | ${c.domain} | ${c.title}${c.notes ? ` (${c.notes})` : ""} | ${c.inputs.join(", ") || "—"} → ${c.outputs.join(", ")} | \`${c.implementation}\` | ${c.tests.map((t) => `\`${t}\``).join(", ") || "—"} | ${c.status} · încredere ${c.confidence} | ${c.cost} |`);
   sys.push("", "## Pasele buclei de calitate și verificările lor", "");
   for (const p of PASSES) {
-    sys.push(`### PASS ${p.n} – ${p.title}`, "", "| Verificare | Metodă | Categorii | Pe format |", "| --- | --- | --- | --- |");
+    sys.push(`### Pasul ${p.n} – ${p.title}`, "", "| Verificare | Metodă | Categorii | Pe format |", "| --- | --- | --- | --- |");
     for (const c of CHECKS.filter((x) => x.pass === p.id)) sys.push(`| \`${c.id}\` – ${c.title} | ${c.method} | ${c.categories.join(", ")} | ${c.perFormat ? "da" : "nu (formatul principal)"} |`);
     sys.push("");
   }
