@@ -46,7 +46,11 @@ export function reservePaidCall(provider: string): void {
   const raw = process.env.MMS_MAX_PAID_CALLS;
   const max = raw && /^\d+$/.test(raw) ? Number(raw) : PAID_DEFAULT;
   if (paidCalls >= max)
-    throw new MmsError("BUDGET_PAID_CALLS", `Bugetul de apeluri plătite al acestei rulări e atins (${max}, furnizor ${provider}).`, "Verifică de ce se refac atâtea replici (textul se schimbă la fiecare pas?). Dacă e intenționat, mărește MMS_MAX_PAID_CALLS în .env.");
+    throw new MmsError(
+      "BUDGET_PAID_CALLS",
+      `Bugetul de apeluri plătite al acestei rulări e atins (${max}, furnizor ${provider}).`,
+      "Verifică de ce se refac atâtea replici (textul se schimbă la fiecare pas?). Dacă e intenționat, mărește MMS_MAX_PAID_CALLS în .env.",
+    );
   paidCalls++;
 }
 

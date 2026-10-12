@@ -2,7 +2,13 @@
 
 export function hexToRgb(hex: string): { r: number; g: number; b: number; a: number } {
   const h = hex.replace("#", "");
-  const n = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
   return {
     r: parseInt(n.slice(0, 2), 16),
     g: parseInt(n.slice(2, 4), 16),
@@ -12,7 +18,10 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number; a: num
 }
 
 export function rgbToHex(r: number, g: number, b: number): string {
-  const c = (v: number) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, "0");
+  const c = (v: number) =>
+    Math.round(Math.min(255, Math.max(0, v)))
+      .toString(16)
+      .padStart(2, "0");
   return `#${c(r)}${c(g)}${c(b)}`;
 }
 

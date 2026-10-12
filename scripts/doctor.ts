@@ -22,7 +22,10 @@ async function main() {
   const [maj, min] = process.versions.node.split(".").map(Number);
   if (maj > 20 || (maj === 20 && min >= 11)) add("ok", "Node.js", `v${process.versions.node}`);
   else add("fail", "Node.js", `v${process.versions.node} (minim 20.11)`, "Instalează Node.js LTS de la https://nodejs.org sau rulează din nou instalarea.");
-  const npm = process.platform === "win32" ? spawnSync("cmd.exe", ["/d", "/s", "/c", "npm --version"], { encoding: "utf8" }) : spawnSync("npm", ["--version"], { encoding: "utf8" });
+  const npm =
+    process.platform === "win32"
+      ? spawnSync("cmd.exe", ["/d", "/s", "/c", "npm --version"], { encoding: "utf8" })
+      : spawnSync("npm", ["--version"], { encoding: "utf8" });
   if (npm.status === 0) add("ok", "npm", npm.stdout.trim());
   else add("fail", "npm", "nu răspunde", "Reinstalează Node.js (npm vine cu el).");
   try {
@@ -31,7 +34,19 @@ async function main() {
     add("warn", "Git", "lipsește (necesar doar pentru npm run update)", "Instalează Git: https://git-scm.com");
   }
   // dependențe
-  const pkgs = ["remotion", "@remotion/renderer", "@remotion/bundler", "@remotion/player", "@remotion/cli", "playwright", "zod", "fontkit", "esbuild", "react", "react-dom"];
+  const pkgs = [
+    "remotion",
+    "@remotion/renderer",
+    "@remotion/bundler",
+    "@remotion/player",
+    "@remotion/cli",
+    "playwright",
+    "zod",
+    "fontkit",
+    "esbuild",
+    "react",
+    "react-dom",
+  ];
   const resolvable = (p: string) => {
     for (const spec of [p, `${p}/package.json`]) {
       try {
@@ -46,8 +61,13 @@ async function main() {
   const missing = pkgs.filter((p) => !resolvable(p));
   if (missing.length) add("fail", "Dependențe npm", `lipsesc: ${missing.join(", ")}`, `Rulează: npm ci (sau ${INSTALL})`);
   else add("ok", "Dependențe npm", `${pkgs.length} pachete principale`);
-  const remotionVersions = new Set(["remotion", "@remotion/renderer", "@remotion/bundler", "@remotion/player", "@remotion/cli"].filter((p) => !missing.includes(p)).map((p) => (JSON.parse(fs.readFileSync(path.join(PATHS.root, "node_modules", ...p.split("/"), "package.json"), "utf8")) as { version: string }).version));
-  if (remotionVersions.size > 1) add("fail", "Versiuni Remotion", `diferite: ${[...remotionVersions].join(", ")}`, "Toate pachetele @remotion/* trebuie să aibă aceeași versiune: npm ci");
+  const remotionVersions = new Set(
+    ["remotion", "@remotion/renderer", "@remotion/bundler", "@remotion/player", "@remotion/cli"]
+      .filter((p) => !missing.includes(p))
+      .map((p) => (JSON.parse(fs.readFileSync(path.join(PATHS.root, "node_modules", ...p.split("/"), "package.json"), "utf8")) as { version: string }).version),
+  );
+  if (remotionVersions.size > 1)
+    add("fail", "Versiuni Remotion", `diferite: ${[...remotionVersions].join(", ")}`, "Toate pachetele @remotion/* trebuie să aibă aceeași versiune: npm ci");
   // FFmpeg/FFprobe incluse în Remotion
   const ff = binaryVersion("ffmpeg");
   const fp = binaryVersion("ffprobe");
@@ -70,7 +90,9 @@ async function main() {
   const missingFonts = fonts.fonts.filter((f) => !fs.existsSync(path.join(PATHS.root, f.file)));
   if (missingFonts.length) add("fail", "Fonturi incluse", `lipsesc ${missingFonts.length}`, "Repo-ul e incomplet: git checkout -- library/fonts");
   else add("ok", "Fonturi incluse", `${fonts.fonts.length} fonturi OFL`);
-  const samples = ["screenshot.png", "image.png", "tall-screenshot.png", "video.mp4", "logo.svg"].filter((f) => !fs.existsSync(path.join(PATHS.library, "catalog", "samples", f)));
+  const samples = ["screenshot.png", "image.png", "tall-screenshot.png", "video.mp4", "logo.svg"].filter(
+    (f) => !fs.existsSync(path.join(PATHS.library, "catalog", "samples", f)),
+  );
   if (samples.length) add("warn", "Materiale de catalog", `lipsesc: ${samples.join(", ")}`, "npx tsx scripts/make-catalog-samples.ts");
   else add("ok", "Materiale de catalog", "capturi reale ale produsului demo");
   if (fs.existsSync(path.join(PATHS.library, "registry.json"))) add("ok", "Registry", "library/registry.json");
@@ -84,7 +106,8 @@ async function main() {
       add("fail", "Foldere", `nu pot scrie în ${d}`, "Verifică permisiunile folderului.");
     }
   }
-  if (/onedrive/i.test(PATHS.root)) add("warn", "Locație", `${PATHS.root} e în OneDrive`, "Mută repo-ul în C:\\dev\\ (regula 13): OneDrive încetinește și blochează fișierele mari.");
+  if (/onedrive/i.test(PATHS.root))
+    add("warn", "Locație", `${PATHS.root} e în OneDrive`, "Mută repo-ul în C:\\dev\\ (regula 13): OneDrive încetinește și blochează fișierele mari.");
   else add("ok", "Locație", PATHS.root);
   try {
     const st = fs.statfsSync(PATHS.root);

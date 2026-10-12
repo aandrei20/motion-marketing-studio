@@ -44,7 +44,10 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
     cuts.push(i / fps);
   }
   const bounds = [0, ...cuts, dur || seq.frames.length / fps];
-  const shots = bounds.slice(1).map((b, i) => b - bounds[i]).filter((s) => s > 0.05);
+  const shots = bounds
+    .slice(1)
+    .map((b, i) => b - bounds[i])
+    .filter((s) => s > 0.05);
   const sortedShots = [...shots].sort((a, b) => a - b);
   const motionVals = diffs.filter((_, i) => !cuts.includes(i / fps));
   const intensity = motionVals.length ? motionVals.reduce((a, b) => a + b, 0) / motionVals.length : 0;
@@ -89,14 +92,32 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
   const label = intensity < 0.015 ? "calm" : intensity < 0.04 ? "moderate" : intensity < 0.08 ? "energetic" : "frantic";
   const guidance: string[] = [];
   guidance.push(`Durata medie a unui cadru: ${avgShot.toFixed(2)} s (${cutsPerSec.toFixed(2)} tăieturi/s).`);
-  guidance.push(avgShot < 1 ? "Ritm foarte alert: tăieturi pe bătăi, tranziții scurte (whip, cut, glitch)." : avgShot < 2.2 ? "Ritm alert: 1–2 s pe cadru, tranziții push/zoom-through." : "Ritm calm: cadre lungi, mișcări de cameră lente, tranziții lungi (parallax, light leak).");
-  guidance.push(label === "calm" ? "Mișcare discretă: push-in lent, handheld fin." : label === "frantic" ? "Mișcare intensă: shake pe impacturi, punch pe ritm." : "Mișcare moderată: zoom pe detalii, pan-uri scurte.");
+  guidance.push(
+    avgShot < 1
+      ? "Ritm foarte alert: tăieturi pe bătăi, tranziții scurte (whip, cut, glitch)."
+      : avgShot < 2.2
+        ? "Ritm alert: 1–2 s pe cadru, tranziții push/zoom-through."
+        : "Ritm calm: cadre lungi, mișcări de cameră lente, tranziții lungi (parallax, light leak).",
+  );
+  guidance.push(
+    label === "calm"
+      ? "Mișcare discretă: push-in lent, handheld fin."
+      : label === "frantic"
+        ? "Mișcare intensă: shake pe impacturi, punch pe ritm."
+        : "Mișcare moderată: zoom pe detalii, pan-uri scurte.",
+  );
   // tempo-ul se dă ca indicație doar când detecția e sigură (vocea și efectele peste muzică o încurcă)
   if (audio.bpm && (audio.bpmConfidence ?? 0) >= 0.25) guidance.push(`Muzică în jur de ${audio.bpm} BPM; tăieturile pot cădea pe bătăi.`);
-  else if (audio.bpm) guidance.push(`Tempo nesigur (încredere ${audio.bpmConfidence}): probabil voce sau efecte peste muzică. Nu folosi tempo-ul ca fapt; întreabă-l pe utilizator sau ascultă.`);
+  else if (audio.bpm)
+    guidance.push(
+      `Tempo nesigur (încredere ${audio.bpmConfidence}): probabil voce sau efecte peste muzică. Nu folosi tempo-ul ca fapt; întreabă-l pe utilizator sau ascultă.`,
+    );
   guidance.push(meanSat < 0.2 ? "Culoare reținută (aproape monocromă)." : meanSat > 0.5 ? "Culori saturate, contrast puternic." : "Saturație medie.");
   // tăieturi simple vs. tranziții: o tăietură simplă e un salt pe un singur cadru, o tranziție se întinde pe mai multe
-  const hard = cuts.map((c) => Math.round(c * fps)).filter((i) => i > 0 && i < diffs.length - 1).map((i) => Math.max(diffs[i - 1], diffs[i + 1]) < diffs[i] * 0.35);
+  const hard = cuts
+    .map((c) => Math.round(c * fps))
+    .filter((i) => i > 0 && i < diffs.length - 1)
+    .map((i) => Math.max(diffs[i - 1], diffs[i + 1]) < diffs[i] * 0.35);
   const hardCutShare = hard.length ? Math.round((hard.filter(Boolean).length / hard.length) * 100) / 100 : null;
   const camera = cameraMotion(seq.frames, seq.w, seq.h, fps, cuts);
   const profile: ReferenceProfile = {
@@ -113,7 +134,13 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
       longestShotSec: Math.round((sortedShots[sortedShots.length - 1] ?? 0) * 100) / 100,
     },
     motion: { intensity: Math.round(intensity * 1000) / 1000, label, curve: motionCurve.map((m) => Math.round(m * 1000) / 1000) },
-    color: { meanLuma: Math.round((lumaCurve.reduce((a, b) => a + b, 0) / Math.max(1, lumaCurve.length)) * 100) / 100, meanSaturation: Math.round(meanSat * 100) / 100, palette: pal, lumaCurve: lumaCurve.map((l) => Math.round(l * 100) / 100), label: meanSat < 0.2 ? "reținută" : meanSat > 0.5 ? "saturată" : "medie" },
+    color: {
+      meanLuma: Math.round((lumaCurve.reduce((a, b) => a + b, 0) / Math.max(1, lumaCurve.length)) * 100) / 100,
+      meanSaturation: Math.round(meanSat * 100) / 100,
+      palette: pal,
+      lumaCurve: lumaCurve.map((l) => Math.round(l * 100) / 100),
+      label: meanSat < 0.2 ? "reținută" : meanSat > 0.5 ? "saturată" : "medie",
+    },
     audio,
     energyCurve,
     guidance,
@@ -125,7 +152,10 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
     ],
   };
   profile.dna = referenceDna(profile, { camera, hardCutShare });
-  if (camera) profile.guidance.push(camera.dominant === "static" ? "Camera e în mare parte fixă." : `Camera: ${camera.dominant} (pan ${camera.panPerSec}/s, zoom ${camera.zoomPerSec}/s).`);
+  if (camera)
+    profile.guidance.push(
+      camera.dominant === "static" ? "Camera e în mare parte fixă." : `Camera: ${camera.dominant} (pan ${camera.panPerSec}/s, zoom ${camera.zoomPerSec}/s).`,
+    );
   if (hardCutShare !== null) profile.guidance.push(`${Math.round(hardCutShare * 100)}% din schimbările de cadru sunt tăieturi simple.`);
   return profile;
 }

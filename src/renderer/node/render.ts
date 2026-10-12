@@ -117,7 +117,12 @@ export function stageFiles(serveUrl: string, files: string[]): void {
       fs.copyFileSync(src, dst);
     }
   }
-  if (missing.length) throw new MmsError("ASSET_MISSING", `Lipsesc fișiere folosite de timeline:\n${missing.map((m) => `  • ${m}`).join("\n")}`, "Reingerează materialele sau recompilează timeline-ul.");
+  if (missing.length)
+    throw new MmsError(
+      "ASSET_MISSING",
+      `Lipsesc fișiere folosite de timeline:\n${missing.map((m) => `  • ${m}`).join("\n")}`,
+      "Reingerează materialele sau recompilează timeline-ul.",
+    );
 }
 
 /** Randarea grafică: „angle” (GPU, implicit) sau „swangle” (software, mai lentă). Se alege cu MMS_GL. */
@@ -216,7 +221,12 @@ export async function renderTimelineStill(t: Timeline, frame: number, out: strin
 }
 
 /** Randează mai multe cadre statice cu aceeași pregătire (o singură selecție de compoziție). */
-export async function renderStills(t: Timeline, frames: number[], outDir: string, opts: { format?: "png" | "jpeg"; scale?: number; prefix?: string; signal?: AbortSignal } = {}): Promise<string[]> {
+export async function renderStills(
+  t: Timeline,
+  frames: number[],
+  outDir: string,
+  opts: { format?: "png" | "jpeg"; scale?: number; prefix?: string; signal?: AbortSignal } = {},
+): Promise<string[]> {
   const { serveUrl, inputProps, composition, puppeteerInstance } = await prepare(t);
   fs.mkdirSync(outDir, { recursive: true });
   const files: string[] = [];
@@ -244,13 +254,29 @@ export async function renderStills(t: Timeline, frames: number[], outDir: string
 }
 
 /** Foaie de contact: cadre JPEG (căi publice) puse într-o singură imagine PNG. */
-export async function renderContactSheet(images: string[], labels: string[], out: string, opts: { cols?: number; cellWidth?: number; cellHeight?: number; title?: string } = {}): Promise<string> {
+export async function renderContactSheet(
+  images: string[],
+  labels: string[],
+  out: string,
+  opts: { cols?: number; cellWidth?: number; cellHeight?: number; title?: string } = {},
+): Promise<string> {
   const serveUrl = await getBundle();
   stageFiles(serveUrl, images);
   const inputProps = { images, labels, cols: opts.cols ?? 6, cellWidth: opts.cellWidth ?? 320, cellHeight: opts.cellHeight ?? 180, title: opts.title ?? "" };
   const puppeteerInstance = await getBrowser();
   const composition = await selectComposition({ serveUrl, id: "ContactSheet", inputProps, puppeteerInstance, logLevel: "error" });
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  await renderStill({ serveUrl, composition, inputProps, frame: 0, output: path.resolve(out), imageFormat: "png", overwrite: true, puppeteerInstance, logLevel: "error", licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null });
+  await renderStill({
+    serveUrl,
+    composition,
+    inputProps,
+    frame: 0,
+    output: path.resolve(out),
+    imageFormat: "png",
+    overwrite: true,
+    puppeteerInstance,
+    logLevel: "error",
+    licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null,
+  });
   return out;
 }

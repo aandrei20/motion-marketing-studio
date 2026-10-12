@@ -2,7 +2,16 @@ import React from "react";
 import { AbsoluteFill, Audio, Sequence, useCurrentFrame } from "remotion";
 import type { Timeline, TimelineLayer, TimelineScene } from "../../core/schema";
 import { cameraMotionBlur, dofBlur, layerTransform, layerZoom, sampleCamera } from "../../motion/camera/rig";
-import { AssetBaseContext, CameraZoomContext, MotionEnvProvider, SceneIdContext, useAssetUrl, useEnv, useSceneId, type MotionEnv } from "../../motion/core/context";
+import {
+  AssetBaseContext,
+  CameraZoomContext,
+  MotionEnvProvider,
+  SceneIdContext,
+  useAssetUrl,
+  useEnv,
+  useSceneId,
+  type MotionEnv,
+} from "../../motion/core/context";
 import { DirBlurDefs, filterId } from "../../motion/core/filters";
 import { FontGate } from "../../motion/core/fonts";
 import { getLayer, getModifier, getTransition } from "../../motion/registry";
@@ -120,7 +129,14 @@ function SceneShell({ scene, next, index }: { scene: TimelineScene; next: Timeli
   const tin = scene.transitionIn;
   if (tin && tin.durationInFrames > 0 && frame < tin.durationInFrames) {
     const tr = getTransition(tin.capability);
-    inStyle = tr.present({ p: transitionProgress(frame, tin.durationInFrames), frame, duration: tin.durationInFrames, params: tin.params as never, env, seed: `${env.seed}:${scene.id}` }).incoming;
+    inStyle = tr.present({
+      p: transitionProgress(frame, tin.durationInFrames),
+      frame,
+      duration: tin.durationInFrames,
+      params: tin.params as never,
+      env,
+      seed: `${env.seed}:${scene.id}`,
+    }).incoming;
   }
   const tout = next?.transitionIn;
   if (next && tout && tout.durationInFrames > 0) {
@@ -128,7 +144,14 @@ function SceneShell({ scene, next, index }: { scene: TimelineScene; next: Timeli
     if (frame >= start) {
       const local = frame - start;
       const tr = getTransition(tout.capability);
-      outStyle = tr.present({ p: transitionProgress(local, tout.durationInFrames), frame: local, duration: tout.durationInFrames, params: tout.params as never, env, seed: `${env.seed}:${next.id}` }).outgoing;
+      outStyle = tr.present({
+        p: transitionProgress(local, tout.durationInFrames),
+        frame: local,
+        duration: tout.durationInFrames,
+        params: tout.params as never,
+        env,
+        seed: `${env.seed}:${next.id}`,
+      }).outgoing;
     }
   }
   const a = styleFrom(outStyle, filterId("trout", scene.id));
@@ -154,14 +177,36 @@ function TransitionOverlay({ scene }: { scene: TimelineScene }) {
   const tin = scene.transitionIn;
   if (!tin) return null;
   const tr = getTransition(tin.capability);
-  const r = tr.present({ p: transitionProgress(frame, tin.durationInFrames), frame, duration: tin.durationInFrames, params: tin.params as never, env, seed: `${env.seed}:${scene.id}` });
+  const r = tr.present({
+    p: transitionProgress(frame, tin.durationInFrames),
+    frame,
+    duration: tin.durationInFrames,
+    params: tin.params as never,
+    env,
+    seed: `${env.seed}:${scene.id}`,
+  });
   if (!r.overlay) return null;
   return <AbsoluteFill style={{ zIndex: 10_000, pointerEvents: "none" }}>{r.overlay}</AbsoluteFill>;
 }
 
 function ConceptMark() {
   return (
-    <div style={{ position: "absolute", left: 24, bottom: 24, zIndex: 30_000, padding: "8px 14px", borderRadius: 8, background: "rgba(0,0,0,0.65)", color: "#ffd166", fontFamily: "sans-serif", fontWeight: 700, fontSize: 22, letterSpacing: "0.08em" }}>
+    <div
+      style={{
+        position: "absolute",
+        left: 24,
+        bottom: 24,
+        zIndex: 30_000,
+        padding: "8px 14px",
+        borderRadius: 8,
+        background: "rgba(0,0,0,0.65)",
+        color: "#ffd166",
+        fontFamily: "sans-serif",
+        fontWeight: 700,
+        fontSize: 22,
+        letterSpacing: "0.08em",
+      }}
+    >
       CONCEPT · materiale fără drepturi confirmate
     </div>
   );
@@ -201,7 +246,12 @@ export const TimelineComposition: React.FC<TimelineCompositionProps> = ({ timeli
             ))}
             {scenes.map((scene) =>
               scene.transitionIn && scene.transitionIn.durationInFrames > 0 ? (
-                <Sequence key={`tr-${scene.id}`} from={scene.from} durationInFrames={scene.transitionIn.durationInFrames} name={`tranziție ${scene.transitionIn.capability}`}>
+                <Sequence
+                  key={`tr-${scene.id}`}
+                  from={scene.from}
+                  durationInFrames={scene.transitionIn.durationInFrames}
+                  name={`tranziție ${scene.transitionIn.capability}`}
+                >
                   <TransitionOverlay scene={scene} />
                 </Sequence>
               ) : null,
@@ -212,9 +262,14 @@ export const TimelineComposition: React.FC<TimelineCompositionProps> = ({ timeli
                   <LayerNode key={l.id} layer={l} />
                 ))}
                 {timeline.captions
-                  ? (timeline.captions.segments.length ? timeline.captions.segments : [{ from: 0, to: timeline.durationInFrames, box: timeline.captions.box }]).map((seg, i) => {
+                  ? (timeline.captions.segments.length
+                      ? timeline.captions.segments
+                      : [{ from: 0, to: timeline.durationInFrames, box: timeline.captions.box }]
+                    ).map((seg, i) => {
                       // fiecare segment are poziția lui; cuvintele sunt relative la începutul segmentului
-                      const words = timeline.captions!.words.filter((w) => w.from >= seg.from && w.from < seg.to).map((w) => ({ ...w, from: w.from - seg.from, to: w.to - seg.from }));
+                      const words = timeline
+                        .captions!.words.filter((w) => w.from >= seg.from && w.from < seg.to)
+                        .map((w) => ({ ...w, from: w.from - seg.from, to: w.to - seg.from }));
                       return words.length ? (
                         <LayerNode
                           key={`captions-${i}`}

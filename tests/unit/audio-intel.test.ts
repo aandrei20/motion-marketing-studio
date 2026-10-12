@@ -42,7 +42,18 @@ describe("mixul: efectele sonore sub voce", () => {
     };
     const voice = tone(1, 0.2);
     const fx = tone(0.2, 0.5);
-    const out = mix({ durationSec: 4, voice: [{ audio: voice, atSec: 0.5 }], sfx: [{ audio: fx, atSec: 0.8 }, { audio: fx, atSec: 3 }], duck: { amountDb: -10, rampMs: 500, padMs: 120 }, intentionalSilences: [{ startSec: 0, endSec: 4 }], targetLufs: -14, truePeakCeiling: -1 });
+    const out = mix({
+      durationSec: 4,
+      voice: [{ audio: voice, atSec: 0.5 }],
+      sfx: [
+        { audio: fx, atSec: 0.8 },
+        { audio: fx, atSec: 3 },
+      ],
+      duck: { amountDb: -10, rampMs: 500, padMs: 120 },
+      intentionalSilences: [{ startSec: 0, endSec: 4 }],
+      targetLufs: -14,
+      truePeakCeiling: -1,
+    });
     const peak = (a: number, b: number) => Math.max(...Array.from(out.stems.sfx.L.subarray(Math.floor(a * SR), Math.floor(b * SR))).map(Math.abs));
     expect(peak(0.85, 0.95)).toBeLessThan(peak(3.05, 3.15) * 0.8);
   });

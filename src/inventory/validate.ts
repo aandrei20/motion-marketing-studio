@@ -34,7 +34,8 @@ export function refProblem(ref: string): string | null {
       const [file, name] = v.split("#");
       const abs = path.join(PATHS.root, file);
       if (!fs.existsSync(abs)) return `fișier inexistent: ${file}`;
-      if (name && !new RegExp(`export (async )?(function|const|class|type|interface) ${name}\\b`).test(fs.readFileSync(abs, "utf8"))) return `${file} nu exportă ${name}`;
+      if (name && !new RegExp(`export (async )?(function|const|class|type|interface) ${name}\\b`).test(fs.readFileSync(abs, "utf8")))
+        return `${file} nu exportă ${name}`;
       return null;
     }
     default:

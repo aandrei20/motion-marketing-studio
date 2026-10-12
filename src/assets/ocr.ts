@@ -24,17 +24,52 @@ export interface OcrResult {
 }
 
 export async function ocrImage(file: string, o: { language?: string; cacheDir?: string } = {}): Promise<OcrResult> {
-  if (process.platform !== "win32") return { available: false, language: null, lines: [], reason: "OCR-ul offline e disponibil doar pe Windows (Windows.Media.Ocr)." };
+  if (process.platform !== "win32")
+    return { available: false, language: null, lines: [], reason: "OCR-ul offline e disponibil doar pe Windows (Windows.Media.Ocr)." };
   const bytes = fs.readFileSync(file);
-  const key = crypto.createHash("sha1").update(bytes).update(o.language ?? "").digest("hex").slice(0, 20);
+  const key = crypto
+    .createHash("sha1")
+    .update(bytes)
+    .update(o.language ?? "")
+    .digest("hex")
+    .slice(0, 20);
   const dir = o.cacheDir ?? path.join(PATHS.cache, "ocr");
   const cached = path.join(dir, `${key}.json`);
   if (fs.existsSync(cached)) return JSON.parse(fs.readFileSync(cached, "utf8")) as OcrResult;
   fs.mkdirSync(dir, { recursive: true });
   const out = path.join(dir, `${key}.raw.json`);
-  const r = await runBinary("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(PATHS.root, "scripts", "ocr", "winrt-ocr.ps1"), "-Image", path.resolve(file), "-Out", out, ...(o.language ? ["-Language", o.language] : [])], { allowFail: true });
-  if (r.code !== 0 || !fs.existsSync(out)) return { available: false, language: null, lines: [], reason: `Motorul OCR Windows nu a rulat: ${(r.stderr || r.stdout.toString()).split("\n")[0].slice(0, 200)}` };
-  const raw = JSON.parse(fs.readFileSync(out, "utf8").replace(/^﻿/, "")) as { language: string; lines: Array<{ text: string; words: Array<{ text: string; x: number; y: number; w: number; h: number }> | { text: string; x: number; y: number; w: number; h: number } }> | { text: string; words: unknown } };
+  const r = await runBinary(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      path.join(PATHS.root, "scripts", "ocr", "winrt-ocr.ps1"),
+      "-Image",
+      path.resolve(file),
+      "-Out",
+      out,
+      ...(o.language ? ["-Language", o.language] : []),
+    ],
+    { allowFail: true },
+  );
+  if (r.code !== 0 || !fs.existsSync(out))
+    return {
+      available: false,
+      language: null,
+      lines: [],
+      reason: `Motorul OCR Windows nu a rulat: ${(r.stderr || r.stdout.toString()).split("\n")[0].slice(0, 200)}`,
+    };
+  const raw = JSON.parse(fs.readFileSync(out, "utf8").replace(/^﻿/, "")) as {
+    language: string;
+    lines:
+      | Array<{
+          text: string;
+          words: Array<{ text: string; x: number; y: number; w: number; h: number }> | { text: string; x: number; y: number; w: number; h: number };
+        }>
+      | { text: string; words: unknown };
+  };
   const lines = (Array.isArray(raw.lines) ? raw.lines : [raw.lines]).map((l) => {
     const words = (Array.isArray(l.words) ? l.words : l.words ? [l.words] : []) as Array<{ text: string; x: number; y: number; w: number; h: number }>;
     const x0 = Math.min(...words.map((w) => w.x));

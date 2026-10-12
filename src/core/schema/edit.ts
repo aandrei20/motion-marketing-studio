@@ -22,7 +22,11 @@ export const EditOp = z.discriminatedUnion("op", [
   SceneRef.extend({ op: z.literal("scene-mute"), muted: z.boolean() }),
   SceneRef.extend({ op: z.literal("scene-energy"), energy: z.number().min(0).max(1) }),
   SceneRef.extend({ op: z.literal("scene-text"), headline: z.string().optional(), sub: z.string().optional() }),
-  SceneRef.extend({ op: z.literal("set-transition"), capability: z.string().min(1).nullable(), durationFrames: z.number().int().min(0).max(60).nullable().default(null) }),
+  SceneRef.extend({
+    op: z.literal("set-transition"),
+    capability: z.string().min(1).nullable(),
+    durationFrames: z.number().int().min(0).max(60).nullable().default(null),
+  }),
   SceneRef.extend({ op: z.literal("set-camera"), capability: z.string().min(1), params: Params.default({}) }),
   SceneRef.extend({ op: z.literal("set-recipe"), recipe: z.string().min(1), params: Params.default({}) }),
   SceneRef.extend({ op: z.literal("beat-snap"), snap: z.enum(["none", "beat", "bar"]) }),
@@ -39,7 +43,12 @@ export const EditOp = z.discriminatedUnion("op", [
   /** recompilează din datele actuale (brief, brand, materiale), fără altă schimbare: repară un timeline învechit */
   z.object({ op: z.literal("recompile") }),
   /** mixul versiunii: variații în dB față de valorile curente */
-  z.object({ op: z.literal("mix"), musicDb: z.number().min(-20).max(20).default(0), sfxDb: z.number().min(-20).max(20).default(0), duckDb: z.number().min(-20).max(20).default(0) }),
+  z.object({
+    op: z.literal("mix"),
+    musicDb: z.number().min(-20).max(20).default(0),
+    sfxDb: z.number().min(-20).max(20).default(0),
+    duckDb: z.number().min(-20).max(20).default(0),
+  }),
 ]);
 export type EditOp = z.infer<typeof EditOp>;
 export type EditOpInput = z.input<typeof EditOp>;

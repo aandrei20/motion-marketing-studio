@@ -64,7 +64,10 @@ function parseSvgSize(xml: string): { width?: number; height?: number } {
   const w = num(tag.match(/\bwidth="([^"]+)"/)?.[1]);
   const h = num(tag.match(/\bheight="([^"]+)"/)?.[1]);
   if (w && h) return { width: Math.round(w), height: Math.round(h) };
-  const vb = tag.match(/viewBox="([^"]+)"/)?.[1]?.split(/[\s,]+/).map(Number);
+  const vb = tag
+    .match(/viewBox="([^"]+)"/)?.[1]
+    ?.split(/[\s,]+/)
+    .map(Number);
   if (vb && vb.length === 4) return { width: Math.round(vb[2]), height: Math.round(vb[3]) };
   return {};
 }
@@ -114,7 +117,22 @@ export async function thumbnail(file: string, w = 64, atSec = 0, h?: number): Pr
   const p = await probe(abs);
   if (!p.width || !p.height) return null;
   const hh = h ?? Math.max(1, Math.round((p.height / p.width) * w));
-  const args = [...(p.type === "video" && atSec > 0 ? ["-ss", String(atSec)] : []), "-i", abs, "-frames:v", "1", "-vf", `scale=${w}:${hh}`, "-f", "image2pipe", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-"];
+  const args = [
+    ...(p.type === "video" && atSec > 0 ? ["-ss", String(atSec)] : []),
+    "-i",
+    abs,
+    "-frames:v",
+    "1",
+    "-vf",
+    `scale=${w}:${hh}`,
+    "-f",
+    "image2pipe",
+    "-c:v",
+    "rawvideo",
+    "-pix_fmt",
+    "rgb24",
+    "-",
+  ];
   const r = await ffmpeg(args, { allowFail: true });
   if (r.code !== 0 || r.stdout.length < w * hh * 3) return null;
   return { w, h: hh, rgb: new Uint8Array(r.stdout.subarray(0, w * hh * 3)) };

@@ -52,14 +52,21 @@ export function loadGolden(name: string): Record<string, GoldenEntry> | null {
 
 export function saveGolden(name: string, data: Record<string, GoldenEntry>): void {
   fs.mkdirSync(GOLDEN_DIR, { recursive: true });
-  const sorted = Object.fromEntries(Object.keys(data).sort().map((k) => [k, data[k]]));
+  const sorted = Object.fromEntries(
+    Object.keys(data)
+      .sort()
+      .map((k) => [k, data[k]]),
+  );
   fs.writeFileSync(path.join(GOLDEN_DIR, `${name}.json`), `${JSON.stringify(sorted, null, 1)}\n`);
 }
 
 export const updateGolden = (): boolean => process.env.MMS_UPDATE_GOLDEN === "1";
 
 /** Comparația unui set de cadre cu referințele lui; întoarce regresiile (sau scrie referințele noi). */
-export async function checkGolden(name: string, frames: Array<{ id: string; file: string; aspect: number }>): Promise<{ regressions: string[]; missing: string[]; written: boolean }> {
+export async function checkGolden(
+  name: string,
+  frames: Array<{ id: string; file: string; aspect: number }>,
+): Promise<{ regressions: string[]; missing: string[]; written: boolean }> {
   const now: Record<string, GoldenEntry> = {};
   for (const f of frames) now[f.id] = await gridOf(f.file, f.aspect);
   const golden = loadGolden(name);

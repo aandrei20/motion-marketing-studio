@@ -65,7 +65,14 @@ export function sceneDuration(i: DurationInput): DurationDecision {
 }
 
 /** Alege tranziția dintre două scene după direcție și diferența de energie. Determinist (sămânță). */
-export function chooseTransition(prev: { energy: number; role: NarrativeRole } | null, next: { energy: number; role: NarrativeRole; id: string }, dir: DirectionProfile, seed: number, forbidden: string[] = [], previousTransition: string | null = null): string {
+export function chooseTransition(
+  prev: { energy: number; role: NarrativeRole } | null,
+  next: { energy: number; role: NarrativeRole; id: string },
+  dir: DirectionProfile,
+  seed: number,
+  forbidden: string[] = [],
+  previousTransition: string | null = null,
+): string {
   if (!prev) return "tr.cut";
   const delta = next.energy - prev.energy;
   const pool = (delta > 0.2 ? dir.transitions.rise : delta < -0.25 ? dir.transitions.drop : dir.transitions.calm).filter((t) => !forbidden.includes(t));

@@ -60,7 +60,13 @@ export interface ContrastMeasure {
  * Contrastul real al unui text în cutia lui (pixeli de imagine), cunoscând culoarea textului.
  * `exclude` = culori care fac parte din designul textului (accentul cuvintelor, markerul), nu din fundal.
  */
-export function measuredContrast(img: Raster, L: Float32Array, rect: { x: number; y: number; w: number; h: number }, textHex: string, exclude: string[] = []): ContrastMeasure | null {
+export function measuredContrast(
+  img: Raster,
+  L: Float32Array,
+  rect: { x: number; y: number; w: number; h: number },
+  textHex: string,
+  exclude: string[] = [],
+): ContrastMeasure | null {
   const x0 = Math.max(0, Math.floor(rect.x));
   const y0 = Math.max(0, Math.floor(rect.y));
   const x1 = Math.min(img.w, Math.ceil(rect.x + rect.w));
@@ -94,7 +100,12 @@ export function measuredContrast(img: Raster, L: Float32Array, rect: { x: number
   const worst = Lt > median ? percentile(bg, 0.85) : percentile(bg, 0.15);
   const mean = bg.reduce((a, b) => a + b, 0) / bg.length;
   const std = Math.sqrt(bg.reduce((a, b) => a + (b - mean) ** 2, 0) / bg.length);
-  return { ratio: Math.round(ratio(Lt, worst) * 100) / 100, bgLum: worst, bgStd: Math.round(std * 1000) / 1000, textShare: Math.round((text / n) * 1000) / 1000 };
+  return {
+    ratio: Math.round(ratio(Lt, worst) * 100) / 100,
+    bgLum: worst,
+    bgStd: Math.round(std * 1000) / 1000,
+    textShare: Math.round((text / n) * 1000) / 1000,
+  };
 }
 
 /** Densitatea de muchii (gradientul mediu al luminanței, 0..1): măsura aglomerării vizuale. */
@@ -155,7 +166,11 @@ export function detailOccupancy(L: Float32Array, w: number, h: number, cols = 16
   const mean = all.reduce((a, b) => a + b, 0) / Math.max(1, all.length);
   globalStd = Math.sqrt(all.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, all.length));
   const bboxShare = maxX < 0 ? 0 : ((maxX - minX + 1) * (maxY - minY + 1)) / (cols * rows);
-  return { flatShare: Math.round((flat / Math.max(1, total)) * 1000) / 1000, bboxShare: Math.round(bboxShare * 1000) / 1000, uniform: globalStd < 0.004 && flat === total };
+  return {
+    flatShare: Math.round((flat / Math.max(1, total)) * 1000) / 1000,
+    bboxShare: Math.round(bboxShare * 1000) / 1000,
+    uniform: globalStd < 0.004 && flat === total,
+  };
 }
 
 /** Ce parte din imagine are o culoare apropiată de `hex` (distanță RGB < tol). */
@@ -215,7 +230,10 @@ function settledTexts(t: Timeline, s: TimelineScene, local: number): TextProbe[]
       box: l.box,
       color: resolveHex(t.palette, l.params.color ?? "text"),
       colorKey: typeof (l.params.color ?? "text") === "string" && String(l.params.color ?? "text") in t.palette ? String(l.params.color ?? "text") : null,
-      exclude: [resolveHex(t.palette, l.params.emphasisColor ?? "accent"), ...(l.capability === "text.highlight" ? [resolveHex(t.palette, l.params.markColor ?? "accent")] : [])],
+      exclude: [
+        resolveHex(t.palette, l.params.emphasisColor ?? "accent"),
+        ...(l.capability === "text.highlight" ? [resolveHex(t.palette, l.params.markColor ?? "accent")] : []),
+      ],
       role: l.role,
       fontAt360: typeof l.params.fontSize === "number" ? (l.params.fontSize * 360) / Math.min(t.width, t.height) : null,
       shadow: l.params.shadow === true,
@@ -270,8 +288,15 @@ export function analyzeSample(img: Raster, t: Timeline, sample: SceneSample): { 
     if (m && m.ratio < required) {
       const busy = m.bgStd > 0.12;
       // cea mai lizibilă culoare din paletă pe fundalul măsurat (rămâne în brand); textul secundar nu primește accentul
-      const keys = (tx.role === "hero" ? ["text", "textMuted", "background", "accent", "primary"] : ["text", "textMuted", "background"]) as Array<keyof Palette>;
-      const best = keys.map((k) => { const c = hexToRgb(t.palette[k]); return { k, r: ratio(relLuma(c.r, c.g, c.b), m.bgLum) }; }).sort((a, b) => b.r - a.r)[0];
+      const keys = (tx.role === "hero" ? ["text", "textMuted", "background", "accent", "primary"] : ["text", "textMuted", "background"]) as Array<
+        keyof Palette
+      >;
+      const best = keys
+        .map((k) => {
+          const c = hexToRgb(t.palette[k]);
+          return { k, r: ratio(relLuma(c.r, c.g, c.b), m.bgLum) };
+        })
+        .sort((a, b) => b.r - a.r)[0];
       const recolor = best && best.k !== tx.colorKey && best.r >= required;
       issues.push({
         ...base,
@@ -279,8 +304,16 @@ export function analyzeSample(img: Raster, t: Timeline, sample: SceneSample): { 
         dimension: "contrast",
         severity: m.ratio < 2 ? "high" : "medium",
         problem: `Textul „${tx.text.slice(0, 32)}” are contrast ${m.ratio}:1 față de ce e în spatele lui (minim ${required}:1)${busy ? ", pe un fundal încărcat" : ""}.`,
-        recommendation: recolor ? `Folosește culoarea „${best.k}” din paletă pentru acest text (contrast estimat ${best.r.toFixed(1)}:1).` : busy && !tx.shadow ? "Adaugă umbră textului sau pune-l pe un panou; alternativ mută-l pe o zonă liniștită." : "Pune textul pe un panou (shape.panel) sau mută-l pe o zonă liniștită a cadrului (decizie de compoziție).",
-        suggestedFix: recolor ? [{ op: "layer-params", sceneId: s.id, slot: tx.layerId, params: { color: best.k } }] : busy && !tx.shadow ? [{ op: "layer-params", sceneId: s.id, slot: tx.layerId, params: { shadow: true } }] : [],
+        recommendation: recolor
+          ? `Folosește culoarea „${best.k}” din paletă pentru acest text (contrast estimat ${best.r.toFixed(1)}:1).`
+          : busy && !tx.shadow
+            ? "Adaugă umbră textului sau pune-l pe un panou; alternativ mută-l pe o zonă liniștită."
+            : "Pune textul pe un panou (shape.panel) sau mută-l pe o zonă liniștită a cadrului (decizie de compoziție).",
+        suggestedFix: recolor
+          ? [{ op: "layer-params", sceneId: s.id, slot: tx.layerId, params: { color: best.k } }]
+          : busy && !tx.shadow
+            ? [{ op: "layer-params", sceneId: s.id, slot: tx.layerId, params: { shadow: true } }]
+            : [],
         confidence: 0.7,
       });
     }
@@ -288,12 +321,47 @@ export function analyzeSample(img: Raster, t: Timeline, sample: SceneSample): { 
   const occ = detailOccupancy(L, img.w, img.h);
   const edge = edgeDensity(L, img.w, img.h);
   const brandShare = Math.max(colorShare(img, t.palette.primary), colorShare(img, t.palette.accent));
-  if (occ.uniform) issues.push({ ...base, dimension: "black-frame", severity: "critical", problem: "Cadrul randat e uniform (gol).", recommendation: "Verifică materialele și straturile scenei.", confidence: 0.9 });
+  if (occ.uniform)
+    issues.push({
+      ...base,
+      dimension: "black-frame",
+      severity: "critical",
+      problem: "Cadrul randat e uniform (gol).",
+      recommendation: "Verifică materialele și straturile scenei.",
+      confidence: 0.9,
+    });
   const role = s.meta.narrativeRole;
   const restful = role === "cta" || role === "outro" || s.meta.shot === "title";
-  if (!occ.uniform && !restful && occ.flatShare > 0.82) issues.push({ ...base, dimension: "whitespace", severity: "low", problem: `${Math.round(occ.flatShare * 100)}% din cadru e fără detaliu.`, recommendation: "Mărește subiectul (zoom pe funcție) sau adaugă un element secundar care susține mesajul.", confidence: 0.5 });
-  if (!occ.uniform && !restful && occ.bboxShare < 0.22 && s.layers.some((l) => l.capability.startsWith("media."))) issues.push({ ...base, dimension: "composition", severity: "medium", problem: `Subiectul ocupă doar ~${Math.round(occ.bboxShare * 100)}% din cadru.`, recommendation: "Apropie camera de zona importantă sau folosește adaptorul de decupaj pe acest format.", confidence: 0.55 });
+  if (!occ.uniform && !restful && occ.flatShare > 0.82)
+    issues.push({
+      ...base,
+      dimension: "whitespace",
+      severity: "low",
+      problem: `${Math.round(occ.flatShare * 100)}% din cadru e fără detaliu.`,
+      recommendation: "Mărește subiectul (zoom pe funcție) sau adaugă un element secundar care susține mesajul.",
+      confidence: 0.5,
+    });
+  if (!occ.uniform && !restful && occ.bboxShare < 0.22 && s.layers.some((l) => l.capability.startsWith("media.")))
+    issues.push({
+      ...base,
+      dimension: "composition",
+      severity: "medium",
+      problem: `Subiectul ocupă doar ~${Math.round(occ.bboxShare * 100)}% din cadru.`,
+      recommendation: "Apropie camera de zona importantă sau folosește adaptorul de decupaj pe acest format.",
+      confidence: 0.55,
+    });
   const visibleText = sample.texts.length;
-  if (edge > 0.09 && visibleText >= 2) issues.push({ ...base, dimension: "clutter", severity: "medium", problem: `Cadru încărcat (densitate de muchii ${edge}) cu ${visibleText} texte simultan.`, recommendation: "Un singur mesaj pe moment: scoate un text sau estompează fundalul în spatele lui.", confidence: 0.5 });
-  return { metrics: { edge, flatShare: occ.flatShare, bboxShare: occ.bboxShare, uniform: occ.uniform, brandShare: Math.round(brandShare * 10000) / 10000, texts }, issues };
+  if (edge > 0.09 && visibleText >= 2)
+    issues.push({
+      ...base,
+      dimension: "clutter",
+      severity: "medium",
+      problem: `Cadru încărcat (densitate de muchii ${edge}) cu ${visibleText} texte simultan.`,
+      recommendation: "Un singur mesaj pe moment: scoate un text sau estompează fundalul în spatele lui.",
+      confidence: 0.5,
+    });
+  return {
+    metrics: { edge, flatShare: occ.flatShare, bboxShare: occ.bboxShare, uniform: occ.uniform, brandShare: Math.round(brandShare * 10000) / 10000, texts },
+    issues,
+  };
 }

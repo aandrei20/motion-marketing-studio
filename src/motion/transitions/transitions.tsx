@@ -27,8 +27,7 @@ export const trCut = defineTransition({
   ...base,
   id: "tr.cut",
   title: "Tăietură",
-  description:
-    "Tăietură directă. Combinată cu snap pe beat grid (storyboard: beat.snap = beat/bar) devine tăietură pe ritm (beat cut).",
+  description: "Tăietură directă. Combinată cu snap pe beat grid (storyboard: beat.snap = beat/bar) devine tăietură pe ritm (beat cut).",
   tags: ["cut", "hard-cut", "beat-cut", "rhythm", "fast"],
   timing: { model: "transition", defaultFrames: 0, minFrames: 0 },
   performance: "light",
@@ -227,7 +226,10 @@ export const trZoomThrough = defineTransition({
   description: "Camera intră în scena veche (zoom + blur) și iese în cea nouă, care se așază dintr-o scară mai mare.",
   tags: ["zoom", "zoom-through", "dive", "energetic", "impact"],
   performance: "medium",
-  sfx: [{ sound: "whoosh", at: "start" }, { sound: "impact-small", at: "end", gainDb: -6 }],
+  sfx: [
+    { sound: "whoosh", at: "start" },
+    { sound: "impact-small", at: "end", gainDb: -6 },
+  ],
   defaultDuration: 12,
   params: z.object({ maxScale: z.number().min(1.1).max(4).default(2.2) }),
   present: ({ p, params }) => {
@@ -270,8 +272,7 @@ export const trFlash = defineTransition({
   ...base,
   id: "tr.flash",
   title: "Flash de expunere",
-  description:
-    "Supraexpunere scurtă (2–4 cadre) pe tăietură, cu opacitate maximă 0,55. Validatorul limitează la maximum 2 flash-uri pe secundă.",
+  description: "Supraexpunere scurtă (2–4 cadre) pe tăietură, cu opacitate maximă 0,55. Validatorul limitează la maximum 2 flash-uri pe secundă.",
   tags: ["flash", "impact", "exposure", "hit", "drop"],
   performance: "light",
   sfx: [{ sound: "impact", at: "start" }],
@@ -324,7 +325,10 @@ export const trParallaxHandoff = defineTransition({
     const eOut = EASE.inOut(p);
     const v = speed(EASE.expoOut, p, duration) * env.width;
     return {
-      outgoing: { transform: `translate(${dx * env.width * 0.35 * eOut}px, ${dy * env.height * 0.35 * eOut}px) scale(${1 - 0.05 * eOut})`, filter: `brightness(${1 - 0.35 * eOut})` },
+      outgoing: {
+        transform: `translate(${dx * env.width * 0.35 * eOut}px, ${dy * env.height * 0.35 * eOut}px) scale(${1 - 0.05 * eOut})`,
+        filter: `brightness(${1 - 0.35 * eOut})`,
+      },
       incoming: {
         transform: `translate(${-dx * env.width * (1 - eIn)}px, ${-dy * env.height * (1 - eIn)}px)`,
         dirBlur: [dx ? Math.min(30, v * 0.08) : 0, dy ? Math.min(30, v * 0.08) : 0],
@@ -348,7 +352,12 @@ export const trPushThrough = defineTransition({
     const e = EASE.expoIn(p);
     const eIn = EASE.out(p);
     return {
-      outgoing: { transform: `scale(${1 + (params.maxScale - 1) * e})`, opacity: 1 - EASE.in(clamp((p - 0.35) / 0.65, 0, 1)), zIndex: 2, filter: `blur(${(e * 10).toFixed(2)}px)` },
+      outgoing: {
+        transform: `scale(${1 + (params.maxScale - 1) * e})`,
+        opacity: 1 - EASE.in(clamp((p - 0.35) / 0.65, 0, 1)),
+        zIndex: 2,
+        filter: `blur(${(e * 10).toFixed(2)}px)`,
+      },
       incoming: { transform: `scale(${0.82 + 0.18 * eIn})`, zIndex: 1 },
     };
   },
@@ -425,7 +434,18 @@ export const trGlitch = defineTransition({
         <>
           <ChromaFilterDefs id={id} offset={off} />
           {bands.map((b, i) => (
-            <div key={i} style={{ position: "absolute", left: 0, right: 0, top: `${b.top}%`, height: `${b.h}%`, background: `rgba(255,255,255,${b.a})`, mixBlendMode: "overlay" }} />
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: `${b.top}%`,
+                height: `${b.h}%`,
+                background: `rgba(255,255,255,${b.a})`,
+                mixBlendMode: "overlay",
+              }}
+            />
           ))}
         </>
       ),

@@ -39,30 +39,54 @@ const env = (t: Float32Array, f: (t: number) => number) => {
 
 function pop(pitch = 1): Stereo {
   const t = t_(0.12);
-  const body = mul(sineOsc((tt) => (380 + 900 * (1 - Math.exp(-tt * 60))) * pitch, t.length), env(t, (tt) => Math.exp(-tt * 38) * Math.min(1, tt / 0.001)));
-  const click = mul(band(noise(t.length, "pop"), 2000, 9000), env(t, (tt) => Math.exp(-tt * 900) * 0.25));
+  const body = mul(
+    sineOsc((tt) => (380 + 900 * (1 - Math.exp(-tt * 60))) * pitch, t.length),
+    env(t, (tt) => Math.exp(-tt * 38) * Math.min(1, tt / 0.001)),
+  );
+  const click = mul(
+    band(noise(t.length, "pop"), 2000, 9000),
+    env(t, (tt) => Math.exp(-tt * 900) * 0.25),
+  );
   return normStereo(reverb(add(body, click), { size: 0.2, mix: 0.08, tail: 0.15 }), 0.8);
 }
 
 function slam(weight = 1): Stereo {
   const t = t_(0.35);
-  const thump = mul(sineOsc((tt) => 48 + 150 * Math.exp(-tt * 28), t.length), env(t, (tt) => Math.exp(-tt * 11) * weight));
-  const snap = mul(band(noise(t.length, "slam"), 1200, 7000), env(t, (tt) => Math.exp(-tt * 160) * 0.7));
+  const thump = mul(
+    sineOsc((tt) => 48 + 150 * Math.exp(-tt * 28), t.length),
+    env(t, (tt) => Math.exp(-tt * 11) * weight),
+  );
+  const snap = mul(
+    band(noise(t.length, "slam"), 1200, 7000),
+    env(t, (tt) => Math.exp(-tt * 160) * 0.7),
+  );
   return normStereo(reverb(saturate(add(thump, snap), 1.8), { size: 0.3, mix: 0.12 }), 0.85);
 }
 
 function impact(size = 1): Stereo {
   const t = t_(1.6);
-  const boom = mul(sineOsc((tt) => 34 + 70 * Math.exp(-tt * 9), t.length), env(t, (tt) => Math.exp(-tt * 2.6) * 1.2));
-  const burst = mul(band(noise(t.length, "imp-b"), 80, 2500), env(t, (tt) => Math.exp(-tt * 14) * 0.6));
-  const crack = mul(band(noise(t.length, "imp-c"), 2500, 12000), env(t, (tt) => Math.exp(-tt * 60) * 0.3));
+  const boom = mul(
+    sineOsc((tt) => 34 + 70 * Math.exp(-tt * 9), t.length),
+    env(t, (tt) => Math.exp(-tt * 2.6) * 1.2),
+  );
+  const burst = mul(
+    band(noise(t.length, "imp-b"), 80, 2500),
+    env(t, (tt) => Math.exp(-tt * 14) * 0.6),
+  );
+  const crack = mul(
+    band(noise(t.length, "imp-c"), 2500, 12000),
+    env(t, (tt) => Math.exp(-tt * 60) * 0.3),
+  );
   return normStereo(reverb(saturate(mul(add(boom, burst, crack), size), 1.5), { size: 0.85, mix: 0.18, damp: 0.6 }), 0.9);
 }
 
 function bassHit(): Stereo {
   const t = t_(1.8);
   const f = (tt: number) => 42 + 33 * Math.exp(-tt * 5) + 140 * Math.exp(-tt * 60);
-  const body = mul(sineOsc(f, t.length), env(t, (tt) => Math.exp(-tt * 1.5) * Math.min(1, tt / 0.002)));
+  const body = mul(
+    sineOsc(f, t.length),
+    env(t, (tt) => Math.exp(-tt * 1.5) * Math.min(1, tt / 0.002)),
+  );
   return pan(normalize(saturate(mul(body, 1.6), 2.2), 0.95));
 }
 
@@ -70,20 +94,29 @@ function tick(pitch = 1, soft = false): Stereo {
   const t = t_(0.07);
   const f0 = 1900 * pitch;
   const s = env(t, (tt) => (Math.sin(2 * Math.PI * f0 * tt) + 0.4 * Math.sin(2 * Math.PI * f0 * 2.7 * tt)) * Math.exp(-tt * 90));
-  const n = mul(band(noise(t.length, `tick${pitch}`), 3000, 9000), env(t, (tt) => Math.exp(-tt * 700) * 0.2));
+  const n = mul(
+    band(noise(t.length, `tick${pitch}`), 3000, 9000),
+    env(t, (tt) => Math.exp(-tt * 700) * 0.2),
+  );
   return pan(normalize(add(s, n), soft ? 0.35 : 0.6));
 }
 
 function click(): Stereo {
   const t = t_(0.06);
-  const n = mul(band(noise(t.length, "click"), 1300, 7000), env(t, (tt) => Math.exp(-tt * 850)));
+  const n = mul(
+    band(noise(t.length, "click"), 1300, 7000),
+    env(t, (tt) => Math.exp(-tt * 850)),
+  );
   const s = env(t, (tt) => Math.sin(2 * Math.PI * 2300 * tt) * Math.exp(-tt * 170) * 0.55);
   return pan(normalize(add(n, s), 0.6));
 }
 
 function key(): Stereo {
   const t = t_(0.045);
-  const n = mul(band(noise(t.length, "key"), 1800, 6500), env(t, (tt) => Math.exp(-tt * 600)));
+  const n = mul(
+    band(noise(t.length, "key"), 1800, 6500),
+    env(t, (tt) => Math.exp(-tt * 600)),
+  );
   const thock = env(t, (tt) => Math.sin(2 * Math.PI * 420 * tt) * Math.exp(-tt * 220) * 0.4);
   return pan(normalize(add(n, thock), 0.45));
 }
@@ -94,7 +127,11 @@ function whoosh(dur = 0.45, up = true, panDir = 1): Stereo {
     const p = Math.min(1, tt / dur);
     return up ? 400 * 9 ** p : 4000 * 0.12 ** p;
   };
-  const y = sweep(noise(n, `wh${dur}${up}`), (tt) => fc(tt) * 0.55, (tt) => fc(tt) * 1.8);
+  const y = sweep(
+    noise(n, `wh${dur}${up}`),
+    (tt) => fc(tt) * 0.55,
+    (tt) => fc(tt) * 1.8,
+  );
   const e = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const p = i / n;
@@ -113,7 +150,11 @@ function whoosh(dur = 0.45, up = true, panDir = 1): Stereo {
 
 function riser(dur = 1): Stereo {
   const n = samples(dur);
-  const nz = sweep(noise(n, `riser${dur}`), (tt) => 400 * 20 ** (tt / dur), (tt) => 2000 * 6 ** (tt / dur));
+  const nz = sweep(
+    noise(n, `riser${dur}`),
+    (tt) => 400 * 20 ** (tt / dur),
+    (tt) => 2000 * 6 ** (tt / dur),
+  );
   const tone = add(...[-15, 0, 15].map((c) => sawOsc((tt) => 220 * 2 ** (3 * (tt / dur) ** 1.5) * 2 ** (c / 1200), n)));
   const toneF = band(mul(tone, 1 / 3), 200, 6000, 2);
   const x = new Float32Array(n);
@@ -126,7 +167,11 @@ function riser(dur = 1): Stereo {
 
 function downlifter(dur = 0.9): Stereo {
   const n = samples(dur);
-  const nz = sweep(noise(n, "down"), (tt) => 3000 * 0.05 ** (tt / dur), (tt) => 9000 * 0.15 ** (tt / dur));
+  const nz = sweep(
+    noise(n, "down"),
+    (tt) => 3000 * 0.05 ** (tt / dur),
+    (tt) => 9000 * 0.15 ** (tt / dur),
+  );
   const tone = sineOsc((tt) => 900 * 0.15 ** (tt / dur), n);
   const x = new Float32Array(n);
   for (let i = 0; i < n; i++) {
@@ -138,13 +183,19 @@ function downlifter(dur = 0.9): Stereo {
 
 function subDrop(): Stereo {
   const t = t_(1.2);
-  const x = mul(sineOsc((tt) => 30 + 90 * Math.exp(-tt * 3.5), t.length), env(t, (tt) => Math.min(1, tt / 0.01) * Math.exp(-tt * 2.2)));
+  const x = mul(
+    sineOsc((tt) => 30 + 90 * Math.exp(-tt * 3.5), t.length),
+    env(t, (tt) => Math.min(1, tt / 0.01) * Math.exp(-tt * 2.2)),
+  );
   return pan(normalize(saturate(x, 1.4), 0.9));
 }
 
 function revCymbal(dur = 0.6): Stereo {
   const t = t_(dur);
-  const x = mul(band(noise(t.length, "rev"), 3500, 15000), env(t, (tt) => Math.exp(-(dur - tt) * 5) * (tt / dur) ** 2));
+  const x = mul(
+    band(noise(t.length, "rev"), 3500, 15000),
+    env(t, (tt) => Math.exp(-(dur - tt) * 5) * (tt / dur) ** 2),
+  );
   return haas(normalize(x, 0.7), 8);
 }
 
@@ -208,7 +259,10 @@ function glitch(dur = 0.45): Stereo {
 
 function marker(): Stereo {
   const t = t_(0.28);
-  const x = mul(band(noise(t.length, "marker"), 1500, 6000, 2), env(t, (tt) => Math.sin(Math.PI * Math.min(1, tt / 0.28)) * (0.6 + 0.4 * Math.sin(tt * 90))));
+  const x = mul(
+    band(noise(t.length, "marker"), 1500, 6000, 2),
+    env(t, (tt) => Math.sin(Math.PI * Math.min(1, tt / 0.28)) * (0.6 + 0.4 * Math.sin(tt * 90))),
+  );
   return pan(normalize(x, 0.4));
 }
 
@@ -223,8 +277,22 @@ function toggle(): Stereo {
 
 function drop(): Stereo {
   const t = t_(0.25);
-  const thud = mul(sineOsc((tt) => 70 + 90 * Math.exp(-tt * 30), t.length), env(t, (tt) => Math.exp(-tt * 14)));
-  return pan(normalize(add(thud, mul(band(noise(t.length, "drop"), 800, 5000), env(t, (tt) => Math.exp(-tt * 300) * 0.3))), 0.7));
+  const thud = mul(
+    sineOsc((tt) => 70 + 90 * Math.exp(-tt * 30), t.length),
+    env(t, (tt) => Math.exp(-tt * 14)),
+  );
+  return pan(
+    normalize(
+      add(
+        thud,
+        mul(
+          band(noise(t.length, "drop"), 800, 5000),
+          env(t, (tt) => Math.exp(-tt * 300) * 0.3),
+        ),
+      ),
+      0.7,
+    ),
+  );
 }
 
 function counterRoll(dur = 0.9): Stereo {
@@ -258,7 +326,16 @@ function scratch(): Stereo {
     const k = Math.floor(pos);
     x[i] = (src[k] + (src[k + 1] - src[k]) * (pos - k)) * Math.sin((Math.PI * tt) / 0.22);
   }
-  return pan(normalize(sweep(x, (tt) => 300 + 2000 * Math.abs(Math.sin((Math.PI * tt) / 0.22)), () => 4000), 0.6));
+  return pan(
+    normalize(
+      sweep(
+        x,
+        (tt) => 300 + 2000 * Math.abs(Math.sin((Math.PI * tt) / 0.22)),
+        () => 4000,
+      ),
+      0.6,
+    ),
+  );
 }
 
 function heartbeat(): Stereo {
@@ -276,10 +353,14 @@ function heartbeat(): Stereo {
 }
 
 function notification(): Stereo {
-  return bell([
-    [83, 0],
-    [90, 0.09],
-  ], 6, 0.9);
+  return bell(
+    [
+      [83, 0],
+      [90, 0.09],
+    ],
+    6,
+    0.9,
+  );
 }
 
 function errorSound(): Stereo {
@@ -321,7 +402,16 @@ export const SFX: SfxDef[] = [
   { id: "toggle", title: "Comutator", category: "ui", make: toggle },
   { id: "drop", title: "Drop (plasare)", category: "ui", make: drop },
   { id: "notification", title: "Notificare", category: "ui", make: notification },
-  { id: "ding", title: "Succes / gata", category: "ui", make: () => bell([[88, 0], [92, 0.07]]) },
+  {
+    id: "ding",
+    title: "Succes / gata",
+    category: "ui",
+    make: () =>
+      bell([
+        [88, 0],
+        [92, 0.07],
+      ]),
+  },
   { id: "error", title: "Eroare", category: "ui", make: errorSound },
   { id: "whoosh", title: "Whoosh", category: "transition", make: () => whoosh(0.45) },
   { id: "whoosh-fast", title: "Whoosh rapid", category: "transition", make: () => whoosh(0.22) },
@@ -333,7 +423,21 @@ export const SFX: SfxDef[] = [
   { id: "downlifter", title: "Downlifter", category: "riser", make: () => downlifter(0.9) },
   { id: "rev-cymbal", title: "Cinel invers", category: "riser", make: () => revCymbal(0.55) },
   { id: "shimmer", title: "Shimmer / glint", category: "logo", make: () => shimmer(0.9) },
-  { id: "sparkle", title: "Scânteie", category: "logo", make: () => bell([[96, 0], [100, 0.035], [103, 0.07]], 14, 0.5) },
+  {
+    id: "sparkle",
+    title: "Scânteie",
+    category: "logo",
+    make: () =>
+      bell(
+        [
+          [96, 0],
+          [100, 0.035],
+          [103, 0.07],
+        ],
+        14,
+        0.5,
+      ),
+  },
   { id: "glitch", title: "Glitch", category: "texture", make: () => glitch(0.45) },
   { id: "marker", title: "Marker pe hârtie", category: "text", make: marker },
   { id: "counter", title: "Contor (rolă)", category: "data", make: () => counterRoll(0.9) },

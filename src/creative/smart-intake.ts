@@ -73,13 +73,23 @@ function guessCategory(prominent: string, body: string): { category: ProductCate
     ["desktop-app", [/(download for (mac|windows)|descarc[ăa] pentru (mac|windows))/gi], "descărcare pentru desktop"],
     ["ecommerce", [/\b(co[șs]|cart|checkout|livrare|shipping|magazin)\b/gi], "termeni de comerț"],
     ["fintech", [/\b(factur|plat[ăa]|banc|invest|wallet|fintech)/gi], "termeni financiari"],
-    ["saas", [/\b(echip[ăa]|team|workspace|dashboard|abonament|plan(uri)?|plans|pricing|sarcini|tasks|proiecte|analytics|free trial|subscription)\b/gi], "termeni de produs software pe abonament"],
+    [
+      "saas",
+      [/\b(echip[ăa]|team|workspace|dashboard|abonament|plan(uri)?|plans|pricing|sarcini|tasks|proiecte|analytics|free trial|subscription)\b/gi],
+      "termeni de produs software pe abonament",
+    ],
   ];
   const count = (t: string, res: RegExp[]) => res.reduce((n, re) => n + (t.match(re)?.length ?? 0), 0);
   const scored = rules.map(([category, res, why]) => ({ category, why, score: 3 * count(prominent, res) + count(body, res) }));
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a));
   if (best.score < 2) return { category: "website", why: "nu am găsit semnale clare; categoria generală" };
-  return { category: best.category, why: `${best.why} (scor ${best.score}${scored.filter((x) => x !== best && x.score > 0).map((x) => `; ${x.category} ${x.score}`).join("")})` };
+  return {
+    category: best.category,
+    why: `${best.why} (scor ${best.score}${scored
+      .filter((x) => x !== best && x.score > 0)
+      .map((x) => `; ${x.category} ${x.score}`)
+      .join("")})`,
+  };
 }
 
 function guessObjective(buttons: string[], vision: string): { objective: BriefInput["objective"]; why: string } {
@@ -87,7 +97,8 @@ function guessObjective(buttons: string[], vision: string): { objective: BriefIn
   if (/lans|launch|nou(a|ă)? (versiune|funcți)/.test(all)) return { objective: "launch", why: "viziunea sau pagina vorbesc despre o lansare" };
   if (/descarc|download|instaleaz|install/.test(all)) return { objective: "downloads", why: "butoanele cer descărcarea" };
   if (/cump[ăa]r|buy|shop|comand/.test(all)) return { objective: "sales", why: "butoanele cer cumpărarea" };
-  if (/[îi]ncearc|try|start|[îi]ncepe|sign ?up|cont nou|creeaz[ăa] cont|gratuit|free/.test(all)) return { objective: "signups", why: "butoanele cer înscrierea / încercarea" };
+  if (/[îi]ncearc|try|start|[îi]ncepe|sign ?up|cont nou|creeaz[ăa] cont|gratuit|free/.test(all))
+    return { objective: "signups", why: "butoanele cer înscrierea / încercarea" };
   return { objective: "awareness", why: "fără un buton de conversie clar" };
 }
 
@@ -117,26 +128,48 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   const ask: IntakeQuestionToAsk[] = [];
   const vision = (req.vision ?? "").trim();
   const text = page ? `${page.title} ${page.description} ${page.headings.map((h) => h.text).join(" ")} ${page.fullText.slice(0, 6000)}` : vision;
-  const A = (id: string, value: string, source: AnswerSource, confidence: IntakeAnswer["confidence"], why: string) => answers.push({ id, question: q(id), value, source, confidence, why });
+  const A = (id: string, value: string, source: AnswerSource, confidence: IntakeAnswer["confidence"], why: string) =>
+    answers.push({ id, question: q(id), value, source, confidence, why });
   const Q = (id: string, why: string, o: { options?: string[]; suggestion?: string } = {}) => ask.push({ id, question: q(id), why, ...o });
 
   // A. produs și obiectiv
   const host = req.url ? new URL(req.url).hostname.replace(/^www\./, "") : "";
   const name = page?.og["og:site_name"] || (page?.title.split(/\s[|–—-]\s/)[0] ?? "").trim() || host.split(".")[0] || "Produs";
-  A("a1", `${name}${req.url ? ` · ${req.url}` : ""}`, page ? "site" : "user", page ? "medium" : "high", page ? "numele din titlul / og:site_name al paginii" : "din cerere");
-  const prominent = page ? `${page.title} ${page.description} ${page.headings.filter((h) => h.level <= 3).map((h) => h.text).join(" ")}` : vision;
+  A(
+    "a1",
+    `${name}${req.url ? ` · ${req.url}` : ""}`,
+    page ? "site" : "user",
+    page ? "medium" : "high",
+    page ? "numele din titlul / og:site_name al paginii" : "din cerere",
+  );
+  const prominent = page
+    ? `${page.title} ${page.description} ${page.headings
+        .filter((h) => h.level <= 3)
+        .map((h) => h.text)
+        .join(" ")}`
+    : vision;
   const cat = guessCategory(prominent, page ? page.fullText.slice(0, 12000) : "");
   A("a2", cat.category, "inferred", cat.category === "website" ? "low" : "medium", cat.why);
   // butoanele paginii; dacă nu se recunoaște niciunul, linkurile scurte de acțiune (pe multe site-uri CTA-ul e un link)
   const actionLink = /[îi]ncearc|try|start|[îi]ncepe|sign ?up|[îi]nscrie|creeaz[ăa] cont|get started|free trial|descarc|download|cump[ăa]r|buy|demo/i;
-  const buttons = page?.buttons.length ? page.buttons : [...new Set((page?.links ?? []).map((l) => l.text).filter((t) => t && t.split(/\s+/).length <= 5 && actionLink.test(t)))];
+  const buttons = page?.buttons.length
+    ? page.buttons
+    : [...new Set((page?.links ?? []).map((l) => l.text).filter((t) => t && t.split(/\s+/).length <= 5 && actionLink.test(t)))];
   const obj = guessObjective(buttons, vision);
   A("a3", obj.objective, "inferred", "medium", obj.why);
-  if (page?.description) Q("a4", "Publicul și durerea lui schimbă hook-ul și problema; nu le pot deduce sigur din site.", { suggestion: `Pe site: „${page.description.slice(0, 140)}”` });
+  if (page?.description)
+    Q("a4", "Publicul și durerea lui schimbă hook-ul și problema; nu le pot deduce sigur din site.", {
+      suggestion: `Pe site: „${page.description.slice(0, 140)}”`,
+    });
   else Q("a4", "Publicul și durerea lui schimbă hook-ul și problema.");
   // preferința: încercare / înscriere (expresii clare), apoi „gratuit”, apoi descărcare / cumpărare / demo;
   // butonul de login vine ultimul. Un CTA are cel mult 5 cuvinte.
-  const prefs = [/[îi]ncearc|\btry\b|\bstart|get started|[îi]ncepe|sign ?up|[îi]nscrie|creeaz[ăa] cont|free trial|perioad[ăa] de prob/i, /gratuit|\bfree\b/i, /descarc|download|cump[ăa]r|\bbuy\b|demo|rezerv/i, /\bcont\b|log ?in|autentific/i];
+  const prefs = [
+    /[îi]ncearc|\btry\b|\bstart|get started|[îi]ncepe|sign ?up|[îi]nscrie|creeaz[ăa] cont|free trial|perioad[ăa] de prob/i,
+    /gratuit|\bfree\b/i,
+    /descarc|download|cump[ăa]r|\bbuy\b|demo|rezerv/i,
+    /\bcont\b|log ?in|autentific/i,
+  ];
   const ctaCandidates = buttons.filter((b) => b.split(/\s+/).length <= 5);
   const cta = prefs.map((re) => ctaCandidates.find((b) => re.test(b))).find(Boolean) ?? ctaCandidates[0];
   Q("a5", "Textul CTA apare cuvânt cu cuvânt pe cardul final; îl confirm cu tine.", cta ? { suggestion: `Butonul de pe site: „${cta}”` } : {});
@@ -144,8 +177,20 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   // B. platformă și format
   const formats = req.formats?.length ? req.formats : ["9x16"];
   const platforms = req.platforms?.length ? req.platforms : [...new Set(formats.map((f) => PLATFORM_FOR_FORMAT[f.replace(/-4k$/, "")] ?? "generic"))];
-  A("b1", platforms.join(", "), req.platforms?.length ? "user" : "inferred", req.platforms?.length ? "high" : "medium", req.platforms?.length ? "din cerere" : "din format (9:16 → zonele TikTok, cele mai stricte; acoperă și Reels/Shorts)");
-  A("b2", formats.join(", "), req.formats?.length ? "user" : "default", req.formats?.length ? "high" : "low", req.formats?.length ? "din cerere" : "implicit vertical");
+  A(
+    "b1",
+    platforms.join(", "),
+    req.platforms?.length ? "user" : "inferred",
+    req.platforms?.length ? "high" : "medium",
+    req.platforms?.length ? "din cerere" : "din format (9:16 → zonele TikTok, cele mai stricte; acoperă și Reels/Shorts)",
+  );
+  A(
+    "b2",
+    formats.join(", "),
+    req.formats?.length ? "user" : "default",
+    req.formats?.length ? "high" : "low",
+    req.formats?.length ? "din cerere" : "implicit vertical",
+  );
   const duration = req.durationSec ?? 30;
   A("b3", `${duration} s @ 30 fps`, req.durationSec ? "user" : "default", req.durationSec ? "high" : "low", req.durationSec ? "din cerere" : "30 s implicit");
   // C. poveste și creativ
@@ -155,23 +200,55 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   if (phrases.length) Q("c2", "Frazele dintre ghilimele par fraze obligatorii, exacte; le confirm.", { suggestion: phrases.map((p) => `„${p}”`).join(", ") });
   else A("c2", "niciuna", "default", "medium", "nu există fraze citate în viziune");
   const dir = guessDirection(vision);
-  A("c3", dir.direction ? `${DIRECTIONS[dir.direction].letter} – ${DIRECTIONS[dir.direction].label}` : "propune-mi 3 (concepte cu scor)", dir.direction ? "inferred" : "default", dir.direction ? "medium" : "high", dir.why);
+  A(
+    "c3",
+    dir.direction ? `${DIRECTIONS[dir.direction].letter} – ${DIRECTIONS[dir.direction].label}` : "propune-mi 3 (concepte cu scor)",
+    dir.direction ? "inferred" : "default",
+    dir.direction ? "medium" : "high",
+    dir.why,
+  );
   const pacing = dir.direction ? DIRECTIONS[dir.direction].pacing : "medium";
   A("c4", pacing, "inferred", "medium", dir.direction ? "ritmul direcției" : "ritm mediu până la alegerea conceptului");
   A("c5", "efecte medii · 3D permis · fără chipuri", "default", "medium", "implicit; chipurile doar cu materialele tale (regula 2)");
-  A("c6", req.references?.length ? `${req.references.length} referințe` : "fără referințe", req.references?.length ? "user" : "default", "high", req.references?.length ? "le analizez structural (Reference DNA)" : "—");
+  A(
+    "c6",
+    req.references?.length ? `${req.references.length} referințe` : "fără referințe",
+    req.references?.length ? "user" : "default",
+    "high",
+    req.references?.length ? "le analizez structural (Reference DNA)" : "—",
+  );
   // D. materiale
   A("d1", "capturi reale automate din site + logo din pagină", "inferred", "medium", "nu ai dat materiale; le capturez (regula 1: interfața doar reală)");
-  A("d2", "da, fără autentificare", page ? "inferred" : "default", page ? "high" : "low", page ? "pagina s-a încărcat fără cont" : "presupus până la prima captură");
-  const featureHeads = page ? page.headings.filter((h) => h.level >= 2 && h.text.length < 60).slice(0, 4).map((h) => h.text) : [];
+  A(
+    "d2",
+    "da, fără autentificare",
+    page ? "inferred" : "default",
+    page ? "high" : "low",
+    page ? "pagina s-a încărcat fără cont" : "presupus până la prima captură",
+  );
+  const featureHeads = page
+    ? page.headings
+        .filter((h) => h.level >= 2 && h.text.length < 60)
+        .slice(0, 4)
+        .map((h) => h.text)
+    : [];
   if (featureHeads.length) A("d3", featureHeads.join(" → "), "site", "low", "titlurile secțiunilor de pe site, în ordine (le poți reordona)");
   else Q("d3", "Ce funcții să arăt, în ordinea importanței? (nu le-am găsit pe pagină)");
   A("d4", "se decide după captură, doar dacă apar date personale", "default", "high", "detecția rulează la captură");
-  Q("d5", "Capturile, logo-ul și textele site-ului sunt materialele cuiva: ai dreptul să le folosești? (regula 3)", { options: ["da, e produsul meu / am drept", "nu", "nu știu"] });
+  Q("d5", "Capturile, logo-ul și textele site-ului sunt materialele cuiva: ai dreptul să le folosești? (regula 3)", {
+    options: ["da, e produsul meu / am drept", "nu", "nu știu"],
+  });
   // E. text și limbă (fără valoare implicită, regula 16)
   if (req.textLanguage) A("e1", req.textLanguage, "user", "high", "din cerere");
   else Q("e1", "Limba textului nu are valoare implicită (regula 16).");
-  if (req.voiceLanguage ?? req.textLanguage) A("e2", (req.voiceLanguage ?? req.textLanguage)!, req.voiceLanguage ? "user" : "inferred", req.voiceLanguage ? "high" : "medium", req.voiceLanguage ? "din cerere" : "aceeași cu limba textului");
+  if (req.voiceLanguage ?? req.textLanguage)
+    A(
+      "e2",
+      (req.voiceLanguage ?? req.textLanguage)!,
+      req.voiceLanguage ? "user" : "inferred",
+      req.voiceLanguage ? "high" : "medium",
+      req.voiceLanguage ? "din cerere" : "aceeași cu limba textului",
+    );
   else Q("e2", "Limba vocii nu are valoare implicită (regula 16).");
   const soundOff = platforms.some((p) => PLATFORM_PROFILES[p]?.soundOff !== "low");
   A("e3", "arse + .srt", "inferred", "medium", soundOff ? "platforma se vede des fără sunet" : "accesibilitate și vizionare fără sunet");
@@ -180,8 +257,18 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   // F. audio
   const lang = (req.voiceLanguage ?? req.textLanguage ?? "").toLowerCase();
   const voice = req.voices?.find((v) => lang && v.language.toLowerCase().startsWith(lang));
-  if (voice) A("f1", `TTS ${voice.provider}: ${voice.name}`, "inferred", "medium", "vocea locală pentru limba aleasă (drepturile comerciale ale vocilor de sistem nu sunt clare: docs/LICENTE.md)");
-  else Q("f1", "Nu am o voce locală pentru limba aleasă: fișierul tău, o cheie API sau fără voce?", { options: ["vocea mea (fișier)", "TTS cu cheie API", "fără voce"] });
+  if (voice)
+    A(
+      "f1",
+      `TTS ${voice.provider}: ${voice.name}`,
+      "inferred",
+      "medium",
+      "vocea locală pentru limba aleasă (drepturile comerciale ale vocilor de sistem nu sunt clare: docs/LICENTE.md)",
+    );
+  else
+    Q("f1", "Nu am o voce locală pentru limba aleasă: fișierul tău, o cheie API sau fără voce?", {
+      options: ["vocea mea (fișier)", "TTS cu cheie API", "fără voce"],
+    });
   A("f2", "muzică originală sintetizată pe structura reclamei", "default", "high", "fără licențe externe");
   A("f4", dir.direction ? DIRECTIONS[dir.direction].sfxDensity : "medium", "inferred", "medium", "densitatea direcției");
   A("f5", "nu", "default", "medium", "fără tăceri intenționate cerute");
@@ -197,7 +284,13 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
     schemaVersion: 1,
     objective: obj.objective,
     audience: { description: page?.description || "de confirmat", painPoints: [] },
-    userVision: { story: vision, hooks: [], mandatoryPhrases: phrases.map((p, i) => ({ id: `fraza-${i + 1}`, text: p, channel: "any" as const })), roughScript: "", concept: "" },
+    userVision: {
+      story: vision,
+      hooks: [],
+      mandatoryPhrases: phrases.map((p, i) => ({ id: `fraza-${i + 1}`, text: p, channel: "any" as const })),
+      roughScript: "",
+      concept: "",
+    },
     tone: [],
     desiredEmotion: "",
     pacing,
@@ -225,11 +318,18 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
 export function projectFromIntake(id: string, r: IntakeResult, o: { fps?: number } = {}): CreateProjectOptions {
   const formats: FormatSpec[] = r.project.formats.map((f) => {
     const base = f.replace(/-4k$/, "");
-    if (!(f in FORMAT_PRESETS)) throw new MmsError("FORMAT_INVALID", `Format necunoscut în intake: ${f}`, `Formatele disponibile: ${Object.keys(FORMAT_PRESETS).join(", ")}`);
+    if (!(f in FORMAT_PRESETS))
+      throw new MmsError("FORMAT_INVALID", `Format necunoscut în intake: ${f}`, `Formatele disponibile: ${Object.keys(FORMAT_PRESETS).join(", ")}`);
     const platform = r.brief.platforms?.find((p) => PLATFORM_PROFILES[p]?.aspects.includes(base)) ?? PLATFORM_FOR_FORMAT[base] ?? "generic";
     return makeFormat(f as FormatPresetId, { platform, durationSec: r.brief.durationSec ?? 30, fps: o.fps ?? 30 });
   });
-  return { id, name: r.project.name, product: { name: r.project.name, url: r.project.url, category: r.project.category }, formats, language: r.project.language };
+  return {
+    id,
+    name: r.project.name,
+    product: { name: r.project.name, url: r.project.url, category: r.project.category },
+    formats,
+    language: r.project.language,
+  };
 }
 
 /** Rezumatul pentru utilizator: ce am dedus (cu sursa) și ce întreb, grupat A–H. */
@@ -238,6 +338,9 @@ export function intakeSummaryMarkdown(r: IntakeResult): string {
   const out = ["## Ce am înțeles (poți schimba orice înainte de „aprob”)", ""];
   for (const a of r.answers) out.push(`- **${a.id.toUpperCase()}** ${a.question} → **${a.value}** _(${label[a.source]}, încredere ${a.confidence}: ${a.why})_`);
   out.push("", `## Ce te întreb (${r.ask.length})`, "");
-  for (const x of r.ask) out.push(`- **${x.id.toUpperCase()}** ${x.question}${x.options ? ` Variante: ${x.options.join(" · ")}.` : ""}${x.suggestion ? ` Propunere: ${x.suggestion}.` : ""} _(${x.why})_`);
+  for (const x of r.ask)
+    out.push(
+      `- **${x.id.toUpperCase()}** ${x.question}${x.options ? ` Variante: ${x.options.join(" · ")}.` : ""}${x.suggestion ? ` Propunere: ${x.suggestion}.` : ""} _(${x.why})_`,
+    );
   return out.join("\n");
 }

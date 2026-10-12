@@ -57,7 +57,8 @@ export function classifyRole(file: string, p: ProbeResult, origin: AssetOrigin):
     return { role: "other", confidence: 0.4 };
   }
   if (p.type === "svg" || p.type === "image") {
-    if (origin === "real_capture" || has("screenshot", "screen", "captur", "ui", "dashboard", "app")) return { role: "screenshot", confidence: origin === "real_capture" ? 1 : 0.75 };
+    if (origin === "real_capture" || has("screenshot", "screen", "captur", "ui", "dashboard", "app"))
+      return { role: "screenshot", confidence: origin === "real_capture" ? 1 : 0.75 };
     if (has("logo", "brand", "mark", "wordmark")) return { role: "logo", confidence: 0.9 };
     if (has("icon")) return { role: "icon", confidence: 0.8 };
     if (has("bg", "background", "fundal")) return { role: "background", confidence: 0.75 };
@@ -94,7 +95,8 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
   fs.copyFileSync(abs, dest);
 
   const thirdParty = opts.thirdParty ?? false;
-  const rightsStatus: RightsStatus = opts.rights ?? (thirdParty ? "not-confirmed" : opts.origin === "generated" ? "owned" : opts.origin === "real_capture" ? "owned" : "owned");
+  const rightsStatus: RightsStatus =
+    opts.rights ?? (thirdParty ? "not-confirmed" : opts.origin === "generated" ? "owned" : opts.origin === "real_capture" ? "owned" : "owned");
   const analysis: Asset["analysis"] = { palette: [], nearDuplicates: [] };
   if (p.type === "image" || p.type === "video") {
     const t = await thumbnail(dest, 96, p.type === "video" ? Math.min(1, (p.durationSec ?? 0) / 2) : 0);
@@ -144,20 +146,34 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
         used.add(id);
         return id;
       };
-      const regions = cap ? [] : r.lines.filter((l) => l.text.trim().length >= 3 && l.rect.w > 4).slice(0, 150).map((l) => ({ id: sid(`text-${l.text}`), label: l.text.slice(0, 80), kind: "text" as const, rect: l.rect, text: l.text }));
+      const regions = cap
+        ? []
+        : r.lines
+            .filter((l) => l.text.trim().length >= 3 && l.rect.w > 4)
+            .slice(0, 150)
+            .map((l) => ({ id: sid(`text-${l.text}`), label: l.text.slice(0, 80), kind: "text" as const, rect: l.rect, text: l.text }));
       for (const l of r.lines) {
         const hits = findPii(l.text);
-        if (hits.length) ocrPii.push({ id: sid(`pii-ocr-${hits[0].kind}`), label: [...new Set(hits.map((h) => PII_LABEL[h.kind]))].join(", "), kind: "pii", rect: { x: l.rect.x - 4, y: l.rect.y - 4, w: l.rect.w + 8, h: l.rect.h + 8 }, text: l.text });
+        if (hits.length)
+          ocrPii.push({
+            id: sid(`pii-ocr-${hits[0].kind}`),
+            label: [...new Set(hits.map((h) => PII_LABEL[h.kind]))].join(", "),
+            kind: "pii",
+            rect: { x: l.rect.x - 4, y: l.rect.y - 4, w: l.rect.w + 8, h: l.rect.h + 8 },
+            text: l.text,
+          });
       }
       ocr = { language: r.language, regions };
     } else ocr = { language: null, regions: [], reason: r.reason };
   }
   // datele personale din DOM și din OCR, fără dubluri (aceeași zonă găsită de ambele)
   const domPii = cap && !opts.captureRecording ? cap.pii : [];
-  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   const piiRegions = [...domPii, ...ocrPii.filter((o) => !domPii.some((d) => overlaps(d.rect, o.rect)))];
   const orientation = p.width && p.height ? (p.width / p.height > 1.15 ? "landscape" : p.width / p.height < 0.87 ? "portrait" : "square") : undefined;
-  const importance = cls.role === "logo" ? 1 : cls.role === "screenshot" || cls.role === "screen-recording" ? 0.9 : cls.role === "music" || cls.role === "voiceover" ? 0.8 : 0.5;
+  const importance =
+    cls.role === "logo" ? 1 : cls.role === "screenshot" || cls.role === "screen-recording" ? 0.9 : cls.role === "music" || cls.role === "voiceover" ? 0.8 : 0.5;
   const asset: Asset = {
     id,
     file: rel,
@@ -219,10 +235,33 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
 export async function ingestCapture(projectId: string, cap: CaptureResult, o: { thirdParty?: boolean } = {}): Promise<Asset[]> {
   const out: Asset[] = [];
   const rights = o.thirdParty ? { thirdParty: true } : {};
-  out.push((await ingestFile(projectId, cap.screenshot, { origin: "real_capture", role: "screenshot", capture: cap, tags: [cap.id, cap.fullPage ? "full-page" : "viewport"], ...rights })).asset);
-  if (cap.recording) out.push((await ingestFile(projectId, cap.recording.file, { origin: "real_capture", role: "screen-recording", capture: cap, captureRecording: true, tags: [cap.id, "recording"], ...rights })).asset);
+  out.push(
+    (
+      await ingestFile(projectId, cap.screenshot, {
+        origin: "real_capture",
+        role: "screenshot",
+        capture: cap,
+        tags: [cap.id, cap.fullPage ? "full-page" : "viewport"],
+        ...rights,
+      })
+    ).asset,
+  );
+  if (cap.recording)
+    out.push(
+      (
+        await ingestFile(projectId, cap.recording.file, {
+          origin: "real_capture",
+          role: "screen-recording",
+          capture: cap,
+          captureRecording: true,
+          tags: [cap.id, "recording"],
+          ...rights,
+        })
+      ).asset,
+    );
   // logo-ul găsit în pagină (același fișier pe mai multe pagini se deduplică după conținut)
-  if (cap.logo && fs.existsSync(cap.logo.file)) out.push((await ingestFile(projectId, cap.logo.file, { origin: "real_capture", role: "logo", tags: ["logo", cap.id], ...rights })).asset);
+  if (cap.logo && fs.existsSync(cap.logo.file))
+    out.push((await ingestFile(projectId, cap.logo.file, { origin: "real_capture", role: "logo", tags: ["logo", cap.id], ...rights })).asset);
   return out;
 }
 
@@ -231,13 +270,26 @@ export function setRights(projectId: string, assetId: string, status: RightsStat
   const m = loadAssets(projectId);
   const a = m.assets.find((x) => x.id === assetId);
   if (!a) throw new MmsError("ASSET_MISSING", `Nu există materialul ${assetId}`);
-  a.rights = { ...a.rights, status, note: note || (status === "confirmed-by-user" ? "drepturi confirmate de utilizator" : a.rights.note), ...(status === "confirmed-by-user" ? { confirmedAt: now() } : {}) };
+  a.rights = {
+    ...a.rights,
+    status,
+    note: note || (status === "confirmed-by-user" ? "drepturi confirmate de utilizator" : a.rights.note),
+    ...(status === "confirmed-by-user" ? { confirmedAt: now() } : {}),
+  };
   saveAssets(projectId, m);
   updateState(projectId, { decision: `Drepturi pentru ${assetId}: ${status}.` });
   return a;
 }
 
-export function updateAsset(projectId: string, assetId: string, patch: Partial<Pick<Asset, "role" | "notes" | "tags" | "showsProductUI">> & { focalPoint?: { x: number; y: number }; blurApproved?: boolean; keepApproved?: boolean }): Asset {
+export function updateAsset(
+  projectId: string,
+  assetId: string,
+  patch: Partial<Pick<Asset, "role" | "notes" | "tags" | "showsProductUI">> & {
+    focalPoint?: { x: number; y: number };
+    blurApproved?: boolean;
+    keepApproved?: boolean;
+  },
+): Asset {
   const m = loadAssets(projectId);
   const a = m.assets.find((x) => x.id === assetId);
   if (!a) throw new MmsError("ASSET_MISSING", `Nu există materialul ${assetId}`);

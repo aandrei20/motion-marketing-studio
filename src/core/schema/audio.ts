@@ -8,9 +8,7 @@ export const BeatGrid = z.object({
   beatsPerBar: z.number().int().min(2).max(8).default(4),
   source: z.enum(["user", "detected", "synth"]),
   confidence: z.number().min(0).max(1).default(1),
-  sections: z
-    .array(z.object({ name: z.string(), startSec: z.number(), endSec: z.number(), energy: z.number().min(0).max(1) }))
-    .default([]),
+  sections: z.array(z.object({ name: z.string(), startSec: z.number(), endSec: z.number(), energy: z.number().min(0).max(1) })).default([]),
   /** momentele de „drop” (salt de energie după o zonă calmă), secunde; doar pentru muzica analizată */
   drops: z.array(z.number().min(0)).default([]),
 });

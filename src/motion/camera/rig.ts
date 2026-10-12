@@ -34,15 +34,13 @@ function easeFor(name: CameraKey["ease"]): (t: number) => number {
 
 function sampleKeys(keys: CameraKey[], f: number, fps: number): Omit<CamState, "ox" | "oy" | "or"> {
   const first = keys[0];
-  if (f <= first.at || keys.length === 1) return { fx: first.x, fy: first.y, zoom: first.zoom, rotate: first.rotate, rotateX: first.rotateX, rotateY: first.rotateY };
+  if (f <= first.at || keys.length === 1)
+    return { fx: first.x, fy: first.y, zoom: first.zoom, rotate: first.rotate, rotateX: first.rotateX, rotateY: first.rotateY };
   for (let i = 1; i < keys.length; i++) {
     const a = keys[i - 1];
     const b = keys[i];
     if (f <= b.at) {
-      const t =
-        b.ease === "spring"
-          ? clamp(spring({ frame: f - a.at, fps, config: SPRINGS.cam }), 0, 1.2)
-          : prog(f, a.at, b.at, easeFor(b.ease));
+      const t = b.ease === "spring" ? clamp(spring({ frame: f - a.at, fps, config: SPRINGS.cam }), 0, 1.2) : prog(f, a.at, b.at, easeFor(b.ease));
       return {
         fx: a.x + (b.x - a.x) * t,
         fy: a.y + (b.y - a.y) * t,
@@ -95,7 +93,8 @@ export function layerTransform(s: CamState, d: number, W: number, H: number, per
   const fy = H / 2 + (s.fy - H / 2) * d;
   const z = layerZoom(s, d);
   const parts = [`translate(${(W / 2 + s.ox * d).toFixed(3)}px, ${(H / 2 + s.oy * d).toFixed(3)}px)`];
-  if (s.rotateX || s.rotateY) parts.push(`perspective(${perspective}px)`, `rotateX(${(s.rotateX * d).toFixed(3)}deg)`, `rotateY(${(s.rotateY * d).toFixed(3)}deg)`);
+  if (s.rotateX || s.rotateY)
+    parts.push(`perspective(${perspective}px)`, `rotateX(${(s.rotateX * d).toFixed(3)}deg)`, `rotateY(${(s.rotateY * d).toFixed(3)}deg)`);
   if (s.rotate || s.or) parts.push(`rotate(${((s.rotate + s.or) * d).toFixed(3)}deg)`);
   parts.push(`scale(${z.toFixed(5)})`, `translate(${(-fx).toFixed(3)}px, ${(-fy).toFixed(3)}px)`);
   return parts.join(" ");

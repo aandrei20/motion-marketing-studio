@@ -40,12 +40,21 @@ export function mobileCounterparts(manifest: AssetManifest, a: Asset): Counterpa
   const key = samePageKey(a.capture.url);
   const candidates = manifest.assets
     .filter((x) => x.id !== a.id && x.role === "screenshot" && isPhoneCapture(x) && samePageKey(x.capture!.url) === key && x.rights.status !== "denied")
-    .sort((x, y) => Number(y.capture!.fullPage === a.capture!.fullPage) - Number(x.capture!.fullPage === a.capture!.fullPage) || String(y.capture!.capturedAt).localeCompare(String(x.capture!.capturedAt)));
+    .sort(
+      (x, y) =>
+        Number(y.capture!.fullPage === a.capture!.fullPage) - Number(x.capture!.fullPage === a.capture!.fullPage) ||
+        String(y.capture!.capturedAt).localeCompare(String(x.capture!.capturedAt)),
+    );
   if (!candidates.length) return null;
   const usable = candidates.filter((x) => !piiUndecided(x) && !x.capture!.overflowX);
   if (usable.length) return { usable };
   const first = candidates[0];
-  return { usable, skipped: first.capture!.overflowX ? `pagina din captura de telefon „${first.id}” nu e adaptată pentru telefon (iese din ecran pe orizontală)` : `captura de telefon „${first.id}” are date personale fără decizie (estompează sau lasă vizibile)` };
+  return {
+    usable,
+    skipped: first.capture!.overflowX
+      ? `pagina din captura de telefon „${first.id}” nu e adaptată pentru telefon (iese din ecran pe orizontală)`
+      : `captura de telefon „${first.id}” are date personale fără decizie (estompează sau lasă vizibile)`,
+  };
 }
 
 /**
@@ -61,7 +70,10 @@ export function chooseCounterpart(manifest: AssetManifest, a: Asset, regions: Re
   if (c.usable.length) {
     const missing = regions.filter((r) => !c.usable.some((x) => counterpartRegion(r, x)));
     const names = (missing.length ? missing : regions).map((r) => `„${r.label.slice(0, 40)}”`).join(", ");
-    return { asset: null, note: `pe vertical rămâne captura desktop „${a.id}”: zonele demonstrate (${names}) nu apar toate în aceeași captură de telefon; o captură de telefon a paginii întregi le-ar putea include` };
+    return {
+      asset: null,
+      note: `pe vertical rămâne captura desktop „${a.id}”: zonele demonstrate (${names}) nu apar toate în aceeași captură de telefon; o captură de telefon a paginii întregi le-ar putea include`,
+    };
   }
   return { asset: null, note: c.skipped ? `pe vertical rămâne captura desktop „${a.id}”: ${c.skipped}` : null };
 }

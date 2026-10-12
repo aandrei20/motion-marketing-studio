@@ -87,7 +87,16 @@ describe("mixer", () => {
   it("atinge −14 LUFS, true peak ≤ −1 dBTP, fără clipping", () => {
     const music = composeMusic({ bpm: 120, durationSec: 10, mood: "uplifting", seed: 2, sections: [{ startSec: 0, endSec: 10, energy: 0.7, name: "a" }] });
     const voice = sine(220, 2, 0.5);
-    const out = mix({ durationSec: 10, music: { audio: music.audio }, voice: [{ audio: voice, atSec: 3 }], sfx: [{ audio: SFX.find((s) => s.id === "impact")!.make(), atSec: 1 }], duck: { amountDb: -10, rampMs: 500, padMs: 100 }, intentionalSilences: [], targetLufs: -14, truePeakCeiling: -1 });
+    const out = mix({
+      durationSec: 10,
+      music: { audio: music.audio },
+      voice: [{ audio: voice, atSec: 3 }],
+      sfx: [{ audio: SFX.find((s) => s.id === "impact")!.make(), atSec: 1 }],
+      duck: { amountDb: -10, rampMs: 500, padMs: 100 },
+      intentionalSilences: [],
+      targetLufs: -14,
+      truePeakCeiling: -1,
+    });
     expect(out.report.integratedLufs!).toBeGreaterThan(-14.6);
     expect(out.report.integratedLufs!).toBeLessThan(-13.4);
     expect(out.report.truePeakDbtp).toBeLessThanOrEqual(-1);

@@ -57,7 +57,8 @@ export function lintRules(): LintProblem[] {
     const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
     lines.forEach((l, i) => {
       for (const n of names) {
-        if (new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(l)) problems.push({ rule: "regula 4: fără nume de produs în motor", file: path.relative(PATHS.root, f), line: i + 1, text: l.trim().slice(0, 120) });
+        if (new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(l))
+          problems.push({ rule: "regula 4: fără nume de produs în motor", file: path.relative(PATHS.root, f), line: i + 1, text: l.trim().slice(0, 120) });
       }
     });
   }
@@ -67,7 +68,8 @@ export function lintRules(): LintProblem[] {
     fs.readFileSync(f, "utf8")
       .split(/\r?\n/)
       .forEach((l, i) => {
-        if (/Math\.random\(|Date\.now\(|new Date\(|performance\.now\(/.test(l) && !/\/\/ ok-determinism/.test(l)) problems.push({ rule: "regula 18: determinism", file: path.relative(PATHS.root, f), line: i + 1, text: l.trim().slice(0, 120) });
+        if (/Math\.random\(|Date\.now\(|new Date\(|performance\.now\(/.test(l) && !/\/\/ ok-determinism/.test(l))
+          problems.push({ rule: "regula 18: determinism", file: path.relative(PATHS.root, f), line: i + 1, text: l.trim().slice(0, 120) });
       });
   }
   // secrete în fișierele urmărite de Git
@@ -77,7 +79,8 @@ export function lintRules(): LintProblem[] {
   } catch {
     tracked = [];
   }
-  const SECRET = /(sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|xi-api-key\s*[:=]\s*["'][A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|-----BEGIN (RSA |EC )?PRIVATE KEY-----)/;
+  const SECRET =
+    /(sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|xi-api-key\s*[:=]\s*["'][A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|-----BEGIN (RSA |EC )?PRIVATE KEY-----)/;
   for (const rel of tracked) {
     if (/\.(png|jpe?g|mp4|wav|ttf|docx|svg|ico)$/i.test(rel)) continue;
     const f = path.join(PATHS.root, rel);
@@ -91,11 +94,16 @@ export function lintRules(): LintProblem[] {
   }
   // atribuire: niciun commit nou nu adaugă co-autori sau contributori (decizia utilizatorului, 2026-10-08)
   try {
-    const body = execSync(`git log ${ATTRIBUTION_BASE}..HEAD --format=%H%n%B%n--end--`, { cwd: PATHS.root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const body = execSync(`git log ${ATTRIBUTION_BASE}..HEAD --format=%H%n%B%n--end--`, {
+      cwd: PATHS.root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
     let sha = "";
     for (const l of body.split(/\r?\n/)) {
       if (/^[0-9a-f]{40}$/.test(l)) sha = l;
-      else if (/^(co-authored-by|signed-off-by: claude|🤖 generated with)/i.test(l.trim())) problems.push({ rule: "fără co-autori/contributori în commit-uri", file: `commit ${sha.slice(0, 8)}`, line: 0, text: l.trim().slice(0, 60) });
+      else if (/^(co-authored-by|signed-off-by: claude|🤖 generated with)/i.test(l.trim()))
+        problems.push({ rule: "fără co-autori/contributori în commit-uri", file: `commit ${sha.slice(0, 8)}`, line: 0, text: l.trim().slice(0, 60) });
     }
   } catch {
     /* fără git sau baza nu există în acest clone: verificarea nu se aplică */

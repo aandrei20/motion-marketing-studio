@@ -27,7 +27,9 @@ export interface IntendedHold {
 
 /** Hold-urile intenționate ale unui timeline: scenele de CTA (minimum 2,5 s fără mișcare), cel mult 5 s nemișcate. */
 export function intendedHolds(t: Pick<Timeline, "scenes" | "fps">): IntendedHold[] {
-  return t.scenes.filter((s) => s.meta.narrativeRole === "cta").map((s) => ({ from: s.from, to: s.from + s.durationInFrames, maxFrames: Math.round(t.fps * 5) }));
+  return t.scenes
+    .filter((s) => s.meta.narrativeRole === "cta")
+    .map((s) => ({ from: s.from, to: s.from + s.durationInFrames, maxFrames: Math.round(t.fps * 5) }));
 }
 
 export async function analyzeVideo(file: string, fps: number, holds: IntendedHold[] = []): Promise<VideoCheck> {
@@ -64,5 +66,14 @@ export async function analyzeVideo(file: string, fps: number, holds: IntendedHol
   if (blackFrames.length) problems.push(`${blackFrames.length} cadre (aproape) negre, primul la ${formatTimecode(blackFrames[0], fps)}.`);
   if (maxPerSec > 2) problems.push(`Până la ${maxPerSec} flash-uri pe secundă (maximum 2).`);
   for (const r of frozenRuns) problems.push(`Imagine înghețată ${formatTimecode(r.from, fps)}–${formatTimecode(r.to, fps)} (peste 3 s).`);
-  return { frames: seq.frames.length, blackFrames, flashes, maxFlashesPerSec: maxPerSec, frozenRuns, heldRuns, meanLuma: luma.reduce((a, b) => a + b, 0) / Math.max(1, luma.length), problems };
+  return {
+    frames: seq.frames.length,
+    blackFrames,
+    flashes,
+    maxFlashesPerSec: maxPerSec,
+    frozenRuns,
+    heldRuns,
+    meanLuma: luma.reduce((a, b) => a + b, 0) / Math.max(1, luma.length),
+    problems,
+  };
 }

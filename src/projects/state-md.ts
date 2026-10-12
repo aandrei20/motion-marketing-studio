@@ -33,9 +33,7 @@ function readOpt<T>(file: string): T | null {
 /** Generează STATE.md din datele proiectului, ca o sesiune nouă să poată relua exact de unde s-a rămas. */
 export function renderStateMarkdown(id: string): string {
   const dir = path.join(PATHS.projects, id);
-  const project = readOpt<{ name: string; currentVersion: string | null; status: string; formats: { id: string }[] }>(
-    path.join(dir, "project.json"),
-  );
+  const project = readOpt<{ name: string; currentVersion: string | null; status: string; formats: { id: string }[] }>(path.join(dir, "project.json"));
   const state = readOpt<ProjectState>(path.join(dir, "state.json"));
   const research = readOpt<Research>(path.join(dir, "research.json"));
   const versionsDir = path.join(dir, "versions");
@@ -77,9 +75,7 @@ export function renderStateMarkdown(id: string): string {
 
   lines.push("", "## Versiuni", "");
   for (const v of versions) {
-    lines.push(
-      `- **${v.id}**${v.parent ? ` (din ${v.parent})` : ""} – ${v.status}${v.frozen ? ", înghețată" : ""}${v.label ? ` – ${v.label}` : ""}`,
-    );
+    lines.push(`- **${v.id}**${v.parent ? ` (din ${v.parent})` : ""} – ${v.status}${v.frozen ? ", înghețată" : ""}${v.label ? ` – ${v.label}` : ""}`);
     for (const c of v.changes.slice(-5)) lines.push(`  - ${c.description}`);
   }
 

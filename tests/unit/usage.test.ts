@@ -16,7 +16,16 @@ describe("jurnalul de utilizare", () => {
     recordUsage({ ...base, units: { chars: 40 }, durationMs: 1200, cached: false, ok: true });
     recordUsage({ ...base, units: { chars: 40 }, durationMs: 0, cached: true, ok: true });
     recordUsage({ ...base, units: { chars: 25 }, durationMs: 90_000, cached: false, ok: false, error: "TTS_TIMEOUT" });
-    recordUsage({ projectId: "proba", provider: "remotion", op: "render-preview", units: { frames: 690 }, durationMs: 60_000, cached: false, paid: false, ok: true });
+    recordUsage({
+      projectId: "proba",
+      provider: "remotion",
+      op: "render-preview",
+      units: { frames: 690 },
+      durationMs: 60_000,
+      cached: false,
+      paid: false,
+      ok: true,
+    });
     const rows = summarizeUsage(loadUsage("proba"));
     expect(rows.find((r) => r.provider === "elevenlabs")).toMatchObject({ calls: 3, cached: 1, failed: 1, chars: 65, durationMs: 91_200 });
     expect(rows.find((r) => r.provider === "remotion")).toMatchObject({ calls: 1, frames: 690 });

@@ -20,7 +20,15 @@ import { MmsError } from "../core/errors";
 export type HostKind = "public" | "local" | "metadata";
 
 /** Serviciile de metadate ale norilor (AWS, GCP, Azure, Alibaba, Oracle): nu se deschid niciodată. */
-const METADATA_HOSTS = new Set(["169.254.169.254", "169.254.170.2", "100.100.100.200", "fd00:ec2::254", "metadata.google.internal", "metadata.azure.com", "metadata"]);
+const METADATA_HOSTS = new Set([
+  "169.254.169.254",
+  "169.254.170.2",
+  "100.100.100.200",
+  "fd00:ec2::254",
+  "metadata.google.internal",
+  "metadata.azure.com",
+  "metadata",
+]);
 const LOCAL_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home.arpa", ".intranet", ".corp"];
 
 function ipv4Kind(ip: string): HostKind {
@@ -47,7 +55,10 @@ function ipv6Kind(ip: string): HostKind {
 
 /** Tipul unei gazde după nume sau IP literal (fără rezolvare DNS). */
 export function hostKind(hostname: string): HostKind {
-  const h = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "").toLowerCase();
+  const h = hostname
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "")
+    .toLowerCase();
   if (METADATA_HOSTS.has(h)) return "metadata";
   const v = net.isIP(h);
   if (v === 4) return ipv4Kind(h);
@@ -88,17 +99,29 @@ export async function checkCaptureUrl(raw: string): Promise<CheckedUrl> {
     throw new MmsError("CAPTURE_URL", `Adresa „${String(raw).slice(0, 120)}” nu e validă.`, "Scrie adresa completă, cu https:// (de ex. https://exemplu.ro).");
   }
   if (url.protocol === "file:") return { url, kind: "file" };
-  if (url.protocol !== "http:" && url.protocol !== "https:") throw new MmsError("CAPTURE_URL", `Captura deschide doar adrese http, https sau file (primit: ${url.protocol}).`, "Scrie adresa paginii, cu https://.");
-  if (url.username || url.password) throw new MmsError("CAPTURE_URL", "Adresa conține un nume de utilizator sau o parolă.", "Nu pune date de autentificare în adresă: ar rămâne în manifeste și loguri. Autentifică-te cu: npm run mms -- login --url … --profile …");
+  if (url.protocol !== "http:" && url.protocol !== "https:")
+    throw new MmsError("CAPTURE_URL", `Captura deschide doar adrese http, https sau file (primit: ${url.protocol}).`, "Scrie adresa paginii, cu https://.");
+  if (url.username || url.password)
+    throw new MmsError(
+      "CAPTURE_URL",
+      "Adresa conține un nume de utilizator sau o parolă.",
+      "Nu pune date de autentificare în adresă: ar rămâne în manifeste și loguri. Autentifică-te cu: npm run mms -- login --url … --profile …",
+    );
   const kind = await resolvedHostKind(url.hostname);
-  if (kind === "metadata") throw new MmsError("CAPTURE_URL", `Adresa ${url.hostname} e un serviciu intern de metadate și nu se capturează.`, "Folosește adresa publică a produsului.");
+  if (kind === "metadata")
+    throw new MmsError("CAPTURE_URL", `Adresa ${url.hostname} e un serviciu intern de metadate și nu se capturează.`, "Folosește adresa publică a produsului.");
   return { url, kind };
 }
 
 /** Un pas „goto” al capturii: aceleași reguli ca adresa de start, iar o pagină publică nu duce pașii în rețeaua locală. */
 export async function checkStepUrl(start: CheckedUrl, raw: string): Promise<void> {
   const step = await checkCaptureUrl(raw);
-  if (start.kind === "public" && step.kind !== "public") throw new MmsError("CAPTURE_URL", `Pasul „goto ${step.url.href.slice(0, 120)}” duce captura unei pagini publice pe o adresă locală.`, "Capturează aplicația locală separat, cu adresa ei de start.");
+  if (start.kind === "public" && step.kind !== "public")
+    throw new MmsError(
+      "CAPTURE_URL",
+      `Pasul „goto ${step.url.href.slice(0, 120)}” duce captura unei pagini publice pe o adresă locală.`,
+      "Capturează aplicația locală separat, cu adresa ei de start.",
+    );
 }
 
 export interface NetworkGuard {
@@ -137,7 +160,11 @@ export async function guardNetwork(ctx: BrowserContext, start: CheckedUrl): Prom
       await Promise.all(pending);
       if (page) await assertStillPublic(start, page.url());
       if (violations.length)
-        throw new MmsError("CAPTURE_REDIRECT", `Pagina ${start.url.href} a încercat să ducă captura pe o adresă locală (${violations[0]}); captura s-a oprit și nu s-a salvat nimic.`, "Verifică adresa; o pagină publică nu are voie să deschidă rețeaua ta locală.");
+        throw new MmsError(
+          "CAPTURE_REDIRECT",
+          `Pagina ${start.url.href} a încercat să ducă captura pe o adresă locală (${violations[0]}); captura s-a oprit și nu s-a salvat nimic.`,
+          "Verifică adresa; o pagină publică nu are voie să deschidă rețeaua ta locală.",
+        );
     },
   };
   if (start.kind !== "public") return guard;
@@ -196,5 +223,10 @@ export async function assertStillPublic(start: CheckedUrl, finalUrl: string): Pr
   }
   if (u.protocol === "about:" || u.protocol === "data:") return;
   const k = u.protocol === "file:" ? "local" : await resolvedHostKind(u.hostname);
-  if (k !== "public") throw new MmsError("CAPTURE_REDIRECT", `Pagina ${start.url.href} a dus captura pe o adresă locală (${u.host || u.protocol}); captura s-a oprit și nu s-a salvat nimic.`, "Verifică adresa; o pagină publică nu are voie să deschidă rețeaua ta locală.");
+  if (k !== "public")
+    throw new MmsError(
+      "CAPTURE_REDIRECT",
+      `Pagina ${start.url.href} a dus captura pe o adresă locală (${u.host || u.protocol}); captura s-a oprit și nu s-a salvat nimic.`,
+      "Verifică adresa; o pagină publică nu are voie să deschidă rețeaua ta locală.",
+    );
 }

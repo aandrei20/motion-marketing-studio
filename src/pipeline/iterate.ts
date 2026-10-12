@@ -6,7 +6,18 @@ import { collectRounds, runQuality, type QualityRun } from "../quality/run";
 import type { Depth } from "../quality/checks";
 import { makeIssue } from "../quality/issues";
 import { parseWith } from "../core/json";
-import { EditOp, QualityCategory, RUBRIC_KEYS, RubricKey, SceneScore, Severity, TechnicalCheck, type Critique, type CritiqueRound, type Finding } from "../core/schema";
+import {
+  EditOp,
+  QualityCategory,
+  RUBRIC_KEYS,
+  RubricKey,
+  SceneScore,
+  Severity,
+  TechnicalCheck,
+  type Critique,
+  type CritiqueRound,
+  type Finding,
+} from "../core/schema";
 import { DIRECTIONS } from "../creative/directions";
 import { MmsError } from "../core/errors";
 import { applyOps, parseCommand } from "../iterate/intents";
@@ -31,15 +42,30 @@ import {
 import { stepAudio, stepCompile, stepVoice, type Log } from "./steps";
 
 /** O comandă în limbaj natural → versiune nouă, recompilată, cu jurnalul schimbărilor. */
-export async function iterate(projectId: string, command: string, log: (m: string) => void = () => undefined, opts: { from?: string } = {}): Promise<{ versionId: string; changes: string[] }> {
+export async function iterate(
+  projectId: string,
+  command: string,
+  log: (m: string) => void = () => undefined,
+  opts: { from?: string } = {},
+): Promise<{ versionId: string; changes: string[] }> {
   const project = loadProject(projectId);
   const from = opts.from ?? project.currentVersion;
   if (!from) throw new MmsError("NO_VERSION", "Proiectul nu are încă o versiune compilată.");
   const ops = parseCommand(command);
-  const ctx = { storyboard: loadStoryboard(projectId, from), script: loadScript(projectId, from), brief: loadBrief(projectId), timeline: loadTimeline(projectId, from, project.formats[0].id), assets: loadAssets(projectId) };
+  const ctx = {
+    storyboard: loadStoryboard(projectId, from),
+    script: loadScript(projectId, from),
+    brief: loadBrief(projectId),
+    timeline: loadTimeline(projectId, from, project.formats[0].id),
+    assets: loadAssets(projectId),
+  };
   const res = applyOps(ctx, ops);
   const at = new Date().toISOString();
-  const v = createVersion(projectId, { from, label: command.slice(0, 60), changes: res.changes.map((c) => ({ at, op: c.op, description: c.description, params: c.params, request: command })) });
+  const v = createVersion(projectId, {
+    from,
+    label: command.slice(0, 60),
+    changes: res.changes.map((c) => ({ at, op: c.op, description: c.description, params: c.params, request: command })),
+  });
   saveStoryboard(projectId, v.id, res.storyboard);
   saveScript(projectId, v.id, res.script);
   for (const c of res.changes) log(`• ${c.description}`);
@@ -47,7 +73,8 @@ export async function iterate(projectId: string, command: string, log: (m: strin
   if (scriptChanged || !fs.existsSync(versionFile(projectId, from, "audio/voice.json"))) await stepVoice(projectId, v.id, log);
   else {
     fs.mkdirSync(path.dirname(versionFile(projectId, v.id, "audio/voice.json")), { recursive: true });
-    for (const f of ["audio/voice.json", "audio/voice-key.json"]) if (fs.existsSync(versionFile(projectId, from, f))) fs.copyFileSync(versionFile(projectId, from, f), versionFile(projectId, v.id, f));
+    for (const f of ["audio/voice.json", "audio/voice-key.json"])
+      if (fs.existsSync(versionFile(projectId, from, f))) fs.copyFileSync(versionFile(projectId, from, f), versionFile(projectId, v.id, f));
   }
   await stepCompile(projectId, v.id, log);
   await stepAudio(projectId, v.id, log);
@@ -59,16 +86,30 @@ export async function iterate(projectId: string, command: string, log: (m: strin
  * Variante de hook (livrare, grupa G): câte o versiune nouă pentru fiecare variantă din script.hooks
  * care nu e deja folosită, toate pornind din aceeași versiune, ca utilizatorul să aleagă.
  */
-export async function hookVariants(projectId: string, opts: { from?: string; count?: number } = {}, log: (m: string) => void = () => undefined): Promise<Array<{ versionId: string; hookId: string; text: string }>> {
+export async function hookVariants(
+  projectId: string,
+  opts: { from?: string; count?: number } = {},
+  log: (m: string) => void = () => undefined,
+): Promise<Array<{ versionId: string; hookId: string; text: string }>> {
   const project = loadProject(projectId);
   const from = opts.from ?? project.currentVersion;
   if (!from) throw new MmsError("NO_VERSION", "Proiectul nu are încă o versiune compilată.");
   const count = opts.count ?? loadBrief(projectId).delivery.hookVariants;
-  if (count <= 0) throw new MmsError("NO_HOOK_VARIANTS", "Brief-ul nu cere variante de hook (delivery.hookVariants = 0).", "Dă un număr explicit: mms hook-variants <proiect> --count 2");
+  if (count <= 0)
+    throw new MmsError(
+      "NO_HOOK_VARIANTS",
+      "Brief-ul nu cere variante de hook (delivery.hookVariants = 0).",
+      "Dă un număr explicit: mms hook-variants <proiect> --count 2",
+    );
   const script = loadScript(projectId, from);
   const current = script.lines.find((l) => l.isHook);
   const candidates = script.hooks.filter((h) => !h.selected && h.text.trim() !== current?.onScreen?.trim()).slice(0, count);
-  if (!candidates.length) throw new MmsError("NO_HOOK_VARIANTS", "Scriptul nu are alte variante de hook.", "Adaugă variante în câmpul hooks din script.json (origin „ai” pentru sugestii), apoi reîncearcă.");
+  if (!candidates.length)
+    throw new MmsError(
+      "NO_HOOK_VARIANTS",
+      "Scriptul nu are alte variante de hook.",
+      "Adaugă variante în câmpul hooks din script.json (origin „ai” pentru sugestii), apoi reîncearcă.",
+    );
   if (candidates.length < count) log(`Scriptul are doar ${candidates.length} variante disponibile (cerute: ${count}).`);
   const out: Array<{ versionId: string; hookId: string; text: string }> = [];
   for (const h of candidates) {
@@ -76,7 +117,10 @@ export async function hookVariants(projectId: string, opts: { from?: string; cou
     const r = await iterate(projectId, `folosește hook-ul ${h.id}`, log, { from });
     out.push({ versionId: r.versionId, hookId: h.id, text: h.text });
   }
-  updateState(projectId, { decision: `Variante de hook din ${from}: ${out.map((o) => `${o.versionId} (${o.hookId})`).join(", ")}.`, next: ["Randează preview pentru fiecare variantă și lasă utilizatorul să aleagă."] });
+  updateState(projectId, {
+    decision: `Variante de hook din ${from}: ${out.map((o) => `${o.versionId} (${o.hookId})`).join(", ")}.`,
+    next: ["Randează preview pentru fiecare variantă și lasă utilizatorul să aleagă."],
+  });
   return out;
 }
 
@@ -84,7 +128,13 @@ export async function hookVariants(projectId: string, opts: { from?: string; cou
  * O rundă de critică automată: bucla de calitate adaptivă (rubrica fixă + scorul quality-v1),
  * la adâncimea cerută. Implicit „fast” (fără randare), ca vechea critică; vezi src/quality/run.ts.
  */
-export async function critiqueRound(projectId: string, versionId?: string, formatId?: string, depth: Depth = "fast", log: (m: string) => void = () => undefined): Promise<{ round: CritiqueRound; decision: LoopDecision; run: QualityRun }> {
+export async function critiqueRound(
+  projectId: string,
+  versionId?: string,
+  formatId?: string,
+  depth: Depth = "fast",
+  log: (m: string) => void = () => undefined,
+): Promise<{ round: CritiqueRound; decision: LoopDecision; run: QualityRun }> {
   const r = await runQuality(projectId, { versionId, formats: formatId ? [formatId] : undefined, depth, log });
   return { round: r.round, decision: r.decision, run: r.run };
 }
@@ -125,11 +175,24 @@ export function addReview(projectId: string, versionId: string, raw: unknown): C
   const c: Critique = loadCritique(projectId, versionId);
   const n = Math.max(0, ...c.rounds.map((r) => r.n), ...collectRounds(projectId).map((r) => r.n)) + 1;
   const sceneScores = input.sceneScores;
-  const overall = Object.fromEntries(RUBRIC_KEYS.map((k) => [k, sceneScores.length ? sceneScores.reduce((s, x) => s + (x.scores[k] ?? 0), 0) / sceneScores.length : 0])) as CritiqueRound["overall"];
+  const overall = Object.fromEntries(
+    RUBRIC_KEYS.map((k) => [k, sceneScores.length ? sceneScores.reduce((s, x) => s + (x.scores[k] ?? 0), 0) / sceneScores.length : 0]),
+  ) as CritiqueRound["overall"];
   const source = input.reviewer === "user-notes" ? "user-note" : "ai-review";
   const findings: Finding[] = input.findings.map((f, i) => {
     const frame = f.frame ?? (f.sec !== undefined ? Math.round(f.sec * t.fps) : null);
-    return makeIssue({ ...f, frame, sceneId: f.sceneId ?? (frame !== null ? sceneAtFrame(t, frame) : null), method: input.reviewer === "user-notes" ? "human" : "ai-vision", source }, `${input.reviewer}-${n}-${i + 1}`, n, t.fps);
+    return makeIssue(
+      {
+        ...f,
+        frame,
+        sceneId: f.sceneId ?? (frame !== null ? sceneAtFrame(t, frame) : null),
+        method: input.reviewer === "user-notes" ? "human" : "ai-vision",
+        source,
+      },
+      `${input.reviewer}-${n}-${i + 1}`,
+      n,
+      t.fps,
+    );
   });
   const round: CritiqueRound = {
     n,

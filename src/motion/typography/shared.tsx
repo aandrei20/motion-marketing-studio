@@ -88,7 +88,12 @@ export interface WordSlot {
 
 export function wordSlots(lines: string[], emphasis: string[]): WordSlot[] {
   const words: WordSlot[] = [];
-  lines.forEach((l, li) => l.split(/\s+/).filter(Boolean).forEach((w) => words.push({ text: w, line: li, index: words.length, emphasized: false })));
+  lines.forEach((l, li) =>
+    l
+      .split(/\s+/)
+      .filter(Boolean)
+      .forEach((w) => words.push({ text: w, line: li, index: words.length, emphasized: false })),
+  );
   const em = emphasisIndices(
     words.map((w) => w.text),
     emphasis,
@@ -158,7 +163,9 @@ export function TextFrame({
                 {renderWord ? (
                   renderWord(w, words.length, w.emphasized ? emColor : color)
                 ) : (
-                  <span style={{ display: "inline-block", color: w.emphasized ? emColor : color, ...(wordStyle ? wordStyle(w, words.length) : {}) }}>{w.text}</span>
+                  <span style={{ display: "inline-block", color: w.emphasized ? emColor : color, ...(wordStyle ? wordStyle(w, words.length) : {}) }}>
+                    {w.text}
+                  </span>
                 )}
                 {k < arr.length - 1 ? " " : null}
               </React.Fragment>

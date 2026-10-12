@@ -17,7 +17,27 @@ const base = {
 const RectP = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() });
 const FrameP = z.enum(["none", "browser", "phone", "laptop", "desktop"]);
 
-function SourceMedia({ src, kind, w, h, startFrom, playbackRate, muted, videoFrames, frame }: { src: string; kind: "image" | "video"; w: number; h: number; startFrom?: number; playbackRate?: number; muted?: boolean; videoFrames?: number; frame: number }) {
+function SourceMedia({
+  src,
+  kind,
+  w,
+  h,
+  startFrom,
+  playbackRate,
+  muted,
+  videoFrames,
+  frame,
+}: {
+  src: string;
+  kind: "image" | "video";
+  w: number;
+  h: number;
+  startFrom?: number;
+  playbackRate?: number;
+  muted?: boolean;
+  videoFrames?: number;
+  frame: number;
+}) {
   const url = useAssetUrl();
   const style: React.CSSProperties = { position: "absolute", left: 0, top: 0, width: w, height: h, display: "block" };
   if (kind === "video") {
@@ -25,7 +45,11 @@ function SourceMedia({ src, kind, w, h, startFrom, playbackRate, muted, videoFra
     // înregistrarea reală e mai scurtă decât scena: ultimul ei cadru rămâne pe ecran (fără cadre goale)
     if (videoFrames && videoFrames > 1) {
       const last = Math.max(0, Math.floor((videoFrames - 1 - (startFrom ?? 0)) / (playbackRate ?? 1)) - 1);
-      return <Freeze frame={last} active={frame >= last}>{video}</Freeze>;
+      return (
+        <Freeze frame={last} active={frame >= last}>
+          {video}
+        </Freeze>
+      );
     }
     return video;
   }
@@ -46,7 +70,12 @@ export interface ScreenParams {
  * compoziție) și decalajul (ox, oy) în pixelii capturii, la un cadru dat. Folosită de componentă și de
  * compilator (de exemplu, ca să afle unde ajunge pe ecran o zonă din captură).
  */
-export function screenMapping(p: ScreenParams, box: { w: number; h: number }, frame = 0, duration = 1): { geo: ReturnType<typeof frameGeometry>; k: number; ox: number; oy: number; aspect: number } {
+export function screenMapping(
+  p: ScreenParams,
+  box: { w: number; h: number },
+  frame = 0,
+  duration = 1,
+): { geo: ReturnType<typeof frameGeometry>; k: number; ox: number; oy: number; aspect: number } {
   const imgAspect = p.imageWidth / p.imageHeight;
   const cropAspect = p.crop ? p.crop.w / p.crop.h : undefined;
   const aspect = cropAspect ?? p.viewportAspect ?? (imgAspect < 0.4 ? 9 / 19.5 : imgAspect < 1.1 && p.frame !== "phone" ? 16 / 10 : imgAspect);
@@ -64,7 +93,12 @@ export function screenMapping(p: ScreenParams, box: { w: number; h: number }, fr
     ox = 0;
     const visibleH = s.h / k;
     if (p.scroll) {
-      const t = prog(frame, p.scroll.start * duration, p.scroll.end * duration, p.scroll.ease === "out" ? EASE.out : p.scroll.ease === "linear" ? EASE.linear : EASE.inOut);
+      const t = prog(
+        frame,
+        p.scroll.start * duration,
+        p.scroll.end * duration,
+        p.scroll.ease === "out" ? EASE.out : p.scroll.ease === "linear" ? EASE.linear : EASE.inOut,
+      );
       oy = clamp(p.scroll.from + (p.scroll.to - p.scroll.from) * t, 0, Math.max(0, p.imageHeight - visibleH));
     } else oy = visibleH > p.imageHeight ? -(visibleH - p.imageHeight) / 2 : 0;
   }
@@ -72,7 +106,13 @@ export function screenMapping(p: ScreenParams, box: { w: number; h: number }, fr
 }
 
 /** Unde ajunge un punct din captură (pixeli imagine) în cutia stratului. */
-export function screenPointToBox(p: ScreenParams, box: { w: number; h: number }, pt: { x: number; y: number }, frame = 0, duration = 1): { x: number; y: number; k: number } {
+export function screenPointToBox(
+  p: ScreenParams,
+  box: { w: number; h: number },
+  pt: { x: number; y: number },
+  frame = 0,
+  duration = 1,
+): { x: number; y: number; k: number } {
   const m = screenMapping(p, box, frame, duration);
   return { x: m.geo.screen.x + (pt.x - m.ox) * m.k, y: m.geo.screen.y + (pt.y - m.oy) * m.k, k: m.k };
 }
@@ -101,7 +141,13 @@ export const mediaScreen = defineLayer({
     viewportAspect: z.number().positive().optional(),
     crop: RectP.optional(),
     scroll: z
-      .object({ from: z.number().min(0), to: z.number().min(0), start: z.number().min(0).max(1).default(0.1), end: z.number().min(0).max(1).default(0.9), ease: z.enum(["inOut", "out", "linear"]).default("inOut") })
+      .object({
+        from: z.number().min(0),
+        to: z.number().min(0),
+        start: z.number().min(0).max(1).default(0.1),
+        end: z.number().min(0).max(1).default(0.9),
+        ease: z.enum(["inOut", "out", "linear"]).default("inOut"),
+      })
       .optional(),
     videoStartFrom: z.number().int().min(0).default(0),
     playbackRate: z.number().min(0.1).max(8).default(1),
@@ -113,8 +159,27 @@ export const mediaScreen = defineLayer({
   Component: ({ params: p, frame, duration, box, children }) => {
     const { geo, k, ox, oy } = screenMapping(p, box, frame, duration);
     const inner = (
-      <div style={{ position: "absolute", left: 0, top: 0, width: p.imageWidth, height: p.imageHeight, transformOrigin: "0 0", transform: `scale(${k.toFixed(6)}) translate(${(-ox).toFixed(3)}px, ${(-oy).toFixed(3)}px)` }}>
-        <SourceMedia src={p.src} kind={p.kind} w={p.imageWidth} h={p.imageHeight} startFrom={p.videoStartFrom} playbackRate={p.playbackRate} videoFrames={p.videoFrames} frame={frame} />
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: p.imageWidth,
+          height: p.imageHeight,
+          transformOrigin: "0 0",
+          transform: `scale(${k.toFixed(6)}) translate(${(-ox).toFixed(3)}px, ${(-oy).toFixed(3)}px)`,
+        }}
+      >
+        <SourceMedia
+          src={p.src}
+          kind={p.kind}
+          w={p.imageWidth}
+          h={p.imageHeight}
+          startFrom={p.videoStartFrom}
+          playbackRate={p.playbackRate}
+          videoFrames={p.videoFrames}
+          frame={frame}
+        />
         <OverlayScaleContext.Provider value={k}>{children}</OverlayScaleContext.Provider>
       </div>
     );
@@ -127,7 +192,12 @@ export const mediaScreen = defineLayer({
       </div>
     );
   },
-  example: { params: { src: "$screenshot", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", frame: "browser", url: "exemplu.ro" }, durationInFrames: 60, box: "center", needs: ["screenshot"] },
+  example: {
+    params: { src: "$screenshot", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", frame: "browser", url: "exemplu.ro" },
+    durationInFrames: 60,
+    box: "center",
+    needs: ["screenshot"],
+  },
 });
 
 export const mediaImage = defineLayer({
@@ -143,7 +213,9 @@ export const mediaImage = defineLayer({
     src: z.string(),
     fit: z.enum(["cover", "contain"]).default("cover"),
     radius: z.number().min(0).max(400).default(0),
-    kenBurns: z.object({ from: z.number().default(1), to: z.number().default(1.12), x: z.number().min(0).max(1).default(0.5), y: z.number().min(0).max(1).default(0.5) }).optional(),
+    kenBurns: z
+      .object({ from: z.number().default(1), to: z.number().default(1.12), x: z.number().min(0).max(1).default(0.5), y: z.number().min(0).max(1).default(0.5) })
+      .optional(),
   }),
   Component: ({ params: p, frame, duration }) => {
     const url = useAssetUrl();
@@ -152,7 +224,16 @@ export const mediaImage = defineLayer({
     const scale = kb ? kb.from * (kb.to / kb.from) ** t : 1;
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: p.radius }}>
-        <Img src={url(p.src)} style={{ width: "100%", height: "100%", objectFit: p.fit, transform: `scale(${scale.toFixed(5)})`, transformOrigin: kb ? `${kb.x * 100}% ${kb.y * 100}%` : "50% 50%" }} />
+        <Img
+          src={url(p.src)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: p.fit,
+            transform: `scale(${scale.toFixed(5)})`,
+            transformOrigin: kb ? `${kb.x * 100}% ${kb.y * 100}%` : "50% 50%",
+          }}
+        />
       </div>
     );
   },
@@ -203,11 +284,29 @@ export const mediaVideo = defineLayer({
     });
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: p.radius, background: "#000" }}>
-        {p.freezeAt !== undefined ? <Freeze frame={p.freezeAt} active={frame >= p.freezeAt}>{content}</Freeze> : content}
+        {p.freezeAt !== undefined ? (
+          <Freeze frame={p.freezeAt} active={frame >= p.freezeAt}>
+            {content}
+          </Freeze>
+        ) : (
+          content
+        )}
       </div>
     );
   },
-  example: { params: { src: "$video", rates: [{ at: 0, rate: 1 }, { at: 20, rate: 0.35 }, { at: 40, rate: 2 }] }, durationInFrames: 60, box: "center", needs: ["video"] },
+  example: {
+    params: {
+      src: "$video",
+      rates: [
+        { at: 0, rate: 1 },
+        { at: 20, rate: 0.35 },
+        { at: 40, rate: 2 },
+      ],
+    },
+    durationInFrames: 60,
+    box: "center",
+    needs: ["video"],
+  },
 });
 
 export const mediaCompare = defineLayer({
@@ -238,7 +337,22 @@ export const mediaCompare = defineLayer({
     const c = resolveColor(env.palette, p.color, "accent");
     const label = (txt: string, left: boolean): React.ReactNode =>
       txt ? (
-        <div style={{ position: "absolute", top: box.h * 0.04, [left ? "left" : "right"]: box.w * 0.03, padding: "0.3em 0.7em", borderRadius: 999, background: "rgba(0,0,0,0.6)", color: "#fff", fontFamily: `"${env.typography.body.family}"`, fontWeight: 700, fontSize: Math.max(18, box.h * 0.04) }}>{txt}</div>
+        <div
+          style={{
+            position: "absolute",
+            top: box.h * 0.04,
+            [left ? "left" : "right"]: box.w * 0.03,
+            padding: "0.3em 0.7em",
+            borderRadius: 999,
+            background: "rgba(0,0,0,0.6)",
+            color: "#fff",
+            fontFamily: `"${env.typography.body.family}"`,
+            fontWeight: 700,
+            fontSize: Math.max(18, box.h * 0.04),
+          }}
+        >
+          {txt}
+        </div>
       ) : null;
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: p.radius }}>
@@ -246,14 +360,42 @@ export const mediaCompare = defineLayer({
         <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 0 0 ${(pos * 100).toFixed(2)}%)` }}>
           <Img src={url(p.after)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
-        <div style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${(pos * 100).toFixed(2)}% - 3px)`, width: 6, background: c, boxShadow: `0 0 20px ${c}` }} />
-        <div style={{ position: "absolute", top: "50%", left: `${(pos * 100).toFixed(2)}%`, width: 54, height: 54, marginLeft: -27, marginTop: -27, borderRadius: "50%", background: c, boxShadow: "0 6px 20px rgba(0,0,0,0.4)" }} />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `calc(${(pos * 100).toFixed(2)}% - 3px)`,
+            width: 6,
+            background: c,
+            boxShadow: `0 0 20px ${c}`,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: `${(pos * 100).toFixed(2)}%`,
+            width: 54,
+            height: 54,
+            marginLeft: -27,
+            marginTop: -27,
+            borderRadius: "50%",
+            background: c,
+            boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+          }}
+        />
         {label(p.beforeLabel, true)}
         {label(p.afterLabel, false)}
       </div>
     );
   },
-  example: { params: { before: "$screenshot", after: "$photo", beforeLabel: "Înainte", afterLabel: "După" }, durationInFrames: 50, box: "center", needs: ["screenshot", "photo"] },
+  example: {
+    params: { before: "$screenshot", after: "$photo", beforeLabel: "Înainte", afterLabel: "După" },
+    durationInFrames: 50,
+    box: "center",
+    needs: ["screenshot", "photo"],
+  },
 });
 
 export const mediaStack3d = defineLayer({
@@ -282,9 +424,30 @@ export const mediaStack3d = defineLayer({
     const ch = cw * 0.62;
     return (
       <div style={{ position: "absolute", inset: 0, perspective: 1400, perspectiveOrigin: "50% 45%" }}>
-        <div style={{ position: "absolute", left: box.w / 2, top: box.h / 2, transformStyle: "preserve-3d", transform: `rotateX(${p.rotateX}deg) rotateY(${p.rotateY}deg) translateZ(${z0.toFixed(2)}px)` }}>
+        <div
+          style={{
+            position: "absolute",
+            left: box.w / 2,
+            top: box.h / 2,
+            transformStyle: "preserve-3d",
+            transform: `rotateX(${p.rotateX}deg) rotateY(${p.rotateY}deg) translateZ(${z0.toFixed(2)}px)`,
+          }}
+        >
           {p.srcs.map((src, i) => (
-            <div key={i} style={{ position: "absolute", left: -cw / 2 + i * cw * 0.12, top: -ch / 2 - i * ch * 0.06, width: cw, height: ch, transform: `translateZ(${-i * p.spacing}px)`, borderRadius: p.radius, overflow: "hidden", boxShadow: "0 40px 80px rgba(0,0,0,0.45)" }}>
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: -cw / 2 + i * cw * 0.12,
+                top: -ch / 2 - i * ch * 0.06,
+                width: cw,
+                height: ch,
+                transform: `translateZ(${-i * p.spacing}px)`,
+                borderRadius: p.radius,
+                overflow: "hidden",
+                boxShadow: "0 40px 80px rgba(0,0,0,0.45)",
+              }}
+            >
               <Img src={url(src)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
             </div>
           ))}
@@ -329,7 +492,15 @@ export const mediaDevice3d = defineLayer({
     const k = geo.screen.w / p.imageWidth;
     return (
       <div style={{ position: "absolute", inset: 0, perspective: 2000 }}>
-        <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", transform: `translateY(${(bob + (1 - s) * 200).toFixed(2)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg) scale(${(0.9 + 0.1 * s).toFixed(4)})`, opacity: clamp(s * 2, 0, 1) }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            transformStyle: "preserve-3d",
+            transform: `translateY(${(bob + (1 - s) * 200).toFixed(2)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg) scale(${(0.9 + 0.1 * s).toFixed(4)})`,
+            opacity: clamp(s * 2, 0, 1),
+          }}
+        >
           <DeviceFrame kind={p.device as FrameKind} box={box} geo={geo}>
             <Img src={url(p.src)} style={{ position: "absolute", left: 0, top: 0, width: p.imageWidth * k, height: p.imageHeight * k }} />
             <div style={{ position: "absolute", inset: 0, background: `linear-gradient(${115 + ry}deg, rgba(255,255,255,0.18), transparent 40%)` }} />
@@ -338,7 +509,12 @@ export const mediaDevice3d = defineLayer({
       </div>
     );
   },
-  example: { params: { src: "$screenshot", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", device: "laptop" }, durationInFrames: 60, box: "center", needs: ["screenshot"] },
+  example: {
+    params: { src: "$screenshot", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", device: "laptop" },
+    durationInFrames: 60,
+    box: "center",
+    needs: ["screenshot"],
+  },
 });
 
 export const mediaCards = defineLayer({
@@ -351,7 +527,12 @@ export const mediaCards = defineLayer({
   compatibleMedia: ["screenshot", "image"],
   performance: "light",
   sfx: [{ sound: "pop", at: "each", gainDb: -8 }],
-  params: z.object({ srcs: z.array(z.string()).min(1), stagger: z.number().int().min(1).max(30).default(6), spread: z.number().min(0).max(30).default(8), radius: z.number().default(20) }),
+  params: z.object({
+    srcs: z.array(z.string()).min(1),
+    stagger: z.number().int().min(1).max(30).default(6),
+    spread: z.number().min(0).max(30).default(8),
+    radius: z.number().default(20),
+  }),
   events: (p) => p.srcs.map((_, i) => ({ at: i * p.stagger })),
   Component: ({ params: p, frame, box, env }) => {
     const url = useAssetUrl();
@@ -364,7 +545,21 @@ export const mediaCards = defineLayer({
           const s = sp(frame, env.fps, i * p.stagger, SPRINGS.ui);
           const off = i - (n - 1) / 2;
           return (
-            <div key={i} style={{ position: "absolute", left: box.w / 2 - cw / 2 + off * box.w * 0.08, top: box.h / 2 - ch / 2 + off * box.h * 0.03, width: cw, height: ch, borderRadius: p.radius, overflow: "hidden", boxShadow: "0 30px 60px rgba(0,0,0,0.4)", transform: `translateY(${((1 - s) * box.h * 0.6).toFixed(1)}px) rotate(${(off * p.spread * s).toFixed(2)}deg)`, opacity: clamp(s * 3, 0, 1) }}>
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: box.w / 2 - cw / 2 + off * box.w * 0.08,
+                top: box.h / 2 - ch / 2 + off * box.h * 0.03,
+                width: cw,
+                height: ch,
+                borderRadius: p.radius,
+                overflow: "hidden",
+                boxShadow: "0 30px 60px rgba(0,0,0,0.4)",
+                transform: `translateY(${((1 - s) * box.h * 0.6).toFixed(1)}px) rotate(${(off * p.spread * s).toFixed(2)}deg)`,
+                opacity: clamp(s * 3, 0, 1),
+              }}
+            >
               <Img src={url(src)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
             </div>
           );

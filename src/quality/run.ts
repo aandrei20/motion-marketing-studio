@@ -28,7 +28,24 @@ import type { VideoCheck } from "../renderer/node/analyze-video";
 import { compileTimeline, type VoiceClipRef } from "../timeline/compile";
 import { validateTimeline } from "../timeline/validate";
 import { currentInputs, sceneContentKey, timelineRenderKey } from "../pipeline/impact";
-import { hasFile, listVersions, loadAssets, loadBrand, loadBrief, loadCritique, loadProject, loadResearch, loadScript, loadStoryboard, loadTimeline, loadVersionMeta, projectDir, saveCritique, updateState, versionFile } from "../projects/store";
+import {
+  hasFile,
+  listVersions,
+  loadAssets,
+  loadBrand,
+  loadBrief,
+  loadCritique,
+  loadProject,
+  loadResearch,
+  loadScript,
+  loadStoryboard,
+  loadTimeline,
+  loadVersionMeta,
+  projectDir,
+  saveCritique,
+  updateState,
+  versionFile,
+} from "../projects/store";
 import { CHECKS, DEPTH_MAX_COST, METHOD_COST, PASSES, type CheckContext, type CheckServices, type Depth, type MotionResult, type StillResult } from "./checks";
 import { dedupe, makeIssue, prioritize, type IssueDraft } from "./issues";
 import { resolveQualityConfig, scoreQuality } from "./score";
@@ -105,18 +122,30 @@ export function collectRounds(projectId: string): CritiqueRound[] {
  * Cadrele-cheie ale unui timeline (unul pe scenă, în fereastra de hold), randate doar pentru scenele al căror
  * conținut nu e deja în cache, plus analiza lor pe pixeli. Cheia: conținutul scenei + cadrul local + codul de randare.
  */
-export async function keyStills(projectId: string, t: Timeline, o: { force?: boolean; log?: Log; scale?: number } = {}): Promise<{ stills: StillResult[]; rendered: number; reused: number }> {
+export async function keyStills(
+  projectId: string,
+  t: Timeline,
+  o: { force?: boolean; log?: Log; scale?: number } = {},
+): Promise<{ stills: StillResult[]; rendered: number; reused: number }> {
   const scale = o.scale ?? 0.4;
   const code = renderCodeHash();
   const samples = pickSamples(t);
   const dir = path.join(projectDir(projectId), "cache", "quality", "stills");
   fs.mkdirSync(dir, { recursive: true });
-  const keyed = samples.map((s) => ({ s, key: fingerprint({ v: 1, scene: sceneContentKey(t, t.scenes.find((x) => x.id === s.sceneId)!), local: s.local, scale, code }) }));
+  const keyed = samples.map((s) => ({
+    s,
+    key: fingerprint({ v: 1, scene: sceneContentKey(t, t.scenes.find((x) => x.id === s.sceneId)!), local: s.local, scale, code }),
+  }));
   const missing = keyed.filter((k) => o.force || !fs.existsSync(path.join(dir, `${k.key}.json`)) || !fs.existsSync(path.join(dir, `${k.key}.jpg`)));
   if (missing.length) {
     o.log?.(`  cadre-cheie [${t.formatId}]: randez ${missing.length} (din ${samples.length}; restul din cache)`);
     const tmp = path.join(dir, `tmp-${process.pid}`);
-    const files = await renderStills(t, missing.map((m) => m.s.frame), tmp, { format: "jpeg", scale, prefix: "q" });
+    const files = await renderStills(
+      t,
+      missing.map((m) => m.s.frame),
+      tmp,
+      { format: "jpeg", scale, prefix: "q" },
+    );
     for (let i = 0; i < missing.length; i++) {
       const { s, key } = missing[i];
       const jpg = path.join(dir, `${key}.jpg`);
@@ -131,7 +160,15 @@ export async function keyStills(projectId: string, t: Timeline, o: { force?: boo
   }
   const stills = keyed.map(({ s, key }) => {
     const c = JSON.parse(fs.readFileSync(path.join(dir, `${key}.json`), "utf8")) as { metrics: PixelMetrics; issues: IssueDraft[] };
-    return { sceneId: s.sceneId, frame: s.frame, local: s.local, file: path.join(dir, `${key}.jpg`), cached: !missing.some((m) => m.key === key), metrics: c.metrics, issues: c.issues.map((d) => ({ ...d, frame: s.frame, formatId: t.formatId })) };
+    return {
+      sceneId: s.sceneId,
+      frame: s.frame,
+      local: s.local,
+      file: path.join(dir, `${key}.jpg`),
+      cached: !missing.some((m) => m.key === key),
+      metrics: c.metrics,
+      issues: c.issues.map((d) => ({ ...d, frame: s.frame, formatId: t.formatId })),
+    };
   });
   return { stills, rendered: missing.length, reused: samples.length - missing.length };
 }
@@ -149,7 +186,8 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
   const primary = formats[0];
   const timelines: Record<string, Timeline> = {};
   for (const f of formats) {
-    if (!hasFile(projectId, `versions/${versionId}/timeline-${f.id}.json`)) throw new MmsError("NOT_COMPILED", `Versiunea ${versionId} nu are timeline pentru ${f.id}.`, `Compilează întâi: npm run mms -- compile ${projectId}`);
+    if (!hasFile(projectId, `versions/${versionId}/timeline-${f.id}.json`))
+      throw new MmsError("NOT_COMPILED", `Versiunea ${versionId} nu are timeline pentru ${f.id}.`, `Compilează întâi: npm run mms -- compile ${projectId}`);
     timelines[f.id] = loadTimeline(projectId, versionId, f.id);
   }
   const brief = loadBrief(projectId);
@@ -189,7 +227,19 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
       if (!fs.existsSync(voicePath) || !brand) return null;
       const voice = JSON.parse(fs.readFileSync(voicePath, "utf8")) as Record<string, VoiceClipRef>;
       const t = timelines[fid];
-      return compileTimeline({ project, versionId, format: formats.find((f) => f.id === fid)!, brief, brand, research, assets, script, storyboard, voice, beatGrid: t.audio.beatGrid }).timeline;
+      return compileTimeline({
+        project,
+        versionId,
+        format: formats.find((f) => f.id === fid)!,
+        brief,
+        brand,
+        research,
+        assets,
+        script,
+        storyboard,
+        voice,
+        beatGrid: t.audio.beatGrid,
+      }).timeline;
     },
   };
 
@@ -229,7 +279,10 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
         for (const p of todo) {
           const out = path.join(tmp, `${p.key}.mp4`);
           log(`  mișcare [${fid}]: randez scena ${p.s.id} la rezoluție mică (${(p.s.durationInFrames / t.fps).toFixed(1)} s)`);
-          await renderTimelineVideo({ ...t, captions: null }, { out, frameRange: [p.s.from, p.s.from + p.s.durationInFrames - 1], muted: true, scale: 0.2, crf: 28 });
+          await renderTimelineVideo(
+            { ...t, captions: null },
+            { out, frameRange: [p.s.from, p.s.from + p.s.durationInFrames - 1], muted: true, scale: 0.2, crf: 28 },
+          );
           const seq = await readFrames(out, { fps: sampleFps, width: w });
           renders.motionFramesRendered += p.s.durationInFrames;
           writeJson(path.join(dir, `${p.key}.json`), { curve: curveOf(seq.frames), stepFrames: step, source: "scene-render" });
@@ -301,7 +354,17 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
     for (const c of CHECKS.filter((x) => x.pass === pass.id)) {
       const fids = c.perFormat ? formats.map((f) => f.id) : [primary.id];
       if (METHOD_COST[c.method] > max) {
-        checks.push({ id: c.id, title: c.title, pass: pass.id, method: c.method, status: "skipped", reason: `metoda „${c.method}” e peste adâncimea „${depth}”`, issues: 0, ms: 0, formats: fids });
+        checks.push({
+          id: c.id,
+          title: c.title,
+          pass: pass.id,
+          method: c.method,
+          status: "skipped",
+          reason: `metoda „${c.method}” e peste adâncimea „${depth}”`,
+          issues: 0,
+          ms: 0,
+          formats: fids,
+        });
         continue;
       }
       const t0 = Date.now();
@@ -316,18 +379,36 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
       const rendered = renders.stillsRendered + renders.motionFramesRendered + renders.fullRendered - before;
       const expensive = METHOD_COST[c.method] >= METHOD_COST.stills;
       for (const cat of c.categories) evaluated.add(cat);
-      checks.push({ id: c.id, title: c.title, pass: pass.id, method: c.method, status: expensive && rendered === 0 ? "cached" : "ran", issues: n, ms: Date.now() - t0, formats: fids });
+      checks.push({
+        id: c.id,
+        title: c.title,
+        pass: pass.id,
+        method: c.method,
+        status: expensive && rendered === 0 ? "cached" : "ran",
+        issues: n,
+        ms: Date.now() - t0,
+        formats: fids,
+      });
     }
     passReports.push({ id: pass.id, n: pass.n, title: pass.title, checks });
     const total = checks.reduce((s, x) => s + x.issues, 0);
-    log(`  Pas ${pass.n} ${pass.title}: ${checks.filter((x) => x.status !== "skipped").length}/${checks.length} verificări, ${total} ${total === 1 ? "problemă" : "probleme"}${checks.some((x) => x.status === "cached") ? " (cache)" : ""}`);
+    log(
+      `  Pas ${pass.n} ${pass.title}: ${checks.filter((x) => x.status !== "skipped").length}/${checks.length} verificări, ${total} ${total === 1 ? "problemă" : "probleme"}${checks.some((x) => x.status === "cached") ? " (cache)" : ""}`,
+    );
   }
 
   const fps = timelines[primary.id].fps;
-  const issues = prioritize(dedupe(drafts.map((d, i) => makeIssue(d, `q${round}-${i + 1}`, round, d.formatId ? timelines[d.formatId]?.fps ?? fps : fps)), formats.map((f) => f.id)));
+  const issues = prioritize(
+    dedupe(
+      drafts.map((d, i) => makeIssue(d, `q${round}-${i + 1}`, round, d.formatId ? (timelines[d.formatId]?.fps ?? fps) : fps)),
+      formats.map((f) => f.id),
+    ),
+  );
   const score = scoreQuality({ issues, evaluated, config, rubricMinScene: ctx.rubric.minScene });
   // observațiile lui Claude și ale utilizatorului pe această versiune: nu intră în scorul comparabil, dar blochează PASS
-  const external = loadCritique(projectId, versionId).rounds.filter((r) => r.reviewer !== REVIEWER).flatMap((r) => r.findings.filter((f) => f.status === "open"));
+  const external = loadCritique(projectId, versionId)
+    .rounds.filter((r) => r.reviewer !== REVIEWER)
+    .flatMap((r) => r.findings.filter((f) => f.status === "open"));
   const extBlocking = external.filter((f) => f.severity === "critical" || f.severity === "high");
   if (extBlocking.length && (score.verdict === "PASS" || score.verdict === "POLISH")) {
     score.verdict = "FIX";
@@ -352,12 +433,35 @@ export async function runQuality(projectId: string, o: QualityRunOptions = {}): 
   critique.threshold = config.sceneRubricThreshold;
   critique.rounds.push(critiqueRound);
   saveCritique(projectId, versionId, critique);
-  const run: QualityRun = { model: "quality-v1", at, projectId, versionId, depth, formats: formats.map((f) => f.id), round, passes: passReports, renders, issues, score, rubric: { minScene: ctx.rubric.minScene, overall: ctx.rubric.overall }, external, durationMs: Date.now() - started, limits: LIMITS };
+  const run: QualityRun = {
+    model: "quality-v1",
+    at,
+    projectId,
+    versionId,
+    depth,
+    formats: formats.map((f) => f.id),
+    round,
+    passes: passReports,
+    renders,
+    issues,
+    score,
+    rubric: { minScene: ctx.rubric.minScene, overall: ctx.rubric.overall },
+    external,
+    durationMs: Date.now() - started,
+    limits: LIMITS,
+  };
   // raportul descrie verificarea, nu modifică versiunea: se scrie și pe o versiune înghețată
   writeJson(versionFile(projectId, versionId, "quality.json"), run);
   const decision = loopDecision({ ...critique, rounds: [...prior, critiqueRound] });
-  updateState(projectId, { step: "critique", stepState: score.verdict === "PASS" ? "done" : "pending", note: `runda ${round}: ${score.overall}/100 ${score.verdict} (${depth})`, log: `Calitate ${versionId} runda ${round} (${depth}): ${score.overall}/100, ${score.verdict}; randate ${renders.stillsRendered} cadre (${renders.stillsReused} din cache), video ${renders.fullRendered} randat / ${renders.fullReused} refolosit.` });
-  log(`Scor ${score.overall}/100 · ${score.verdict} · critice ${score.counts.critical}, mari ${score.counts.high}, medii ${score.counts.medium}, mici ${score.counts.low} · ${((Date.now() - started) / 1000).toFixed(1)} s`);
+  updateState(projectId, {
+    step: "critique",
+    stepState: score.verdict === "PASS" ? "done" : "pending",
+    note: `runda ${round}: ${score.overall}/100 ${score.verdict} (${depth})`,
+    log: `Calitate ${versionId} runda ${round} (${depth}): ${score.overall}/100, ${score.verdict}; randate ${renders.stillsRendered} cadre (${renders.stillsReused} din cache), video ${renders.fullRendered} randat / ${renders.fullReused} refolosit.`,
+  });
+  log(
+    `Scor ${score.overall}/100 · ${score.verdict} · critice ${score.counts.critical}, mari ${score.counts.high}, medii ${score.counts.medium}, mici ${score.counts.low} · ${((Date.now() - started) / 1000).toFixed(1)} s`,
+  );
   return { run, round: critiqueRound, decision };
 }
 

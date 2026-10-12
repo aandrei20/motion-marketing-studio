@@ -10,7 +10,10 @@ class FixedBiquad {
   private x2 = 0;
   private y1 = 0;
   private y2 = 0;
-  constructor(private b: [number, number, number], private a: [number, number]) {}
+  constructor(
+    private b: [number, number, number],
+    private a: [number, number],
+  ) {}
   tick(x: number): number {
     const y = this.b[0] * x + this.b[1] * this.x1 + this.b[2] * this.x2 - this.a[0] * this.y1 - this.a[1] * this.y2;
     this.x2 = this.x1;

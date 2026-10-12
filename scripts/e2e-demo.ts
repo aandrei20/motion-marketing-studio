@@ -27,8 +27,33 @@ import { validateScript } from "../src/creative/script";
 import { runQuality } from "../src/quality/run";
 import { autoFixLoop } from "../src/quality/autofix";
 import { probe } from "../src/assets/analyze";
-import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepScript, stepStoryboard, stepVoice } from "../src/pipeline/steps";
-import { createProject, loadAssets, loadBrief, loadProject, loadResearch, loadTimeline, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
+import {
+  approve,
+  demoUrl,
+  shutdown,
+  stepAudio,
+  stepBrand,
+  stepCapture,
+  stepCompile,
+  stepFinalRender,
+  stepScript,
+  stepStoryboard,
+  stepVoice,
+} from "../src/pipeline/steps";
+import {
+  createProject,
+  loadAssets,
+  loadBrief,
+  loadProject,
+  loadResearch,
+  loadTimeline,
+  projectDir,
+  projectExists,
+  saveBrief,
+  saveScript,
+  saveStoryboard,
+  writableVersion,
+} from "../src/projects/store";
 import { setClaimStatus } from "../src/research/extract";
 
 const ex = path.join(PATHS.examples, "demo-product");
@@ -78,7 +103,21 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
       { id: "landing", url: demoUrl("index.html"), viewport: "desktop" },
       { id: "landing-full", url: demoUrl("index.html"), viewport: "desktop", fullPage: true },
       { id: "app", url: demoUrl("app.html"), viewport: "desktop", research: false },
-      { id: "app-search", url: demoUrl("app.html"), viewport: "desktop", research: false, record: { steps: [{ action: "wait", ms: 900 }, { action: "type", selector: "#search", text: "raport", delayMs: 210 }, { action: "wait", ms: 2600 }], fps: 30, tailMs: 400 } },
+      {
+        id: "app-search",
+        url: demoUrl("app.html"),
+        viewport: "desktop",
+        research: false,
+        record: {
+          steps: [
+            { action: "wait", ms: 900 },
+            { action: "type", selector: "#search", text: "raport", delayMs: 210 },
+            { action: "wait", ms: 2600 },
+          ],
+          fps: 30,
+          tailMs: 400,
+        },
+      },
     ],
     log,
   );
@@ -100,7 +139,9 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
     stepScript(ID);
     stepStoryboard(ID).rationale.forEach((r) => log(`   ${r}`));
   } else {
-    const v = writableVersion(ID, [{ at: new Date().toISOString(), op: "creative", description: "Script și storyboard scrise de directorul creativ.", params: {} }]);
+    const v = writableVersion(ID, [
+      { at: new Date().toISOString(), op: "creative", description: "Script și storyboard scrise de directorul creativ.", params: {} },
+    ]);
     saveScript(ID, v, Script.parse(readJsonLoose(path.join(ex, "script.json"))));
     saveStoryboard(ID, v, Storyboard.parse(readJsonLoose(path.join(ex, "storyboard.json"))));
   }
@@ -140,11 +181,18 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
     log("10. Preview pentru om (un singur video pe format, sau refolosit) + final QA pe video");
     const fin = await runQuality(ID, { versionId: finalVersion, depth: "final", log: (m) => log(`   ${m}`) });
     for (const fid of fin.run.formats) {
-      const chk = JSON.parse(fs.readFileSync(path.join(projectDir(ID), "versions", finalVersion, "renders", `check-${fid}.json`), "utf8")) as { frames: number; blackFrames: number[]; maxFlashesPerSec: number; problems: string[] };
+      const chk = JSON.parse(fs.readFileSync(path.join(projectDir(ID), "versions", finalVersion, "renders", `check-${fid}.json`), "utf8")) as {
+        frames: number;
+        blackFrames: number[];
+        maxFlashesPerSec: number;
+        problems: string[];
+      };
       log(`   [${fid}] ${chk.frames} cadre analizate · ${chk.problems.length ? chk.problems.join(" ") : "fără cadre negre, flash-uri sau înghețări"}`);
       if (chk.blackFrames.length || chk.maxFlashesPerSec > 2) throw new Error("Verificarea video a eșuat.");
     }
-    log(`   final QA: ${fin.run.score.overall}/100 · ${fin.run.score.verdict} · video randat ${fin.run.renders.fullRendered}, refolosit ${fin.run.renders.fullReused}`);
+    log(
+      `   final QA: ${fin.run.score.overall}/100 · ${fin.run.score.verdict} · video randat ${fin.run.renders.fullRendered}, refolosit ${fin.run.renders.fullReused}`,
+    );
   }
   const exports: string[] = [];
   if (o.exportFinal) {
@@ -155,9 +203,14 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
       const t1 = Date.now();
       const out = await stepFinalRender(ID, finalVersion, f.id, (m) => log(`   ${m}`));
       const pr = await probe(out);
-      const chk = JSON.parse(fs.readFileSync(out.replace(/\.mp4$/, ".check.json"), "utf8")) as { check: { blackFrames: number[]; maxFlashesPerSec: number; problems: string[] }; mix: { ok: boolean; integratedLufs: number; truePeakDbtp: number } };
+      const chk = JSON.parse(fs.readFileSync(out.replace(/\.mp4$/, ".check.json"), "utf8")) as {
+        check: { blackFrames: number[]; maxFlashesPerSec: number; problems: string[] };
+        mix: { ok: boolean; integratedLufs: number; truePeakDbtp: number };
+      };
       const expectSec = loadTimeline(ID, finalVersion, f.id).durationInFrames / f.fps;
-      log(`   [${f.id}] ${path.relative(PATHS.root, out)} · ${pr.width}×${pr.height} @ ${pr.fps?.toFixed(2)} fps · ${pr.durationSec?.toFixed(2)} s · ${pr.codec} + ${pr.hasAudio ? "audio" : "FĂRĂ audio"} · ${(fs.statSync(out).size / 1024 ** 2).toFixed(1)} MB · ${((Date.now() - t1) / 1000).toFixed(0)} s`);
+      log(
+        `   [${f.id}] ${path.relative(PATHS.root, out)} · ${pr.width}×${pr.height} @ ${pr.fps?.toFixed(2)} fps · ${pr.durationSec?.toFixed(2)} s · ${pr.codec} + ${pr.hasAudio ? "audio" : "FĂRĂ audio"} · ${(fs.statSync(out).size / 1024 ** 2).toFixed(1)} MB · ${((Date.now() - t1) / 1000).toFixed(0)} s`,
+      );
       const bad = [
         pr.width !== f.width || pr.height !== f.height ? `rezoluția ${pr.width}×${pr.height} ≠ ${f.width}×${f.height}` : "",
         !pr.fps || Math.abs(pr.fps - f.fps) > 0.01 ? `FPS ${pr.fps} ≠ ${f.fps}` : "",

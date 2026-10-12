@@ -49,7 +49,10 @@ export const bgGradient = defineLayer({
     const b = mix(hex(a), hex(resolveColor(env.palette, p.to, "primary")), p.strength);
     const angle = p.angle + (frame / env.fps) * p.driftDegPerSec;
     const cx = 50 + 20 * Math.sin(frame / env.fps / 3);
-    const bg = p.mode === "linear" ? `linear-gradient(${angle.toFixed(2)}deg, ${a} 0%, ${b} 100%)` : `radial-gradient(120% 90% at ${cx.toFixed(2)}% 30%, ${b} 0%, ${a} 70%)`;
+    const bg =
+      p.mode === "linear"
+        ? `linear-gradient(${angle.toFixed(2)}deg, ${a} 0%, ${b} 100%)`
+        : `radial-gradient(120% 90% at ${cx.toFixed(2)}% 30%, ${b} 0%, ${a} 70%)`;
     return <div style={{ position: "absolute", inset: 0, background: bg }} />;
   },
   example: { params: { from: "background", to: "primary" }, durationInFrames: 60, box: "full" },
@@ -145,12 +148,28 @@ export const bgImage = defineLayer({
   tags: ["background", "image", "blur", "depth", "screenshot"],
   compatibleMedia: ["image", "screenshot"],
   performance: "medium",
-  params: z.object({ src: z.string(), blur: z.number().min(0).max(80).default(36), dim: z.number().min(0).max(1).default(0.55), scale: z.number().min(1).max(2).default(1.15) }),
+  params: z.object({
+    src: z.string(),
+    blur: z.number().min(0).max(80).default(36),
+    dim: z.number().min(0).max(1).default(0.55),
+    scale: z.number().min(1).max(2).default(1.15),
+  }),
   Component: ({ params: p }) => {
     const url = useAssetUrl();
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#000" }}>
-        <Img src={url(p.src)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: `blur(${p.blur}px)`, transform: `scale(${p.scale})` }} />
+        <Img
+          src={url(p.src)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            filter: `blur(${p.blur}px)`,
+            transform: `scale(${p.scale})`,
+          }}
+        />
         <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${p.dim})` }} />
       </div>
     );
@@ -166,7 +185,13 @@ export const bgWaves = defineLayer({
   description: "Linii sinusoidale suprapuse care curg lent (SVG). Pentru audio, fluxuri, date.",
   tags: ["waves", "lines", "flow", "audio", "calm"],
   performance: "light",
-  params: z.object({ color: z.string().default("primary"), count: z.number().int().min(1).max(12).default(5), amplitude: z.number().min(0).max(0.5).default(0.08), speed: z.number().min(0).max(5).default(0.8), opacity: z.number().min(0).max(1).default(0.5) }),
+  params: z.object({
+    color: z.string().default("primary"),
+    count: z.number().int().min(1).max(12).default(5),
+    amplitude: z.number().min(0).max(0.5).default(0.08),
+    speed: z.number().min(0).max(5).default(0.8),
+    opacity: z.number().min(0).max(1).default(0.5),
+  }),
   Component: ({ params: p, frame, env, box }) => {
     const c = resolveColor(env.palette, p.color, "primary");
     const t = (frame / env.fps) * p.speed;
@@ -197,22 +222,41 @@ export const bgBeatBars = defineLayer({
   id: "bg.beat-bars",
   category: "light",
   title: "Bare de egalizator pe ritm",
-  description:
-    "Bare care pulsează pe bătăile din beat grid (deterministe). Reacționează la ritmul declarat, nu la spectrul audio real.",
+  description: "Bare care pulsează pe bătăile din beat grid (deterministe). Reacționează la ritmul declarat, nu la spectrul audio real.",
   tags: ["equalizer", "bars", "beat", "music", "audio-reactive", "rhythm"],
   performance: "light",
-  params: z.object({ color: z.string().default("primary"), bars: z.number().int().min(4).max(64).default(24), beatFrames: z.number().min(2).default(15), offset: z.number().default(0), opacity: z.number().min(0).max(1).default(0.8) }),
+  params: z.object({
+    color: z.string().default("primary"),
+    bars: z.number().int().min(4).max(64).default(24),
+    beatFrames: z.number().min(2).default(15),
+    offset: z.number().default(0),
+    opacity: z.number().min(0).max(1).default(0.8),
+  }),
   Component: ({ params: p, frame, env, box, layer }) => {
     const c = resolveColor(env.palette, p.color, "primary");
-    const phase = ((frame - p.offset) % p.beatFrames + p.beatFrames) % p.beatFrames;
+    const phase = (((frame - p.offset) % p.beatFrames) + p.beatFrames) % p.beatFrames;
     const pulse = Math.exp(-phase / (p.beatFrames * 0.35));
     const bw = box.w / p.bars;
     return (
       <div style={{ position: "absolute", inset: 0 }}>
         {Array.from({ length: p.bars }, (_, i) => {
-          const base = 0.15 + 0.35 * (0.5 + 0.5 * fbm1(`${layer.id}:${i}`, frame / env.fps * 2));
+          const base = 0.15 + 0.35 * (0.5 + 0.5 * fbm1(`${layer.id}:${i}`, (frame / env.fps) * 2));
           const h = Math.min(1, base + pulse * (0.3 + 0.5 * rand(layer.id, i, Math.floor(frame / p.beatFrames))));
-          return <div key={i} style={{ position: "absolute", left: i * bw + bw * 0.15, width: bw * 0.7, bottom: 0, height: `${(h * 100).toFixed(2)}%`, background: c, opacity: p.opacity, borderRadius: bw * 0.2 }} />;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: i * bw + bw * 0.15,
+                width: bw * 0.7,
+                bottom: 0,
+                height: `${(h * 100).toFixed(2)}%`,
+                background: c,
+                opacity: p.opacity,
+                borderRadius: bw * 0.2,
+              }}
+            />
+          );
         })}
       </div>
     );
@@ -221,4 +265,3 @@ export const bgBeatBars = defineLayer({
 });
 
 export const BACKGROUNDS = [bgSolid, bgGradient, bgMesh, bgGrid, bgImage, bgWaves, bgBeatBars];
-

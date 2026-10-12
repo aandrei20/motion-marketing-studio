@@ -38,7 +38,10 @@ const NUMBER_RE = /\b\d+([.,]\d+)?\s?(%|x|×|\+|k|K|M|mii|milioane)?\b/;
 
 /** Secțiunile paginii: titlu + textele care urmează (din textul vizibil, în ordine). */
 function sections(page: PageData): Array<{ heading: string; level: number; body: string[] }> {
-  const lines = page.fullText.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const lines = page.fullText
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   const headSet = new Map(page.headings.map((h) => [h.text, h.level]));
   const out: Array<{ heading: string; level: number; body: string[] }> = [];
   let cur: { heading: string; level: number; body: string[] } | null = null;
@@ -80,8 +83,28 @@ export function extractFromPage(page: PageData, opts: { capturedAt?: string } = 
   const flag = (t: string): Claim["status"] => (PRICE_RE.test(t) || NUMBER_RE.test(t) ? "needs-confirmation" : "verified");
 
   const h1 = page.headings.find((h) => h.level === 1);
-  if (h1) add({ idHint: `poz-${h1.text}`, text: h1.text, kind: "fact", category: "positioning", quote: h1.text, confidence: "high", status: flag(h1.text), notes: "Titlul principal al paginii (promisiunea oficială)." });
-  if (page.description) add({ idHint: `rez-${page.description}`, text: page.description, kind: "fact", category: "positioning", quote: page.description, confidence: "high", status: flag(page.description), notes: "Meta description." });
+  if (h1)
+    add({
+      idHint: `poz-${h1.text}`,
+      text: h1.text,
+      kind: "fact",
+      category: "positioning",
+      quote: h1.text,
+      confidence: "high",
+      status: flag(h1.text),
+      notes: "Titlul principal al paginii (promisiunea oficială).",
+    });
+  if (page.description)
+    add({
+      idHint: `rez-${page.description}`,
+      text: page.description,
+      kind: "fact",
+      category: "positioning",
+      quote: page.description,
+      confidence: "high",
+      status: flag(page.description),
+      notes: "Meta description.",
+    });
 
   for (const s of sections(page)) {
     const first = s.body.find((b) => b.length > 25 && !PRICE_RE.test(b));
@@ -89,23 +112,61 @@ export function extractFromPage(page: PageData, opts: { capturedAt?: string } = 
     const pricingCard = s.body.slice(0, 3).some((b) => PRICE_RE.test(b) || /^(personalizat|custom|gratuit|free)$/i.test(b.trim()));
     if (s.level >= 3 && first && s.heading.length < 70 && !pricingCard) {
       // funcție: titlu + prima frază descriptivă
-      add({ idHint: `f-${s.heading}`, text: `${s.heading}: ${first}`, kind: "fact", category: "feature", quote: `${s.heading}\n${first}`, confidence: "medium", status: flag(`${s.heading} ${first}`), notes: "Funcție extrasă din titlul secțiunii și textul de sub el." });
+      add({
+        idHint: `f-${s.heading}`,
+        text: `${s.heading}: ${first}`,
+        kind: "fact",
+        category: "feature",
+        quote: `${s.heading}\n${first}`,
+        confidence: "medium",
+        status: flag(`${s.heading} ${first}`),
+        notes: "Funcție extrasă din titlul secțiunii și textul de sub el.",
+      });
     }
     for (const b of s.body) {
       if (PRICE_RE.test(b) && b.length < 80) {
         const ctx = [s.heading, b, s.body[s.body.indexOf(b) + 1] ?? ""].filter(Boolean).join(" · ");
-        add({ idHint: `pret-${s.heading}-${b}`, text: ctx, kind: "fact", category: "pricing", quote: ctx, confidence: "medium", status: "needs-confirmation", notes: "Preț găsit pe pagină; se confirmă înainte de a intra în video." });
+        add({
+          idHint: `pret-${s.heading}-${b}`,
+          text: ctx,
+          kind: "fact",
+          category: "pricing",
+          quote: ctx,
+          confidence: "medium",
+          status: "needs-confirmation",
+          notes: "Preț găsit pe pagină; se confirmă înainte de a intra în video.",
+        });
       }
     }
   }
   // noutăți datate (changelog)
   for (const t of page.times) {
     const s = sections(page).find((x) => text.indexOf(x.heading) > text.indexOf(t.text) && text.indexOf(x.heading) - text.indexOf(t.text) < 200);
-    if (s) add({ idHint: `nou-${s.heading}`, text: `${t.text}: ${s.heading}${s.body[0] ? ` – ${s.body[0]}` : ""}`, kind: "fact", category: "feature", quote: `${t.text} ${s.heading} ${s.body[0] ?? ""}`.trim(), confidence: "medium", status: flag(`${s.heading} ${s.body[0] ?? ""}`), notes: `Noutate datată ${t.datetime || t.text}.` });
+    if (s)
+      add({
+        idHint: `nou-${s.heading}`,
+        text: `${t.text}: ${s.heading}${s.body[0] ? ` – ${s.body[0]}` : ""}`,
+        kind: "fact",
+        category: "feature",
+        quote: `${t.text} ${s.heading} ${s.body[0] ?? ""}`.trim(),
+        confidence: "medium",
+        status: flag(`${s.heading} ${s.body[0] ?? ""}`),
+        notes: `Noutate datată ${t.datetime || t.text}.`,
+      });
   }
   // propoziții cu cifre din paragrafe: candidate de „dovadă”, mereu de confirmat
   for (const p of page.paragraphs) {
-    if (NUMBER_RE.test(p) && p.length < 220 && !claims.some((c) => c.quote?.includes(p))) add({ idHint: `cifra-${p}`, text: p, kind: "fact", category: "metric", quote: p, confidence: "low", status: "needs-confirmation", notes: "Conține o cifră; se confirmă înainte de folosire." });
+    if (NUMBER_RE.test(p) && p.length < 220 && !claims.some((c) => c.quote?.includes(p)))
+      add({
+        idHint: `cifra-${p}`,
+        text: p,
+        kind: "fact",
+        category: "metric",
+        quote: p,
+        confidence: "low",
+        status: "needs-confirmation",
+        notes: "Conține o cifră; se confirmă înainte de folosire.",
+      });
   }
   const discoveredLinks = page.links
     .filter((l) => {
@@ -148,7 +209,11 @@ export function mergeIntoResearch(projectId: string, r: ExtractResult, pageText:
   const pending = res.claims.filter((c) => c.status === "needs-confirmation").length;
   res.openQuestions = pending ? [`Confirmă ${pending} afirmații cu prețuri sau cifre înainte să intre în video.`] : [];
   const saved = saveResearch(projectId, res);
-  updateState(projectId, { step: "research", note: `${saved.sources.length} surse, ${saved.claims.length} afirmații`, log: `Research din ${r.source.url}: ${r.claims.length} afirmații.` });
+  updateState(projectId, {
+    step: "research",
+    note: `${saved.sources.length} surse, ${saved.claims.length} afirmații`,
+    log: `Research din ${r.source.url}: ${r.claims.length} afirmații.`,
+  });
   return saved;
 }
 
@@ -169,8 +234,27 @@ export function setClaimStatus(projectId: string, claimId: string, status: Claim
 export function addUserClaim(projectId: string, text: string, category: Claim["category"], sourceTitle: string): Claim {
   const res = loadResearch(projectId);
   const sid = `src-user-${slug(sourceTitle, 30)}`;
-  if (!res.sources.some((s) => s.id === sid)) res.sources.push({ id: sid, kind: "user-provided", title: sourceTitle, fetchedAt: now(), contentHash: crypto.createHash("sha256").update(sourceTitle).digest("hex"), reliability: "user" });
-  const claim: Claim = { id: `c-user-${slug(text, 30)}`, text, kind: "fact", category, sourceIds: [sid], quote: text, confidence: "medium", status: "approved-by-user", checkedAt: now(), notes: "Dată de utilizator." };
+  if (!res.sources.some((s) => s.id === sid))
+    res.sources.push({
+      id: sid,
+      kind: "user-provided",
+      title: sourceTitle,
+      fetchedAt: now(),
+      contentHash: crypto.createHash("sha256").update(sourceTitle).digest("hex"),
+      reliability: "user",
+    });
+  const claim: Claim = {
+    id: `c-user-${slug(text, 30)}`,
+    text,
+    kind: "fact",
+    category,
+    sourceIds: [sid],
+    quote: text,
+    confidence: "medium",
+    status: "approved-by-user",
+    checkedAt: now(),
+    notes: "Dată de utilizator.",
+  };
   res.claims.push(claim);
   saveResearch(projectId, res);
   return claim;

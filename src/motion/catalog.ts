@@ -30,7 +30,14 @@ export const STUDIO_TYPOGRAPHY: TypographySet = {
 };
 
 const S = samples as unknown as Record<string, { file: string; w: number; h: number }>;
-const SAMPLE_KEYS: Record<string, string> = { screenshot: "screenshot", "tall-screenshot": "tall-screenshot", photo: "image", image: "image", logo: "logo", video: "video" };
+const SAMPLE_KEYS: Record<string, string> = {
+  screenshot: "screenshot",
+  "tall-screenshot": "tall-screenshot",
+  photo: "image",
+  image: "image",
+  logo: "logo",
+  video: "video",
+};
 
 /** Înlocuiește „$screenshot”, „$screenshot.w” etc. cu materialele de probă reale. */
 export function resolveSamples<T>(v: T): T {
@@ -59,50 +66,171 @@ function collectAssets(v: unknown, out: Set<string>): void {
   else if (v && typeof v === "object") Object.values(v).forEach((x) => collectAssets(x, out));
 }
 
-function layer(id: string, capability: string, params: Record<string, unknown>, box: Rect, duration: number, extra: Partial<TimelineLayer> = {}): TimelineLayer {
+function layer(
+  id: string,
+  capability: string,
+  params: Record<string, unknown>,
+  box: Rect,
+  duration: number,
+  extra: Partial<TimelineLayer> = {},
+): TimelineLayer {
   const assets = new Set<string>();
   collectAssets(params, assets);
-  return { id, capability, from: 0, durationInFrames: duration, z: 1, box, params, depth: 1, role: "hero", modifiers: [], assets: [...assets], children: [], ...extra };
+  return {
+    id,
+    capability,
+    from: 0,
+    durationInFrames: duration,
+    z: 1,
+    box,
+    params,
+    depth: 1,
+    role: "hero",
+    modifiers: [],
+    assets: [...assets],
+    children: [],
+    ...extra,
+  };
 }
 
-const bg = (duration: number): TimelineLayer => layer("bg", "bg.gradient", { from: "background", to: "primary", angle: 160, driftDegPerSec: 6, mode: "linear", strength: 0.35 }, { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H }, duration, { z: 0, role: "background" });
+const bg = (duration: number): TimelineLayer =>
+  layer(
+    "bg",
+    "bg.gradient",
+    { from: "background", to: "primary", angle: 160, driftDegPerSec: 6, mode: "linear", strength: 0.35 },
+    { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H },
+    duration,
+    { z: 0, role: "background" },
+  );
 
 const label = (cap: Capability, duration: number): TimelineLayer =>
-  layer("label", "text.body", { text: `${cap.id} — ${cap.title}`, font: "mono", maxSize: 30, minSize: 16, color: "textMuted", align: "left", vAlign: "top", exit: "none", emphasis: [], emphasisColor: "accent", lineHeight: 1.2, delay: 0, exitFrames: 5, shadow: false }, { x: 40, y: 24, w: 1840, h: 50 }, duration, { z: 50, depth: 0, role: "hud" });
+  layer(
+    "label",
+    "text.body",
+    {
+      text: `${cap.id} — ${cap.title}`,
+      font: "mono",
+      maxSize: 30,
+      minSize: 16,
+      color: "textMuted",
+      align: "left",
+      vAlign: "top",
+      exit: "none",
+      emphasis: [],
+      emphasisColor: "accent",
+      lineHeight: 1.2,
+      delay: 0,
+      exitFrames: 5,
+      shadow: false,
+    },
+    { x: 40, y: 24, w: 1840, h: 50 },
+    duration,
+    { z: 50, depth: 0, role: "hud" },
+  );
 
-const screenParams = () => resolveSamples({ src: "$screenshot", kind: "image", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", frame: "browser", theme: "dark", url: "exemplu.ro", videoStartFrom: 0, playbackRate: 1, shadow: true });
+const screenParams = () =>
+  resolveSamples({
+    src: "$screenshot",
+    kind: "image",
+    imageWidth: "$screenshot.w",
+    imageHeight: "$screenshot.h",
+    frame: "browser",
+    theme: "dark",
+    url: "exemplu.ro",
+    videoStartFrom: 0,
+    playbackRate: 1,
+    shadow: true,
+  });
 
 function sceneFor(cap: Capability, from: number): TimelineScene {
   const ex = resolveSamples(cap.example);
   const duration = Math.max(cap.kind === "transition" ? 30 : 20, ex.durationInFrames || 30);
   const meta = { purpose: `Catalog: ${cap.title}`, narrativeRole: "demo", recipe: "catalog", shot: "insert", energy: 0.5 };
-  const camera = { keys: [{ at: 0, x: CATALOG_W / 2, y: CATALOG_H / 2, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" as const }], handheld: 0, shake: [], punches: [], perspective: 1600, motionBlur: true };
+  const camera = {
+    keys: [{ at: 0, x: CATALOG_W / 2, y: CATALOG_H / 2, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" as const }],
+    handheld: 0,
+    shake: [],
+    punches: [],
+    perspective: 1600,
+    motionBlur: true,
+  };
   const box = exampleBox(ex.box);
   if (cap.kind === "layer") {
     const children = (ex.children ?? []).map((c, i) => {
       const cc = ALL_CAPABILITIES.find((k) => k.id === c.capability);
       if (!cc || cc.kind !== "layer") throw new Error(`Copil necunoscut în exemplul ${cap.id}: ${c.capability}`);
-      return layer(`child-${i}`, c.capability, cc.params.parse(resolveSamples(c.params)) as Record<string, unknown>, resolveSamples(c.box), c.durationInFrames, { from: c.from });
+      return layer(
+        `child-${i}`,
+        c.capability,
+        cc.params.parse(resolveSamples(c.params)) as Record<string, unknown>,
+        resolveSamples(c.box),
+        c.durationInFrames,
+        { from: c.from },
+      );
     });
     // straturile de interfață se arată pe o captură reală: devin copii ai unui media.screen
     const host: TimelineLayer =
       cap.category === "ui" && children.length && cap.id !== "media.screen"
         ? layer("subject", "media.screen", screenParams(), box, duration, { children })
         : layer("subject", cap.id, cap.params.parse(ex.params) as Record<string, unknown>, box, duration, { children });
-    return { id: `cat-${cap.id.replace(/\./g, "-")}`, from, durationInFrames: duration, transitionIn: null, camera, layers: [bg(duration), host, label(cap, duration)], meta };
+    return {
+      id: `cat-${cap.id.replace(/\./g, "-")}`,
+      from,
+      durationInFrames: duration,
+      transitionIn: null,
+      camera,
+      layers: [bg(duration), host, label(cap, duration)],
+      meta,
+    };
   }
   if (cap.kind === "modifier") {
     const params = cap.params.parse(ex.params) as Record<string, unknown>;
-    const subject = layer("subject", "media.image", resolveSamples({ src: "$screenshot", fit: "cover", radius: 24 }), box, duration, { modifiers: [{ capability: cap.id, params }] });
-    return { id: `cat-${cap.id.replace(/\./g, "-")}`, from, durationInFrames: duration, transitionIn: null, camera, layers: [bg(duration), subject, label(cap, duration)], meta };
+    const subject = layer("subject", "media.image", resolveSamples({ src: "$screenshot", fit: "cover", radius: 24 }), box, duration, {
+      modifiers: [{ capability: cap.id, params }],
+    });
+    return {
+      id: `cat-${cap.id.replace(/\./g, "-")}`,
+      from,
+      durationInFrames: duration,
+      transitionIn: null,
+      camera,
+      layers: [bg(duration), subject, label(cap, duration)],
+      meta,
+    };
   }
   if (cap.kind === "camera") {
     const params = cap.params.parse(ex.params) as Record<string, unknown>;
-    const build = cap.build(params as never, { duration, width: CATALOG_W, height: CATALOG_H, focus: { x: CATALOG_W * 0.42, y: CATALOG_H * 0.36 }, focusZoom: 1.8, energy: 0.6 });
-    const cam = { ...camera, keys: build.keys, handheld: build.handheld ?? 0, shake: build.shake ?? [], punches: build.punches ?? [], depthOfField: build.depthOfField };
-    const far = layer("far", "media.image", resolveSamples({ src: "$photo", fit: "cover", radius: 0 }), { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H }, duration, { depth: 0.6, z: 0, role: "background" });
+    const build = cap.build(params as never, {
+      duration,
+      width: CATALOG_W,
+      height: CATALOG_H,
+      focus: { x: CATALOG_W * 0.42, y: CATALOG_H * 0.36 },
+      focusZoom: 1.8,
+      energy: 0.6,
+    });
+    const cam = {
+      ...camera,
+      keys: build.keys,
+      handheld: build.handheld ?? 0,
+      shake: build.shake ?? [],
+      punches: build.punches ?? [],
+      depthOfField: build.depthOfField,
+    };
+    const far = layer("far", "media.image", resolveSamples({ src: "$photo", fit: "cover", radius: 0 }), { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H }, duration, {
+      depth: 0.6,
+      z: 0,
+      role: "background",
+    });
     const near = layer("near", "media.screen", screenParams(), box, duration, { depth: 1.4, z: 1 });
-    return { id: `cat-${cap.id.replace(/\./g, "-")}`, from, durationInFrames: duration, transitionIn: null, camera: cam, layers: [far, near, label(cap, duration)], meta };
+    return {
+      id: `cat-${cap.id.replace(/\./g, "-")}`,
+      from,
+      durationInFrames: duration,
+      transitionIn: null,
+      camera: cam,
+      layers: [far, near, label(cap, duration)],
+      meta,
+    };
   }
   // tranziție: scena A (captură) → scena B (gradient + text), suprapuse pe durata tranziției
   const params = cap.params.parse(ex.params) as Record<string, unknown>;
@@ -113,8 +241,38 @@ function sceneFor(cap: Capability, from: number): TimelineScene {
     transitionIn: { capability: cap.id, durationInFrames: cap.defaultDuration, params },
     camera,
     layers: [
-      layer("bg", "bg.mesh", { colors: ["primary", "accent", "secondary"], base: "background", blobs: 4, speed: 0.6, intensity: 0.55 }, { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H }, duration, { z: 0, role: "background" }),
-      layer("title", "text.word-reveal", { text: cap.title, emphasis: [], font: "display", color: "text", emphasisColor: "accent", align: "left", vAlign: "middle", maxSize: 120, minSize: 30, lineHeight: 1.04, exit: "none", exitFrames: 5, shadow: false, stagger: 3, rise: 0.45 }, { x: 160, y: 380, w: 1600, h: 320 }, duration, { z: 1 }),
+      layer(
+        "bg",
+        "bg.mesh",
+        { colors: ["primary", "accent", "secondary"], base: "background", blobs: 4, speed: 0.6, intensity: 0.55 },
+        { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H },
+        duration,
+        { z: 0, role: "background" },
+      ),
+      layer(
+        "title",
+        "text.word-reveal",
+        {
+          text: cap.title,
+          emphasis: [],
+          font: "display",
+          color: "text",
+          emphasisColor: "accent",
+          align: "left",
+          vAlign: "middle",
+          maxSize: 120,
+          minSize: 30,
+          lineHeight: 1.04,
+          exit: "none",
+          exitFrames: 5,
+          shadow: false,
+          stagger: 3,
+          rise: 0.45,
+        },
+        { x: 160, y: 380, w: 1600, h: 320 },
+        duration,
+        { z: 1 },
+      ),
       label(cap, duration),
     ],
     meta,
@@ -128,8 +286,19 @@ function transitionSource(id: string, from: number, duration: number): TimelineS
     from,
     durationInFrames: duration,
     transitionIn: null,
-    camera: { keys: [{ at: 0, x: CATALOG_W / 2, y: CATALOG_H / 2, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" }], handheld: 0, shake: [], punches: [], perspective: 1600, motionBlur: true },
-    layers: [layer("shot", "media.image", resolveSamples({ src: "$screenshot", fit: "cover", radius: 0 }), { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H }, duration, { z: 0 })],
+    camera: {
+      keys: [{ at: 0, x: CATALOG_W / 2, y: CATALOG_H / 2, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" }],
+      handheld: 0,
+      shake: [],
+      punches: [],
+      perspective: 1600,
+      motionBlur: true,
+    },
+    layers: [
+      layer("shot", "media.image", resolveSamples({ src: "$screenshot", fit: "cover", radius: 0 }), { x: 0, y: 0, w: CATALOG_W, h: CATALOG_H }, duration, {
+        z: 0,
+      }),
+    ],
     meta: { purpose: "Sursă pentru tranziție", narrativeRole: "demo", recipe: "catalog", shot: "insert", energy: 0.5 },
   };
 }
@@ -161,7 +330,13 @@ export function buildCatalogTimeline(filter?: (c: Capability) => boolean): { tim
     } else {
       const sc = sceneFor(cap, t);
       scenes.push(sc);
-      entries.push({ id: cap.id, sceneId: sc.id, from: sc.from, durationInFrames: sc.durationInFrames, sampleFrame: sc.from + Math.floor(sc.durationInFrames * 0.6) });
+      entries.push({
+        id: cap.id,
+        sceneId: sc.id,
+        from: sc.from,
+        durationInFrames: sc.durationInFrames,
+        sampleFrame: sc.from + Math.floor(sc.durationInFrames * 0.6),
+      });
       t += sc.durationInFrames;
     }
   }

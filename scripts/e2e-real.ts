@@ -46,8 +46,14 @@ export async function runRealE2E(o: RealE2EOptions): Promise<{ id: string; versi
   const ID = o.id ?? "e2e-real";
   const log = o.log ?? ((m: string) => console.log(m));
   const t0 = Date.now();
-  if (!/^https?:\/\//.test(o.url)) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului real (--url https://…).", "Ex.: npm run e2e:real -- --url https://exemplu.ro");
-  if (!ID.startsWith("e2e-")) throw new MmsError("ARG_INVALID", `Proiectul de test trebuie să înceapă cu „e2e-” (primit: ${ID}).`, "Testul șterge proiectul cu --fresh; numele protejează proiectele reale.");
+  if (!/^https?:\/\//.test(o.url))
+    throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului real (--url https://…).", "Ex.: npm run e2e:real -- --url https://exemplu.ro");
+  if (!ID.startsWith("e2e-"))
+    throw new MmsError(
+      "ARG_INVALID",
+      `Proiectul de test trebuie să înceapă cu „e2e-” (primit: ${ID}).`,
+      "Testul șterge proiectul cu --fresh; numele protejează proiectele reale.",
+    );
   if (projectExists(ID)) {
     if (!o.fresh) throw new MmsError("PROJECT_EXISTS", `Proiectul de test ${ID} există.`, "Rulează cu --fresh ca să-l refaci.");
     fs.rmSync(projectDir(ID), { recursive: true, force: true });
@@ -57,7 +63,18 @@ export async function runRealE2E(o: RealE2EOptions): Promise<{ id: string; versi
   const intakeDir = path.join(PATHS.cache, "intake", Buffer.from(o.url).toString("hex").slice(0, 24));
   const page = (await capture({ id: "intake", url: o.url, viewport: "desktop", research: true }, intakeDir)).page;
   const lang = o.lang ?? "ro";
-  const r = inferIntake({ url: o.url, vision: o.vision, formats: ["9x16", "16x9"], textLanguage: lang, voiceLanguage: lang, durationSec: o.durationSec ?? 20, voices: await listVoices() }, page);
+  const r = inferIntake(
+    {
+      url: o.url,
+      vision: o.vision,
+      formats: ["9x16", "16x9"],
+      textLanguage: lang,
+      voiceLanguage: lang,
+      durationSec: o.durationSec ?? 20,
+      voices: await listVoices(),
+    },
+    page,
+  );
   for (const line of intakeSummaryMarkdown(r).split("\n").filter(Boolean)) log(`   ${line}`);
   createProject(projectFromIntake(ID, r));
   saveBrief(ID, Brief.parse(r.brief));
@@ -82,7 +99,9 @@ export async function runRealE2E(o: RealE2EOptions): Promise<{ id: string; versi
   log(`3. Research pe site (maximum ${o.maxPages ?? 4} pagini) și graful de afirmații`);
   const crawl = await crawlSite(ID, o.url, { max: o.maxPages ?? 4, log: (m) => log(`   ${m}`) });
   const g = claimGraph(loadResearch(ID));
-  log(`   ${crawl.pages.length} pagini citite, ${crawl.skipped.length} ocolite · ${g.stats.claims} afirmații din ${g.stats.sources} surse, ${g.stats.usable} utilizabile, ${g.stats.needsConfirmation} de confirmat, ${g.stats.corroborated} coroborate, ${g.stats.conflicts} conflicte`);
+  log(
+    `   ${crawl.pages.length} pagini citite, ${crawl.skipped.length} ocolite · ${g.stats.claims} afirmații din ${g.stats.sources} surse, ${g.stats.usable} utilizabile, ${g.stats.needsConfirmation} de confirmat, ${g.stats.corroborated} coroborate, ${g.stats.conflicts} conflicte`,
+  );
 
   log("4. Brand kit din captura reală");
   stepBrand(ID).notes.forEach((n) => log(`   ${n}`));
@@ -91,7 +110,9 @@ export async function runRealE2E(o: RealE2EOptions): Promise<{ id: string; versi
   const rep = await produce(ID, { depth: "standard", autofix: true, preview: o.render !== false, log: (m) => log(`   ${m}`), stage: (s) => log(`   — ${s}`) });
   const v = loadProject(ID).currentVersion!;
   const run = rep.final ?? loadQualityRun(ID, v) ?? rep.first;
-  log(`   ${v}: ${run.score.overall}/100 · ${run.score.verdict} · critice ${run.score.counts.critical}, mari ${run.score.counts.high}, medii ${run.score.counts.medium}, mici ${run.score.counts.low}`);
+  log(
+    `   ${v}: ${run.score.overall}/100 · ${run.score.verdict} · critice ${run.score.counts.critical}, mari ${run.score.counts.high}, medii ${run.score.counts.medium}, mici ${run.score.counts.low}`,
+  );
   for (const x of run.issues.slice(0, 20)) log(`   ${x.timecode ?? "--"} [${x.severity}] ${x.category}: ${x.problem}`);
 
   log("6. Poarta de drepturi și exportul final");

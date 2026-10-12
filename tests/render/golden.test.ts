@@ -27,8 +27,16 @@ describe("regresia vizuală a rețetelor", () => {
       const fmt = makeFormat(preset, { platform: preset === "9x16" ? "tiktok" : "youtube", durationSec: 40 });
       const t = recipeFixture(tmp, fmt);
       const frames = t.scenes.map((s, i) => ({ id: s.id, frame: s.from + holdFrame(t, i) }));
-      const files = await renderStills(t, frames.map((f) => f.frame), path.join(tmp, `stills-${preset}`), { format: "png", scale: 0.25 });
-      const r = await checkGolden(`recipes-${preset}`, frames.map((f, i) => ({ id: f.id, file: files[i], aspect: t.width / t.height })));
+      const files = await renderStills(
+        t,
+        frames.map((f) => f.frame),
+        path.join(tmp, `stills-${preset}`),
+        { format: "png", scale: 0.25 },
+      );
+      const r = await checkGolden(
+        `recipes-${preset}`,
+        frames.map((f, i) => ({ id: f.id, file: files[i], aspect: t.width / t.height })),
+      );
       if (r.written) console.log(`Referințe scrise: tests/golden/recipes-${preset}.json (${frames.length} cadre)`);
       expect(r.missing, "rețete fără referință: rulează cu MMS_UPDATE_GOLDEN=1 după ce verifici vizual").toEqual([]);
       expect(r.regressions).toEqual([]);
@@ -55,7 +63,8 @@ describe("regresia vizuală a rețetelor", () => {
     // logo-ul, titlul și butonul CTA se mută spre stânga
     const c = at("r-cta-end");
     const moved = structuredClone(t);
-    for (const l of moved.scenes[c.i].layers) if (["logo.reveal", "text.word-reveal", "shape.panel", "text.body"].includes(l.capability)) l.box = { ...l.box, x: l.box.x - 520 };
+    for (const l of moved.scenes[c.i].layers)
+      if (["logo.reveal", "text.word-reveal", "shape.panel", "text.body"].includes(l.capability)) l.box = { ...l.box, x: l.box.x - 520 };
     const [a] = await renderStills(gone, [p.frame], path.join(tmp, "sens-gone"), { format: "png", scale: 0.25 });
     const [b] = await renderStills(moved, [c.frame], path.join(tmp, "sens-moved"), { format: "png", scale: 0.25 });
     const ca = compareGrid(golden!["r-proof-metric"], await gridOf(a, 16 / 9));

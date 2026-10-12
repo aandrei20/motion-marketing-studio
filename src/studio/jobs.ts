@@ -111,7 +111,24 @@ export class JobQueue {
 
   enqueue(projectId: string, type: string, label: string, params: Record<string, unknown>, run: Runner): Job {
     const t = new Date().toISOString();
-    const job: Job = { id: `job-${++this.n}`, projectId, type, label, params, state: "queued", stage: null, progress: null, log: [], result: null, artifacts: {}, error: null, createdAt: t, startedAt: null, updatedAt: t, finishedAt: null };
+    const job: Job = {
+      id: `job-${++this.n}`,
+      projectId,
+      type,
+      label,
+      params,
+      state: "queued",
+      stage: null,
+      progress: null,
+      log: [],
+      result: null,
+      artifacts: {},
+      error: null,
+      createdAt: t,
+      startedAt: null,
+      updatedAt: t,
+      finishedAt: null,
+    };
     this.jobs.push(job);
     this.queue.push({ job, run, ctl: new AbortController() });
     this.emit(job);
@@ -188,7 +205,8 @@ function summarize(r: unknown): unknown {
   if (!r || typeof r !== "object") return r ?? null;
   const o = r as Record<string, unknown>;
   const keep: Record<string, unknown> = {};
-  for (const k of ["versionId", "finalVersion", "startVersion", "file", "contactSheet", "request", "stopReason", "reused", "renderMs"]) if (k in o) keep[k] = o[k];
+  for (const k of ["versionId", "finalVersion", "startVersion", "file", "contactSheet", "request", "stopReason", "reused", "renderMs"])
+    if (k in o) keep[k] = o[k];
   const score = (o.score ?? (o.run as Record<string, unknown> | undefined)?.score ?? o.finalScore) as { overall?: number; verdict?: string } | undefined;
   if (score?.overall !== undefined) keep.score = { overall: score.overall, verdict: score.verdict };
   return keep;

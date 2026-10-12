@@ -31,17 +31,43 @@ function category(cap: string): "media" | "text" | "ui" | "fx" {
 function buildTracks(t: Timeline): Record<string, Bar[]> {
   const tracks: Record<string, Bar[]> = { scene: [], transitions: [], media: [], text: [], ui: [], fx: [], voice: [], sfx: [], captions: [] };
   for (const s of t.scenes) {
-    tracks.scene.push({ from: s.from, to: s.from + s.durationInFrames, label: s.id, title: `${s.id} · ${s.meta.recipe} · ${s.meta.narrativeRole}\n${s.meta.purpose}`, kind: s.meta.narrativeRole });
-    if (s.transitionIn && s.transitionIn.durationInFrames > 0) tracks.transitions.push({ from: s.from, to: s.from + s.transitionIn.durationInFrames, label: s.transitionIn.capability.replace("tr.", ""), title: `${s.transitionIn.capability} · ${s.transitionIn.durationInFrames} cadre`, kind: "transition" });
+    tracks.scene.push({
+      from: s.from,
+      to: s.from + s.durationInFrames,
+      label: s.id,
+      title: `${s.id} · ${s.meta.recipe} · ${s.meta.narrativeRole}\n${s.meta.purpose}`,
+      kind: s.meta.narrativeRole,
+    });
+    if (s.transitionIn && s.transitionIn.durationInFrames > 0)
+      tracks.transitions.push({
+        from: s.from,
+        to: s.from + s.transitionIn.durationInFrames,
+        label: s.transitionIn.capability.replace("tr.", ""),
+        title: `${s.transitionIn.capability} · ${s.transitionIn.durationInFrames} cadre`,
+        kind: "transition",
+      });
     const visit = (l: TimelineLayer, base: number) => {
       const from = base + l.from;
-      tracks[category(l.capability)].push({ from, to: from + l.durationInFrames, label: l.capability, title: `${l.capability}\n${l.id}${typeof l.params.text === "string" ? `\n„${l.params.text}”` : ""}`, kind: l.role });
+      tracks[category(l.capability)].push({
+        from,
+        to: from + l.durationInFrames,
+        label: l.capability,
+        title: `${l.capability}\n${l.id}${typeof l.params.text === "string" ? `\n„${l.params.text}”` : ""}`,
+        kind: l.role,
+      });
       l.children.forEach((c) => visit(c, from));
     };
     s.layers.forEach((l) => visit(l, s.from));
   }
   for (const c of t.audio.cues) {
-    if (c.kind === "voice") tracks.voice.push({ from: c.atFrame, to: c.atFrame + 1, label: c.reason.replace("vocea replicii ", ""), title: `${c.reason} · ${tc(c.atFrame, t.fps)}`, kind: "voice" });
+    if (c.kind === "voice")
+      tracks.voice.push({
+        from: c.atFrame,
+        to: c.atFrame + 1,
+        label: c.reason.replace("vocea replicii ", ""),
+        title: `${c.reason} · ${tc(c.atFrame, t.fps)}`,
+        kind: "voice",
+      });
     else tracks.sfx.push({ from: c.atFrame, to: c.atFrame + 3, label: c.sound, title: `${c.sound} · ${c.reason} · ${c.gainDb} dB`, kind: "sfx" });
   }
   // lungimea replicilor de voce = până la ultimul cuvânt din subtitrări sau următoarea replică
@@ -51,7 +77,17 @@ function buildTracks(t: Timeline): Record<string, Bar[]> {
   return tracks;
 }
 
-const TRACK_LABELS: Record<string, string> = { scene: "Scene", transitions: "Tranziții", media: "Media / ecrane", text: "Text", ui: "Interfață", fx: "Fundal & efecte", voice: "Voce", sfx: "Efecte sonore", captions: "Subtitrări" };
+const TRACK_LABELS: Record<string, string> = {
+  scene: "Scene",
+  transitions: "Tranziții",
+  media: "Media / ecrane",
+  text: "Text",
+  ui: "Interfață",
+  fx: "Fundal & efecte",
+  voice: "Voce",
+  sfx: "Efecte sonore",
+  captions: "Subtitrări",
+};
 
 function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek: (f: number) => void }) {
   const tracks = useMemo(() => buildTracks(t), [t]);
@@ -79,7 +115,10 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
   return (
     <div className="timeline" ref={ref}>
       <div className="timeline-tools">
-        <span className="muted small">Timeline-ul real al versiunii (timeline.json). Clic = salt; scena de sub cursor se editează în panoul din dreapta (cu undo/redo), sau prin comenzi și Claude.</span>
+        <span className="muted small">
+          Timeline-ul real al versiunii (timeline.json). Clic = salt; scena de sub cursor se editează în panoul din dreapta (cu undo/redo), sau prin comenzi și
+          Claude.
+        </span>
         <label className="small">
           zoom <input type="range" min={1} max={6} step={0.5} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
         </label>
@@ -87,13 +126,23 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
       <div className="timeline-body">
         <div className="track-labels">
           <div className="ruler-label">{tc(frame, t.fps)}</div>
-          {Object.keys(tracks).map((k) => <div key={k} className="track-label">{TRACK_LABELS[k]}</div>)}
+          {Object.keys(tracks).map((k) => (
+            <div key={k} className="track-label">
+              {TRACK_LABELS[k]}
+            </div>
+          ))}
         </div>
         <div className="track-scroll" onClick={clickSeek}>
           <div style={{ width: t.durationInFrames * px, position: "relative" }}>
             <div className="ruler">
-              {seconds.map((s) => <span key={s} style={{ left: s * t.fps * px }}>{s}s</span>)}
-              {beats.map((b, i) => <i key={i} className={i % (t.audio.beatGrid?.beatsPerBar ?? 4) === 0 ? "bar-tick" : "beat-tick"} style={{ left: b * px }} />)}
+              {seconds.map((s) => (
+                <span key={s} style={{ left: s * t.fps * px }}>
+                  {s}s
+                </span>
+              ))}
+              {beats.map((b, i) => (
+                <i key={i} className={i % (t.audio.beatGrid?.beatsPerBar ?? 4) === 0 ? "bar-tick" : "beat-tick"} style={{ left: b * px }} />
+              ))}
             </div>
             {Object.entries(tracks).map(([k, bars]) => (
               <div key={k} className={`track track-${k}`}>
@@ -104,7 +153,11 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
                 ))}
               </div>
             ))}
-            {t.markers.filter((m) => m.kind === "cta-hold").map((m, i) => <div key={i} className="marker" style={{ left: m.frame * px }} title={m.label} />)}
+            {t.markers
+              .filter((m) => m.kind === "cta-hold")
+              .map((m, i) => (
+                <div key={i} className="marker" style={{ left: m.frame * px }} title={m.label} />
+              ))}
             <div className="playhead" style={{ left: frame * px }} />
           </div>
         </div>
@@ -120,7 +173,14 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
   const [quality, setQuality] = useState<"draft" | "full">("draft");
   const [caps, setCaps] = useState<{ transitions: string[]; cameras: string[] }>({ transitions: [], cameras: [] });
   useEffect(() => {
-    void api.registry().then((r) => setCaps({ transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id), cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id) }));
+    void api
+      .registry()
+      .then((r) =>
+        setCaps({
+          transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id),
+          cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id),
+        }),
+      );
   }, []);
   useEffect(() => {
     const p = ref.current;
@@ -140,7 +200,9 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
       <div className="card">
         <h2>Preview</h2>
         <p>Versiunea nu are încă timeline compilat pentru {ctx.formatId}.</p>
-        <button className="btn primary" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>Compilează</button>
+        <button className="btn primary" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
+          Compilează
+        </button>
       </div>
     );
   const portrait = t.height > t.width;
@@ -164,7 +226,10 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
             acknowledgeRemotionLicense
           />
           <div className="row small">
-            <label className="check"><input type="checkbox" checked={quality === "full"} onChange={(e) => setQuality(e.target.checked ? "full" : "draft")} /> calitate completă (particule, grain)</label>
+            <label className="check">
+              <input type="checkbox" checked={quality === "full"} onChange={(e) => setQuality(e.target.checked ? "full" : "draft")} /> calitate completă
+              (particule, grain)
+            </label>
             {!t.audio.src ? <span className="warn">fără mix audio încă</span> : null}
             {t.concept ? <span className="warn">CONCEPT: materiale fără drepturi confirmate</span> : null}
           </div>
@@ -186,7 +251,11 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
               <ul className="layers">
                 {scene.layers.map((l) => (
                   <li key={l.id}>
-                    <code>{l.capability}</code> <span className="muted small">{l.role}{l.depth === 0 ? " · fix" : ` · adâncime ${l.depth}`}</span>
+                    <code>{l.capability}</code>{" "}
+                    <span className="muted small">
+                      {l.role}
+                      {l.depth === 0 ? " · fix" : ` · adâncime ${l.depth}`}
+                    </span>
                     {typeof l.params.text === "string" ? <div className="small">„{l.params.text}”</div> : null}
                     {l.children.length ? <div className="small muted">+ {l.children.map((c) => c.capability).join(", ")}</div> : null}
                   </li>
@@ -199,7 +268,12 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
               <h3>Validare</h3>
               {issues.map((f, i) => (
                 <div key={i} className={`issue ${f.severity}`}>
-                  {f.frame !== null ? <button className="btn tiny ghost" onClick={() => ref.current?.seekTo(f.frame!)}>{f.timecode}</button> : null} {f.problem}
+                  {f.frame !== null ? (
+                    <button className="btn tiny ghost" onClick={() => ref.current?.seekTo(f.frame!)}>
+                      {f.timecode}
+                    </button>
+                  ) : null}{" "}
+                  {f.problem}
                 </div>
               ))}
             </>
@@ -208,7 +282,14 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
           )}
         </div>
       </div>
-      <TimelineView t={t} frame={frame} onSeek={(f) => { ref.current?.seekTo(f); setFrame(f); }} />
+      <TimelineView
+        t={t}
+        frame={frame}
+        onSeek={(f) => {
+          ref.current?.seekTo(f);
+          setFrame(f);
+        }}
+      />
     </div>
   );
 }

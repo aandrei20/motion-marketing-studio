@@ -121,7 +121,15 @@ export function detectBeatGrid(s: Stereo, minBpm = 70, maxBpm = 180): BeatGrid {
   const best = sorted[0];
   const rival = sorted.find((x) => Math.abs(x.bpm - best.bpm) > 3 && Math.abs(x.bpm - best.bpm * 2) > 3 && Math.abs(x.bpm - best.bpm / 2) > 3);
   const confidence = rival && best.score > 0 ? Math.max(0, Math.min(1, 1 - rival.score / best.score)) : 1;
-  return { bpm: Math.round(best.bpm * 4) / 4, offsetSec: lowBandPhase(s, best.bpm) ?? best.phase * frameSec, beatsPerBar: 4, source: "detected", confidence, sections: [], drops: [] };
+  return {
+    bpm: Math.round(best.bpm * 4) / 4,
+    offsetSec: lowBandPhase(s, best.bpm) ?? best.phase * frameSec,
+    beatsPerBar: 4,
+    source: "detected",
+    confidence,
+    sections: [],
+    drops: [],
+  };
 }
 
 /**
@@ -211,7 +219,12 @@ export function musicStructure(s: Stereo, g: BeatGrid): { sections: BeatGrid["se
     const change = i === norm.length || Math.abs(norm[i].e - norm[i - 1].e) > 0.25 || i - start >= 8;
     if (!change) continue;
     const slice = norm.slice(start, i);
-    sections.push({ name: `s${sections.length + 1}`, startSec: Math.round(norm[start].t * 1000) / 1000, endSec: Math.round(Math.min(dur, norm[i - 1].t + bar) * 1000) / 1000, energy: Math.round((slice.reduce((a, x) => a + x.e, 0) / slice.length) * 100) / 100 });
+    sections.push({
+      name: `s${sections.length + 1}`,
+      startSec: Math.round(norm[start].t * 1000) / 1000,
+      endSec: Math.round(Math.min(dur, norm[i - 1].t + bar) * 1000) / 1000,
+      energy: Math.round((slice.reduce((a, x) => a + x.e, 0) / slice.length) * 100) / 100,
+    });
     start = i;
   }
   const drops = norm.filter((x, i) => i > 0 && x.e >= 0.7 && x.e - norm[i - 1].e >= 0.35).map((x) => Math.round(x.t * 1000) / 1000);

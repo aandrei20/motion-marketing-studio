@@ -34,9 +34,21 @@ async function variation(file: string): Promise<number> {
 
 describe("catalogul de capabilități", () => {
   it(`randează toate cele ${entries.length} de intrări, fiecare cu conținut vizibil`, async () => {
-    const files = await renderStills(timeline, entries.map((e) => e.sampleFrame), path.join(out, "all"), { format: "jpeg", scale: 0.25, prefix: "cat" });
+    const files = await renderStills(
+      timeline,
+      entries.map((e) => e.sampleFrame),
+      path.join(out, "all"),
+      { format: "jpeg", scale: 0.25, prefix: "cat" },
+    );
     expect(files).toHaveLength(entries.length);
-    fs.writeFileSync(path.join(out, "entries.json"), JSON.stringify(entries.map((e, i) => ({ ...e, file: files[i] })), null, 2));
+    fs.writeFileSync(
+      path.join(out, "entries.json"),
+      JSON.stringify(
+        entries.map((e, i) => ({ ...e, file: files[i] })),
+        null,
+        2,
+      ),
+    );
     const empty: string[] = [];
     for (let i = 0; i < entries.length; i++) {
       const id = entries[i].id;
@@ -54,14 +66,28 @@ describe("catalogul de capabilități", () => {
     }
     expect(empty).toEqual([]);
     // regresia vizuală: amprenta perceptuală a fiecărei capabilități față de referința din tests/golden/catalog.json
-    const g = await checkGolden("catalog", entries.map((e, i) => ({ id: e.id, file: files[i], aspect: 16 / 9 })));
+    const g = await checkGolden(
+      "catalog",
+      entries.map((e, i) => ({ id: e.id, file: files[i], aspect: 16 / 9 })),
+    );
     if (g.written) console.log(`Referințe scrise: tests/golden/catalog.json (${entries.length} capabilități)`);
     expect(g.missing, "capabilități fără referință: rulează cu MMS_UPDATE_GOLDEN=1 după ce verifici vizual").toEqual([]);
     expect(g.regressions).toEqual([]);
   }, 1_800_000);
 
   it(`randarea e deterministă (aceleași cadre ies identice; rasterizarea poate varia cu cel mult ${RASTER_TOLERANCE}/255)`, async () => {
-    const pick = ["fx.grain", "fx.particles", "fx.burst", "camera.handheld", "camera.shake", "tr.glitch", "text.glitch", "logo.particles", "media.video", "bg.mesh"];
+    const pick = [
+      "fx.grain",
+      "fx.particles",
+      "fx.burst",
+      "camera.handheld",
+      "camera.shake",
+      "tr.glitch",
+      "text.glitch",
+      "logo.particles",
+      "media.video",
+      "bg.mesh",
+    ];
     const frames = entries.filter((e) => pick.includes(e.id)).map((e) => e.sampleFrame);
     const a = await renderStills(timeline, frames, path.join(out, "det-a"), { format: "png", scale: 0.25 });
     const b = await renderStills(timeline, frames, path.join(out, "det-b"), { format: "png", scale: 0.25 });

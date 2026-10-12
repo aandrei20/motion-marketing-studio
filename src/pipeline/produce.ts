@@ -45,7 +45,8 @@ export async function produce(projectId: string, o: ProduceOptions = {}): Promis
     (o.stage ?? (() => undefined))(name);
   };
   const p = loadProject(projectId);
-  if (p.status === "intake") throw new MmsError("BRIEF_NOT_APPROVED", "Brief-ul nu e aprobat.", `Utilizatorul scrie „aprob”: npm run mms -- approve ${projectId} brief "aprob"`);
+  if (p.status === "intake")
+    throw new MmsError("BRIEF_NOT_APPROVED", "Brief-ul nu e aprobat.", `Utilizatorul scrie „aprob”: npm run mms -- approve ${projectId} brief "aprob"`);
   stage("concept");
   const concepts = ensureConcepts(projectId);
   const chosen = concepts.concepts.find((c) => c.id === concepts.selectedId);

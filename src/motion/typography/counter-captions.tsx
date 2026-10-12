@@ -26,7 +26,10 @@ export const textCounter = defineLayer({
   tags: ["counter", "number", "stat", "metric", "proof"],
   compatibleMedia: ["text"],
   timing: { model: "duration", defaultFrames: 60, minFrames: 24 },
-  sfx: [{ sound: "counter", at: "start", gainDb: -8 }, { sound: "tick-hi", at: "param:countFrames", gainDb: -6 }],
+  sfx: [
+    { sound: "counter", at: "start", gainDb: -8 },
+    { sound: "tick-hi", at: "param:countFrames", gainDb: -6 },
+  ],
   params: z.object({
     value: z.number(),
     from: z.number().default(0),
@@ -55,7 +58,17 @@ export const textCounter = defineLayer({
     const s = 1 + 0.06 * Math.sin(Math.min(1, pop) * Math.PI);
     const appear = sp(frame, env.fps, 0, SPRINGS.body);
     return (
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: p.align === "left" ? "flex-start" : p.align === "right" ? "flex-end" : "center", opacity: clamp(appear * 2, 0, 1) }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: p.align === "left" ? "flex-start" : p.align === "right" ? "flex-end" : "center",
+          opacity: clamp(appear * 2, 0, 1),
+        }}
+      >
         <div
           style={{
             fontFamily: `"${font.family}"`,
@@ -73,22 +86,34 @@ export const textCounter = defineLayer({
           {`${p.prefix}${formatNumber(v, p.decimals, p.locale, p.grouping)}${p.suffix}`}
         </div>
         {p.label ? (
-          <div style={{ fontFamily: `"${env.typography.body.family}"`, fontWeight: 600, fontSize: Math.max(22, fit.fontSize * 0.22), color: resolveColor(env.palette, p.color, "text"), opacity: 0.85, marginTop: fit.fontSize * 0.08 }}>
+          <div
+            style={{
+              fontFamily: `"${env.typography.body.family}"`,
+              fontWeight: 600,
+              fontSize: Math.max(22, fit.fontSize * 0.22),
+              color: resolveColor(env.palette, p.color, "text"),
+              opacity: 0.85,
+              marginTop: fit.fontSize * 0.08,
+            }}
+          >
             {p.label}
           </div>
         ) : null}
       </div>
     );
   },
-  example: { params: { value: 12000, suffix: "+", label: "echipe active (exemplu)", claimId: "example" }, durationInFrames: 60, box: { x: 200, y: 280, w: 1200, h: 520 } },
+  example: {
+    params: { value: 12000, suffix: "+", label: "echipe active (exemplu)", claimId: "example" },
+    durationInFrames: 60,
+    box: { x: 200, y: 280, w: 1200, h: 520 },
+  },
 });
 
 export const textCaptions = defineLayer({
   ...base,
   id: "text.captions",
   title: "Subtitrări cuvânt cu cuvânt",
-  description:
-    "Subtitrări sincronizate cu vocea: fraza curentă, cu cuvântul rostit evidențiat (stil TikTok). Timpii vin din motorul TTS sau din estimare.",
+  description: "Subtitrări sincronizate cu vocea: fraza curentă, cu cuvântul rostit evidențiat (stil TikTok). Timpii vin din motorul TTS sau din estimare.",
   tags: ["captions", "subtitles", "karaoke", "accessibility", "social"],
   compatibleMedia: ["text"],
   timing: { model: "duration", defaultFrames: 120, minFrames: 10 },
@@ -123,29 +148,55 @@ export const textCaptions = defineLayer({
     const active = resolveColor(env.palette, p.activeColor, "accent");
     const base = resolveColor(env.palette, p.color, "text");
     return (
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: `"${env.typography.display.family}"`, fontWeight: 800, fontSize: p.size, lineHeight: 1.1, textAlign: "center", textTransform: p.uppercase ? "uppercase" : "none", textShadow: "0 4px 18px rgba(0,0,0,0.65), 0 0 2px rgba(0,0,0,0.8)" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0 0.28em", maxWidth: "100%", ...(p.backdrop ? { background: "rgba(8,10,20,0.62)", padding: "0.16em 0.42em", borderRadius: "0.32em", boxShadow: "0 8px 30px rgba(0,0,0,0.35)" } : {}) }}>
-        {g.map((w, i) => {
-          const on = frame >= w.from && frame < w.to;
-          const said = frame >= w.from;
-          const s = p.style === "pop" ? sp(frame, env.fps, w.from, SPRINGS.pop) : 1;
-          return (
-            <span
-              key={i}
-              style={{
-                display: "inline-block",
-                color: on && p.style !== "box" ? active : base,
-                opacity: said || p.style !== "pop" ? 1 : 0.0,
-                transform: `scale(${p.style === "pop" ? s : on ? 1.06 : 1})`,
-                background: on && p.style === "box" ? active : "transparent",
-                padding: p.style === "box" ? "0 0.12em" : 0,
-                borderRadius: "0.12em",
-              }}
-            >
-              {w.text}
-            </span>
-          );
-        })}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: `"${env.typography.display.family}"`,
+          fontWeight: 800,
+          fontSize: p.size,
+          lineHeight: 1.1,
+          textAlign: "center",
+          textTransform: p.uppercase ? "uppercase" : "none",
+          textShadow: "0 4px 18px rgba(0,0,0,0.65), 0 0 2px rgba(0,0,0,0.8)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: "0 0.28em",
+            maxWidth: "100%",
+            ...(p.backdrop
+              ? { background: "rgba(8,10,20,0.62)", padding: "0.16em 0.42em", borderRadius: "0.32em", boxShadow: "0 8px 30px rgba(0,0,0,0.35)" }
+              : {}),
+          }}
+        >
+          {g.map((w, i) => {
+            const on = frame >= w.from && frame < w.to;
+            const said = frame >= w.from;
+            const s = p.style === "pop" ? sp(frame, env.fps, w.from, SPRINGS.pop) : 1;
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  color: on && p.style !== "box" ? active : base,
+                  opacity: said || p.style !== "pop" ? 1 : 0.0,
+                  transform: `scale(${p.style === "pop" ? s : on ? 1.06 : 1})`,
+                  background: on && p.style === "box" ? active : "transparent",
+                  padding: p.style === "box" ? "0 0.12em" : 0,
+                  borderRadius: "0.12em",
+                }}
+              >
+                {w.text}
+              </span>
+            );
+          })}
         </div>
       </div>
     );

@@ -109,13 +109,19 @@ export function issueCollector(prefix: string, round: number, fps: number) {
  * Servește la detectarea problemelor noi introduse de o corectură (rollback) și la cache.
  */
 export function issueKey(f: Pick<Finding, "dimension" | "sceneId" | "layerId" | "problem"> & { formatId?: string | null }): string {
-  const p = f.problem.toLowerCase().replace(/[\d.,]+/g, "#").replace(/\s+/g, " ").slice(0, 80);
+  const p = f.problem
+    .toLowerCase()
+    .replace(/[\d.,]+/g, "#")
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
   return `${f.dimension}|${f.formatId ?? "*"}|${f.sceneId ?? "-"}|${f.layerId ?? "-"}|${p}`;
 }
 
 /** Ordinea de lucru: gravitate, apoi încredere, apoi timp. */
 export function prioritize(list: Finding[]): Finding[] {
-  return [...list].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.confidence - a.confidence || (a.frame ?? 1e9) - (b.frame ?? 1e9));
+  return [...list].sort(
+    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.confidence - a.confidence || (a.frame ?? 1e9) - (b.frame ?? 1e9),
+  );
 }
 
 /**

@@ -23,13 +23,26 @@ export interface ClaimGraph {
   toConfirm: Claim[];
 }
 
-const tokens = (t: string) => new Set(t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter((w) => w.length > 2));
+const tokens = (t: string) =>
+  new Set(
+    t
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^\p{L}\p{N} ]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2),
+  );
 const jaccard = (a: Set<string>, b: Set<string>) => {
   const inter = [...a].filter((x) => b.has(x)).length;
   return inter / Math.max(1, a.size + b.size - inter);
 };
 const numbers = (t: string) => (t.match(/\d+(?:[.,]\d+)?/g) ?? []).map((x) => x.replace(",", "."));
-const topic = (c: Claim) => (c.quote ?? c.text).split(/[·:\n]/)[0].trim().toLowerCase();
+const topic = (c: Claim) =>
+  (c.quote ?? c.text)
+    .split(/[·:\n]/)[0]
+    .trim()
+    .toLowerCase();
 
 export function claimGraph(r: Research): ClaimGraph {
   const sources = new Map(r.sources.map((s) => [s.id, s]));
@@ -37,19 +50,45 @@ export function claimGraph(r: Research): ClaimGraph {
   const nodes: ClaimNode[] = r.claims.map((claim) => {
     const srcs = claim.sourceIds.map((id) => sources.get(id)).filter((s): s is Source => !!s);
     const aboutCompetitor = srcs.length > 0 && srcs.every((s) => s.kind === "competitor");
-    const corroboratedBy = r.claims.filter((o) => o.id !== claim.id && jaccard(tok.get(o.id)!, tok.get(claim.id)!) >= 0.6 && o.sourceIds.some((id) => !claim.sourceIds.includes(id))).map((o) => o.id);
+    const corroboratedBy = r.claims
+      .filter((o) => o.id !== claim.id && jaccard(tok.get(o.id)!, tok.get(claim.id)!) >= 0.6 && o.sourceIds.some((id) => !claim.sourceIds.includes(id)))
+      .map((o) => o.id);
     const conflictsWith =
       claim.category === "pricing" || claim.category === "metric"
-        ? r.claims.filter((o) => o.id !== claim.id && o.category === claim.category && topic(o) === topic(claim) && numbers(o.text).join() !== numbers(claim.text).join() && numbers(o.text).length > 0).map((o) => o.id)
+        ? r.claims
+            .filter(
+              (o) =>
+                o.id !== claim.id &&
+                o.category === claim.category &&
+                topic(o) === topic(claim) &&
+                numbers(o.text).join() !== numbers(claim.text).join() &&
+                numbers(o.text).length > 0,
+            )
+            .map((o) => o.id)
         : [];
-    const official = new Set([...claim.sourceIds, ...corroboratedBy.flatMap((id) => r.claims.find((x) => x.id === id)!.sourceIds)].filter((id) => sources.get(id)?.reliability === "official"));
+    const official = new Set(
+      [...claim.sourceIds, ...corroboratedBy.flatMap((id) => r.claims.find((x) => x.id === id)!.sourceIds)].filter(
+        (id) => sources.get(id)?.reliability === "official",
+      ),
+    );
     let confidence: Confidence = claim.confidence;
     if (official.size >= 2 && confidence !== "high") confidence = confidence === "low" ? "medium" : "high";
     if (conflictsWith.length || aboutCompetitor) confidence = "low";
-    return { claim, sources: srcs, confidence, usable: isClaimUsable(claim) && !conflictsWith.length && !aboutCompetitor, corroboratedBy, conflictsWith, aboutCompetitor };
+    return {
+      claim,
+      sources: srcs,
+      confidence,
+      usable: isClaimUsable(claim) && !conflictsWith.length && !aboutCompetitor,
+      corroboratedBy,
+      conflictsWith,
+      aboutCompetitor,
+    };
   });
   const rank = (c: Claim) => (c.category === "pricing" ? 0 : c.category === "metric" ? 1 : c.category === "testimonial" ? 2 : 3);
-  const toConfirm = nodes.filter((n) => n.claim.status === "needs-confirmation" || n.conflictsWith.length).map((n) => n.claim).sort((a, b) => rank(a) - rank(b));
+  const toConfirm = nodes
+    .filter((n) => n.claim.status === "needs-confirmation" || n.conflictsWith.length)
+    .map((n) => n.claim)
+    .sort((a, b) => rank(a) - rank(b));
   return {
     nodes,
     stats: {

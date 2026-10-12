@@ -27,7 +27,19 @@ import { runQuality } from "../quality/run";
 import { autoFixLoop } from "../quality/autofix";
 import type { Depth } from "../quality/checks";
 import { applyEdit, redo, undo } from "../editing/history";
-import { approve, demoUrl, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
+import {
+  approve,
+  demoUrl,
+  stepAudio,
+  stepBrand,
+  stepCapture,
+  stepCompile,
+  stepFinalRender,
+  stepPreview,
+  stepScript,
+  stepStoryboard,
+  stepVoice,
+} from "../pipeline/steps";
 import {
   createProject,
   createVersion,
@@ -63,9 +75,53 @@ import { loadQualityRun } from "../quality/run";
 import { loadEditLog } from "../editing/history";
 import { impactBetween } from "../pipeline/impact";
 
-const JOB_TYPES = new Set(["capture", "brand", "script", "storyboard", "voice", "compile", "audio", "preview", "critique", "quality", "autofix", "edit", "undo", "redo", "make", "final", "iterate", "new-version", "critique-pack", "research-crawl", "concepts"]);
+const JOB_TYPES = new Set([
+  "capture",
+  "brand",
+  "script",
+  "storyboard",
+  "voice",
+  "compile",
+  "audio",
+  "preview",
+  "critique",
+  "quality",
+  "autofix",
+  "edit",
+  "undo",
+  "redo",
+  "make",
+  "final",
+  "iterate",
+  "new-version",
+  "critique-pack",
+  "research-crawl",
+  "concepts",
+]);
 /** Încărcările: doar tipurile de materiale pe care studioul le folosește, maximum 500 MB. */
-const UPLOAD_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".mp4", ".mov", ".webm", ".m4v", ".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".ttf", ".otf", ".woff", ".woff2", ".pdf"]);
+const UPLOAD_EXT = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".gif",
+  ".svg",
+  ".mp4",
+  ".mov",
+  ".webm",
+  ".m4v",
+  ".wav",
+  ".mp3",
+  ".m4a",
+  ".aac",
+  ".flac",
+  ".ogg",
+  ".ttf",
+  ".otf",
+  ".woff",
+  ".woff2",
+  ".pdf",
+]);
 const UPLOAD_LIMIT = 500 * 1024 * 1024;
 
 /**
@@ -167,7 +223,13 @@ function serveFile(req: http.IncomingMessage, res: http.ServerResponse, file: st
     const m = range.match(/bytes=(\d*)-(\d*)/);
     const start = m && m[1] ? Number(m[1]) : 0;
     const end = m && m[2] ? Math.min(Number(m[2]), stat.size - 1) : stat.size - 1;
-    res.writeHead(206, { "Content-Type": type, "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Accept-Ranges": "bytes", "Content-Length": end - start + 1, "Cache-Control": "no-cache" });
+    res.writeHead(206, {
+      "Content-Type": type,
+      "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": end - start + 1,
+      "Cache-Control": "no-cache",
+    });
     fs.createReadStream(file, { start, end }).pipe(res);
     return;
   }
@@ -178,9 +240,16 @@ function serveFile(req: http.IncomingMessage, res: http.ServerResponse, file: st
 function versionBundle(id: string, v: string) {
   const project = loadProject(id);
   const read = (rel: string) => (fs.existsSync(versionFile(id, v, rel)) ? readJsonLoose(versionFile(id, v, rel)) : null);
-  const timelines = Object.fromEntries(project.formats.filter((f) => hasFile(id, `versions/${v}/timeline-${f.id}.json`)).map((f) => [f.id, loadTimeline(id, v, f.id)]));
+  const timelines = Object.fromEntries(
+    project.formats.filter((f) => hasFile(id, `versions/${v}/timeline-${f.id}.json`)).map((f) => [f.id, loadTimeline(id, v, f.id)]),
+  );
   const rendersDir = versionFile(id, v, "renders");
-  const renders = fs.existsSync(rendersDir) ? fs.readdirSync(rendersDir).filter((f) => /\.(mp4|png|json)$/.test(f)).map((f) => `projects/${id}/versions/${v}/renders/${f}`) : [];
+  const renders = fs.existsSync(rendersDir)
+    ? fs
+        .readdirSync(rendersDir)
+        .filter((f) => /\.(mp4|png|json)$/.test(f))
+        .map((f) => `projects/${id}/versions/${v}/renders/${f}`)
+    : [];
   return {
     meta: loadVersionMeta(id, v),
     script: hasFile(id, `versions/${v}/script.json`) ? loadScript(id, v) : null,
@@ -191,7 +260,8 @@ function versionBundle(id: string, v: string) {
     compileReport: read("compile-report.json"),
     cueSheet: read("audio/cue-sheet.json"),
     renders,
-    scriptIssues: hasFile(id, `versions/${v}/script.json`) && hasFile(id, "brief.json") ? validateScript(loadScript(id, v), loadBrief(id), loadResearch(id)) : [],
+    scriptIssues:
+      hasFile(id, `versions/${v}/script.json`) && hasFile(id, "brief.json") ? validateScript(loadScript(id, v), loadBrief(id), loadResearch(id)) : [],
     quality: loadQualityRun(id, v),
     edits: loadEditLog(id, v),
     autofix: read("autofix.json"),
@@ -222,7 +292,14 @@ function projectBundle(id: string) {
   };
 }
 
-function parseFormat(spec: { preset?: string; width?: number; height?: number; fps: number; durationSec: number; platform: FormatSpec["platform"] }): FormatSpec {
+function parseFormat(spec: {
+  preset?: string;
+  width?: number;
+  height?: number;
+  fps: number;
+  durationSec: number;
+  platform: FormatSpec["platform"];
+}): FormatSpec {
   if (spec.preset && spec.preset in FORMAT_PRESETS) return makeFormat(spec.preset as FormatPresetId, spec);
   if (!spec.width || !spec.height) throw new MmsError("FORMAT_INVALID", "Format personalizat fără lățime/înălțime.");
   return makeFormat({ width: spec.width, height: spec.height }, spec);
@@ -243,7 +320,30 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
     const p = loadProject(id);
     const v = (params.version as string | undefined) ?? p.currentVersion ?? undefined;
     const fmt = (params.format as string | undefined) ?? null;
-    const label = { capture: "Captură reală", brand: "Brand kit", script: "Script", storyboard: "Storyboard", voice: "Voce", compile: "Compilare timeline", audio: "Mix audio", preview: "Preview", critique: "Critică", make: "Producție completă", final: "Render final", iterate: "Iterație", "new-version": "Versiune nouă", quality: "Bucla de calitate", autofix: "Corecturi automate", edit: "Editare", undo: "Undo", redo: "Redo", "critique-pack": "Pachet de revizuire vizuală", "research-crawl": "Research pe site", concepts: "Concepte creative" }[type] ?? type;
+    const label =
+      {
+        capture: "Captură reală",
+        brand: "Brand kit",
+        script: "Script",
+        storyboard: "Storyboard",
+        voice: "Voce",
+        compile: "Compilare timeline",
+        audio: "Mix audio",
+        preview: "Preview",
+        critique: "Critică",
+        make: "Producție completă",
+        final: "Render final",
+        iterate: "Iterație",
+        "new-version": "Versiune nouă",
+        quality: "Bucla de calitate",
+        autofix: "Corecturi automate",
+        edit: "Editare",
+        undo: "Undo",
+        redo: "Redo",
+        "critique-pack": "Pachet de revizuire vizuală",
+        "research-crawl": "Research pe site",
+        concepts: "Concepte creative",
+      }[type] ?? type;
     if (!JOB_TYPES.has(type)) throw new MmsError("JOB_UNKNOWN", `Job necunoscut: ${type}`);
     return jobs.enqueue(id, type, label, params, async ({ log, progress, stage, signal }) => {
       switch (type) {
@@ -254,7 +354,15 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
                 { id: "landing-full", url: demoUrl("index.html"), viewport: "desktop" as const, fullPage: true },
                 { id: "app", url: demoUrl("app.html"), viewport: "desktop" as const, research: false },
               ]
-            : [{ id: String(params.captureId ?? `cap-${Date.now()}`), url: String(params.url), viewport: (params.viewport as "desktop") ?? "desktop", fullPage: !!params.fullPage, research: params.research !== false }];
+            : [
+                {
+                  id: String(params.captureId ?? `cap-${Date.now()}`),
+                  url: String(params.url),
+                  viewport: (params.viewport as "desktop") ?? "desktop",
+                  fullPage: !!params.fullPage,
+                  research: params.research !== false,
+                },
+              ];
           return stepCapture(id, reqs, log, { thirdParty: params.thirdParty === true ? true : undefined, mobile: params.mobile !== false });
         }
         case "brand":
@@ -278,7 +386,16 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "critique":
           return critiqueRound(id, v, fmt ?? undefined, "fast", log);
         case "quality":
-          return (await runQuality(id, { versionId: v, formats: fmt ? [fmt] : undefined, depth: (params.depth as Depth | undefined) ?? "standard", log, onProgress: progress, signal })).run;
+          return (
+            await runQuality(id, {
+              versionId: v,
+              formats: fmt ? [fmt] : undefined,
+              depth: (params.depth as Depth | undefined) ?? "standard",
+              log,
+              onProgress: progress,
+              signal,
+            })
+          ).run;
         case "autofix":
           return autoFixLoop(id, { depth: (params.depth as Depth | undefined) ?? "standard", log, signal });
         case "critique-pack":
@@ -286,7 +403,12 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         case "research-crawl": {
           const url = String(params.url ?? p.product.url ?? "");
           if (!url) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului.");
-          const r = await crawlSite(id, url, { max: typeof params.max === "number" ? params.max : undefined, competitors: Array.isArray(params.competitors) ? params.competitors.map(String) : [], thirdParty: params.thirdParty === true ? true : undefined, log });
+          const r = await crawlSite(id, url, {
+            max: typeof params.max === "number" ? params.max : undefined,
+            competitors: Array.isArray(params.competitors) ? params.competitors.map(String) : [],
+            thirdParty: params.thirdParty === true ? true : undefined,
+            log,
+          });
           return { pages: r.pages, skipped: r.skipped };
         }
         case "concepts":
@@ -305,7 +427,15 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
           return { versionId: c.versionId, description: r.entry.description };
         }
         case "make":
-          return produce(id, { log, stage, signal, onProgress: progress, depth: (params.depth as Depth | undefined) ?? "standard", autofix: params.autofix !== false, preview: params.preview !== false });
+          return produce(id, {
+            log,
+            stage,
+            signal,
+            onProgress: progress,
+            depth: (params.depth as Depth | undefined) ?? "standard",
+            autofix: params.autofix !== false,
+            preview: params.preview !== false,
+          });
         case "final":
           return stepFinalRender(id, v!, fmt, log);
         case "iterate":
@@ -343,7 +473,14 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         return;
       }
       if (m === "GET" && parts[1] === "meta") {
-        return send(res, 200, { questions: INTAKE_QUESTIONS, groups: INTAKE_GROUPS, templates: listTemplates(), recipes: RECIPES.map((r) => ({ id: r.id, title: r.title, description: r.description, roles: r.roles, slots: r.slots, tags: r.tags })), formats: Object.keys(FORMAT_PRESETS), capabilities: ALL_CAPABILITIES.length });
+        return send(res, 200, {
+          questions: INTAKE_QUESTIONS,
+          groups: INTAKE_GROUPS,
+          templates: listTemplates(),
+          recipes: RECIPES.map((r) => ({ id: r.id, title: r.title, description: r.description, roles: r.roles, slots: r.slots, tags: r.tags })),
+          formats: Object.keys(FORMAT_PRESETS),
+          capabilities: ALL_CAPABILITIES.length,
+        });
       }
       if (m === "GET" && parts[1] === "registry") return send(res, 200, registryJson());
       if (m === "GET" && parts[1] === "voices") return send(res, 200, await listVoices());
@@ -352,8 +489,21 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
       if (parts[1] === "projects" && parts.length === 2) {
         if (m === "GET") return send(res, 200, listProjects());
         if (m === "POST") {
-          const b = await json<{ id: string; name: string; product: { name: string; url?: string; category: ProductCategory }; formats: Array<Parameters<typeof parseFormat>[0]>; textLang: string | null; voiceLang: string | null }>(req);
-          const p = createProject({ id: b.id, name: b.name, product: b.product, formats: b.formats.map(parseFormat), language: { text: b.textLang || null, voice: b.voiceLang || null } });
+          const b = await json<{
+            id: string;
+            name: string;
+            product: { name: string; url?: string; category: ProductCategory };
+            formats: Array<Parameters<typeof parseFormat>[0]>;
+            textLang: string | null;
+            voiceLang: string | null;
+          }>(req);
+          const p = createProject({
+            id: b.id,
+            name: b.name,
+            product: b.product,
+            formats: b.formats.map(parseFormat),
+            language: { text: b.textLang || null, voice: b.voiceLang || null },
+          });
           return send(res, 201, p);
         }
       }
@@ -373,7 +523,11 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
         }
         if (sub === "assets" && m === "POST" && !parts[4]) {
           const name = String(req.headers["x-filename"] ?? "fisier.bin").replace(/[^\w.\-]+/g, "_");
-          if (!UPLOAD_EXT.has(path.extname(name).toLowerCase())) return send(res, 415, { error: `Tip de fișier nepermis: ${path.extname(name) || "fără extensie"}. Permise: ${[...UPLOAD_EXT].join(" ")}`, code: "UPLOAD_TYPE" });
+          if (!UPLOAD_EXT.has(path.extname(name).toLowerCase()))
+            return send(res, 415, {
+              error: `Tip de fișier nepermis: ${path.extname(name) || "fără extensie"}. Permise: ${[...UPLOAD_EXT].join(" ")}`,
+              code: "UPLOAD_TYPE",
+            });
           const data = await readBody(req, UPLOAD_LIMIT);
           const tmp = path.join(PATHS.cache, "uploads", `${crypto.randomBytes(6).toString("hex")}-${name}`);
           fs.mkdirSync(path.dirname(tmp), { recursive: true });
@@ -384,9 +538,20 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
           return send(res, 201, r);
         }
         if (sub === "assets" && parts[4] && m === "PATCH") {
-          const b = await json<{ role?: AssetRole; focalPoint?: { x: number; y: number }; rights?: RightsStatus; blurApproved?: boolean; keepApproved?: boolean; notes?: string }>(req);
+          const b = await json<{
+            role?: AssetRole;
+            focalPoint?: { x: number; y: number };
+            rights?: RightsStatus;
+            blurApproved?: boolean;
+            keepApproved?: boolean;
+            notes?: string;
+          }>(req);
           if (b.rights) setRights(id, parts[4], b.rights);
-          return send(res, 200, updateAsset(id, parts[4], { role: b.role, focalPoint: b.focalPoint, blurApproved: b.blurApproved, keepApproved: b.keepApproved, notes: b.notes }));
+          return send(
+            res,
+            200,
+            updateAsset(id, parts[4], { role: b.role, focalPoint: b.focalPoint, blurApproved: b.blurApproved, keepApproved: b.keepApproved, notes: b.notes }),
+          );
         }
         if (sub === "versions" && !parts[4] && m === "POST") {
           const b = await json<{ from?: string; label?: string }>(req);

@@ -68,13 +68,7 @@ function wrap(measure: Measure, text: string, font: FontSpec, size: number, maxW
   return { lines: out, widest, brokeWord };
 }
 
-export function layoutText(
-  rawText: string,
-  font: FontSpec,
-  box: { w: number; h: number },
-  measure: Measure,
-  opts: LayoutOptions,
-): TextLayout {
+export function layoutText(rawText: string, font: FontSpec, box: { w: number; h: number }, measure: Measure, opts: LayoutOptions): TextLayout {
   const text = applyCase(rawText, font);
   const lh = opts.lineHeight ?? 1.08;
   const safety = opts.safety ?? 0.97;

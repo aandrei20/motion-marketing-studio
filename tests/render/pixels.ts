@@ -15,7 +15,9 @@ import { binaryPath } from "../../src/core/binaries";
 export const RASTER_TOLERANCE = 2;
 
 function rgb(file: string): Buffer {
-  return execFileSync(binaryPath("ffmpeg"), ["-v", "error", "-i", file, "-f", "image2pipe", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-"], { maxBuffer: 1 << 30 });
+  return execFileSync(binaryPath("ffmpeg"), ["-v", "error", "-i", file, "-f", "image2pipe", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-"], {
+    maxBuffer: 1 << 30,
+  });
 }
 
 export interface FrameComparison {

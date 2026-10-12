@@ -156,7 +156,9 @@ export const QualityConfig = z.object({
   sceneRubricThreshold: z.number().min(1).max(10).default(8),
   weights: z.partialRecord(QualityCategory, z.number().min(0).max(5)).default({}),
   /** penalizarea de bază pe gravitate (puncte din 100), înmulțită cu încrederea */
-  penalties: z.object({ critical: z.number().default(45), high: z.number().default(18), medium: z.number().default(7), low: z.number().default(2) }).default({ critical: 45, high: 18, medium: 7, low: 2 }),
+  penalties: z
+    .object({ critical: z.number().default(45), high: z.number().default(18), medium: z.number().default(7), low: z.number().default(2) })
+    .default({ critical: 45, high: 18, medium: 7, low: 2 }),
   /** bucla de corectură automată */
   maxIterations: z.number().int().min(1).max(12).default(3),
   minScoreImprovement: z.number().min(0).max(20).default(0.5),

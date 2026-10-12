@@ -118,7 +118,9 @@ export const cameraPan = defineCamera({
     const cx = center(c).x;
     const cy = center(c).y;
     const a = horizontal ? key(0, cx - (sign * span) / 2, cy, zoom) : key(0, cx, cy - (sign * span) / 2, zoom);
-    const b = horizontal ? key(c.duration, cx + (sign * span) / 2, cy, zoom, { ease: p.ease }) : key(c.duration, cx, cy + (sign * span) / 2, zoom, { ease: p.ease });
+    const b = horizontal
+      ? key(c.duration, cx + (sign * span) / 2, cy, zoom, { ease: p.ease })
+      : key(c.duration, cx, cy + (sign * span) / 2, zoom, { ease: p.ease });
     return { keys: [a, b] };
   },
   example: { params: { direction: "right", distance: 0.15 }, durationInFrames: 60 },
@@ -165,10 +167,7 @@ export const cameraOrbit = defineCamera({
   build: (p, c) => {
     const t = target(c);
     return {
-      keys: [
-        key(0, t.x, t.y, p.zoom, { rotateY: p.fromDeg }),
-        key(c.duration, t.x, t.y, p.zoom, { rotateY: p.toDeg, ease: p.ease }),
-      ],
+      keys: [key(0, t.x, t.y, p.zoom, { rotateY: p.fromDeg }), key(c.duration, t.x, t.y, p.zoom, { rotateY: p.toDeg, ease: p.ease })],
     };
   },
   example: { params: { fromDeg: -16, toDeg: 16 }, durationInFrames: 60 },
@@ -223,8 +222,7 @@ export const cameraFocusTrack = defineCamera({
   ...baseMeta,
   id: "camera.focus-track",
   title: "Camera urmărește punctele de interes",
-  description:
-    "Trece pe rând prin mai multe puncte de interes (de ex. zonele găsite la captură: căutare, buton, rezultat), cu zoom pe fiecare.",
+  description: "Trece pe rând prin mai multe puncte de interes (de ex. zonele găsite la captură: căutare, buton, rezultat), cu zoom pe fiecare.",
   tags: ["follow", "track", "walkthrough", "demo", "regions", "tour"],
   timing: { model: "duration", defaultFrames: 150, minFrames: 30 },
   params: z.object({
@@ -242,7 +240,13 @@ export const cameraFocusTrack = defineCamera({
     ),
   }),
   example: {
-    params: { points: [{ at: 0, x: 0.5, y: 0.5, zoom: 1 }, { at: 0.4, x: 0.3, y: 0.35, zoom: 1.8 }, { at: 0.85, x: 0.7, y: 0.65, zoom: 1.6 }] },
+    params: {
+      points: [
+        { at: 0, x: 0.5, y: 0.5, zoom: 1 },
+        { at: 0.4, x: 0.3, y: 0.35, zoom: 1.8 },
+        { at: 0.85, x: 0.7, y: 0.65, zoom: 1.6 },
+      ],
+    },
     durationInFrames: 90,
   },
 });
@@ -304,7 +308,11 @@ export const cameraParallaxDrift = defineCamera({
   description: "Derivă laterală lentă; straturile cu adâncimi diferite se mișcă diferit, dând senzația de spațiu.",
   tags: ["parallax", "depth", "drift", "space", "calm", "premium"],
   timing: { model: "duration", defaultFrames: 120, minFrames: 20 },
-  params: z.object({ distance: z.number().min(0).max(0.4).default(0.08), zoom: z.number().min(1).max(2).default(1.12), direction: z.enum(["left", "right"]).default("right") }),
+  params: z.object({
+    distance: z.number().min(0).max(0.4).default(0.08),
+    zoom: z.number().min(1).max(2).default(1.12),
+    direction: z.enum(["left", "right"]).default("right"),
+  }),
   build: (p, c) => {
     const s = p.direction === "right" ? 1 : -1;
     const span = c.width * p.distance;

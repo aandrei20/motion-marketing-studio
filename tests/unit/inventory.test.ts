@@ -12,7 +12,23 @@ describe("inventarul de design și producție", () => {
   });
   it("acoperă toate ariile cerute, cu priorități", () => {
     const areas = new Set(INVENTORY.map((i) => i.area));
-    for (const a of ["visual-design", "typography", "ui-product", "motion", "transitions", "editing", "camera", "audio", "graphics", "branding", "content", "commercial-grammar", "platform", "asset-media"]) expect(areas.has(a as never), a).toBe(true);
+    for (const a of [
+      "visual-design",
+      "typography",
+      "ui-product",
+      "motion",
+      "transitions",
+      "editing",
+      "camera",
+      "audio",
+      "graphics",
+      "branding",
+      "content",
+      "commercial-grammar",
+      "platform",
+      "asset-media",
+    ])
+      expect(areas.has(a as never), a).toBe(true);
     expect(INVENTORY.length).toBeGreaterThan(150);
     expect(INVENTORY.filter((i) => i.priority === "P0").every((i) => i.status !== "MISSING")).toBe(true);
   });

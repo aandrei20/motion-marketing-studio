@@ -12,7 +12,15 @@
  * O categorie fără nicio verificare rulată rămâne „neevaluată” (null), nu 100: scorul nu pretinde dovezi
  * pe care nu le are. Scorul general e media ponderată a categoriilor evaluate.
  */
-import { QUALITY_CATEGORIES, QualityConfig, type Finding, type QualityCategory, type QualityConfigInput, type QualityScore, type QualityVerdict } from "../core/schema";
+import {
+  QUALITY_CATEGORIES,
+  QualityConfig,
+  type Finding,
+  type QualityCategory,
+  type QualityConfigInput,
+  type QualityScore,
+  type QualityVerdict,
+} from "../core/schema";
 import { countBySeverity } from "./issues";
 
 export const QUALITY_MODEL = "quality-v1" as const;
@@ -56,7 +64,10 @@ export function scoreQuality(inp: ScoreInput): QualityScore {
       continue;
     }
     // randament descrescător: a doua problemă din aceeași categorie contează 85%, a treia 72%…
-    const list = open.filter((f) => f.category === cat).map((f) => cfg.penalties[f.severity] * f.confidence).sort((a, b) => b - a);
+    const list = open
+      .filter((f) => f.category === cat)
+      .map((f) => cfg.penalties[f.severity] * f.confidence)
+      .sort((a, b) => b - a);
     const penalty = list.reduce((s, p, k) => s + p * Math.pow(0.85, k), 0);
     categories[cat] = Math.max(0, Math.round((100 - penalty) * 10) / 10);
   }
@@ -87,7 +98,10 @@ export function scoreQuality(inp: ScoreInput): QualityScore {
     reasons.push(`Rubrica regulii 7: scorul minim pe scenă ${inp.rubricMinScene}/10 e sub ${cfg.sceneRubricThreshold}.`);
   }
   const coverage = scored.length / QUALITY_CATEGORIES.length;
-  if (coverage < 1) reasons.push(`Evaluate ${scored.length} din ${QUALITY_CATEGORIES.length} categorii (${QUALITY_CATEGORIES.filter((c) => categories[c] === null).join(", ")} neevaluate în această rundă).`);
+  if (coverage < 1)
+    reasons.push(
+      `Evaluate ${scored.length} din ${QUALITY_CATEGORIES.length} categorii (${QUALITY_CATEGORIES.filter((c) => categories[c] === null).join(", ")} neevaluate în această rundă).`,
+    );
   return { model: QUALITY_MODEL, categories, overall, coverage: Math.round(coverage * 100) / 100, counts, verdict, reasons };
 }
 

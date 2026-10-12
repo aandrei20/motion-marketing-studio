@@ -25,7 +25,21 @@ import type { Depth } from "../quality/checks";
 import { applyEdit, redo, undo } from "../editing/history";
 import { critiquePack } from "../critique/pack";
 import { chooseConcept, ensureConcepts } from "../creative/concepts";
-import { approve, demoUrl, shutdown, writePostPack, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepPreview, stepScript, stepStoryboard, stepVoice } from "../pipeline/steps";
+import {
+  approve,
+  demoUrl,
+  shutdown,
+  writePostPack,
+  stepAudio,
+  stepBrand,
+  stepCapture,
+  stepCompile,
+  stepFinalRender,
+  stepPreview,
+  stepScript,
+  stepStoryboard,
+  stepVoice,
+} from "../pipeline/steps";
 import { createProject, createVersion, listProjects, listVersions, loadAssets, loadProject, loadResearch, projectDir, saveBrief } from "../projects/store";
 import { analyzeReference, saveReferenceProfile } from "../references/analyze";
 import { addUserClaim, setClaimStatus } from "../research/extract";
@@ -68,11 +82,14 @@ function need(v: string | undefined, what: string): string {
 /** „9x16:tiktok:30:30” → format (preset:platformă:durată:fps) sau „1200x800:generic:20:24”. */
 function parseFormat(spec: string): FormatSpec {
   const [dims, platform = "generic", dur = "30", fps = "30"] = spec.split(":");
-  const preset = dims in FORMAT_PRESETS ? (dims as FormatPresetId) : (() => {
-    const m = dims.match(/^(\d+)x(\d+)$/);
-    if (!m) throw new MmsError("FORMAT_INVALID", `Format invalid: ${spec}`, "Ex.: 9x16:tiktok:30:30 sau 1200x800:generic:20:24");
-    return { width: Number(m[1]), height: Number(m[2]) };
-  })();
+  const preset =
+    dims in FORMAT_PRESETS
+      ? (dims as FormatPresetId)
+      : (() => {
+          const m = dims.match(/^(\d+)x(\d+)$/);
+          if (!m) throw new MmsError("FORMAT_INVALID", `Format invalid: ${spec}`, "Ex.: 9x16:tiktok:30:30 sau 1200x800:generic:20:24");
+          return { width: Number(m[1]), height: Number(m[2]) };
+        })();
   return makeFormat(preset, { platform: platform as FormatSpec["platform"], durationSec: Number(dur), fps: Number(fps) });
 }
 
@@ -173,7 +190,12 @@ async function main(): Promise<void> {
       const p = createProject({
         id: need(id, "id-ul proiectului"),
         name: str(a.flags.name) ?? id!,
-        product: { name: need(str(a.flags.product), "--product"), url: str(a.flags.url), category: (str(a.flags.category) ?? "saas") as ProductCategory, oneLiner: str(a.flags["one-liner"]) },
+        product: {
+          name: need(str(a.flags.product), "--product"),
+          url: str(a.flags.url),
+          category: (str(a.flags.category) ?? "saas") as ProductCategory,
+          oneLiner: str(a.flags["one-liner"]),
+        },
         formats,
         language: { text: str(a.flags["text-lang"]) ?? null, voice: str(a.flags["voice-lang"]) ?? null },
         seed: Number(str(a.flags.seed) ?? 1),
@@ -190,7 +212,18 @@ async function main(): Promise<void> {
         log(`Citesc pagina (captură reală, fără proiect): ${url}`);
         page = (await capture({ id: "intake", url, viewport: "desktop", research: true }, dir)).page;
       }
-      const r = inferIntake({ url, vision: str(a.flags.vision), formats: list(a.flags.format), textLanguage: str(a.flags.lang) ?? null, voiceLanguage: str(a.flags["voice-lang"]) ?? null, durationSec: a.flags.duration ? Number(str(a.flags.duration)) : undefined, voices: await listVoices() }, page);
+      const r = inferIntake(
+        {
+          url,
+          vision: str(a.flags.vision),
+          formats: list(a.flags.format),
+          textLanguage: str(a.flags.lang) ?? null,
+          voiceLanguage: str(a.flags["voice-lang"]) ?? null,
+          durationSec: a.flags.duration ? Number(str(a.flags.duration)) : undefined,
+          voices: await listVoices(),
+        },
+        page,
+      );
       console.log(intakeSummaryMarkdown(r));
       const createId = str(a.flags.create);
       if (createId) {
@@ -228,7 +261,21 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
         reqs.push({ id: "landing-full", url: demoUrl("index.html"), viewport: "desktop", fullPage: true });
         reqs.push({ id: "app", url: demoUrl("app.html"), viewport: "desktop", research: false });
         reqs.push({ id: "app-mobile", url: demoUrl("app.html"), viewport: "mobile", research: false });
-        reqs.push({ id: "app-search", url: demoUrl("app.html"), viewport: "desktop", record: { steps: [{ action: "wait", ms: 900 }, { action: "type", selector: "#search", text: "raport", delayMs: 210 }, { action: "wait", ms: 2600 }], fps: 30, tailMs: 400 }, research: false });
+        reqs.push({
+          id: "app-search",
+          url: demoUrl("app.html"),
+          viewport: "desktop",
+          record: {
+            steps: [
+              { action: "wait", ms: 900 },
+              { action: "type", selector: "#search", text: "raport", delayMs: 210 },
+              { action: "wait", ms: 2600 },
+            ],
+            fps: 30,
+            tailMs: 400,
+          },
+          research: false,
+        });
       } else {
         const typeFlag = str(a.flags.type);
         const clickFlag = str(a.flags.click);
@@ -251,7 +298,12 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
           record: a.flags.record ? { steps: [{ action: "wait", ms: 600 }, ...before, { action: "wait", ms: 900 }], fps: 30, tailMs: 400 } : undefined,
           profile: str(a.flags.profile),
           research: !a.flags["no-research"],
-          css: hideFlag ? hideFlag.split(",").map((sel) => `${sel.trim()}{display:none!important}`).join("\n") : "",
+          css: hideFlag
+            ? hideFlag
+                .split(",")
+                .map((sel) => `${sel.trim()}{display:none!important}`)
+                .join("\n")
+            : "",
         });
       }
       await stepCapture(pid, reqs, log, { headed: !!a.flags.headed, thirdParty: !!a.flags["third-party"], mobile: !a.flags["no-mobile"] });
@@ -280,8 +332,11 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
         rightsNote: rights === "confirmed" ? "drepturi confirmate de utilizator" : undefined,
         tags: list(a.flags.tag),
       });
-      log(`${r.duplicate ? "Există deja" : "Adăugat"}: ${r.asset.id} (${r.asset.role}, încredere ${r.asset.roleConfidence}) ${r.asset.media.width ?? ""}${r.asset.media.height ? `×${r.asset.media.height}` : ""}`);
-      if (r.asset.rights.thirdParty && r.asset.rights.status === "not-confirmed") log("  → Material al unui terț: ai dreptul să-l folosești? (mms rights … confirmed|denied)");
+      log(
+        `${r.duplicate ? "Există deja" : "Adăugat"}: ${r.asset.id} (${r.asset.role}, încredere ${r.asset.roleConfidence}) ${r.asset.media.width ?? ""}${r.asset.media.height ? `×${r.asset.media.height}` : ""}`,
+      );
+      if (r.asset.rights.thirdParty && r.asset.rights.status === "not-confirmed")
+        log("  → Material al unui terț: ai dreptul să-l folosești? (mms rights … confirmed|denied)");
       return;
     }
     case "rights": {
@@ -294,7 +349,12 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
         const { captureSource } = await import("../assets/source");
         const m = loadAssets(pid);
         const hits = m.assets.filter((x) => x.rights.thirdParty && captureSource(m, x) === source);
-        if (!hits.length) throw new MmsError("RIGHTS_SOURCE", `Nu există capturi ale unui terț de pe ${source} în proiect.`, "Vezi sursele în raportul de calitate sau în Studio → Materiale.");
+        if (!hits.length)
+          throw new MmsError(
+            "RIGHTS_SOURCE",
+            `Nu există capturi ale unui terț de pe ${source} în proiect.`,
+            "Vezi sursele în raportul de calitate sau în Studio → Materiale.",
+          );
         for (const x of hits) setRights(pid, x.id, status);
         log(`Drepturi actualizate pentru ${hits.length} materiale de pe ${source}: ${hits.map((x) => x.id).join(", ")}.`);
         return;
@@ -332,18 +392,31 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
       const pid = need(id, "proiectul");
       const url = str(a.flags.url) ?? loadProject(pid).product.url;
       if (!url) throw new MmsError("ARG_MISSING", "Lipsește adresa site-ului (--url).");
-      const r = await crawlSite(pid, url, { max: a.flags.max ? Number(str(a.flags.max)) : undefined, competitors: list(a.flags.competitor), thirdParty: a.flags["third-party"] ? true : undefined, log });
+      const r = await crawlSite(pid, url, {
+        max: a.flags.max ? Number(str(a.flags.max)) : undefined,
+        competitors: list(a.flags.competitor),
+        thirdParty: a.flags["third-party"] ? true : undefined,
+        log,
+      });
       for (const p of r.pages) log(`  ${p.kind.padEnd(14)} ${String(p.claims).padStart(3)} afirmații  ${p.url}`);
       for (const sk of r.skipped) log(`! ${sk}`);
       const g = claimGraph(r.research);
-      log(`${g.stats.sources} surse, ${g.stats.claims} afirmații (${g.stats.usable} utilizabile, ${g.stats.needsConfirmation} de confirmat, ${g.stats.corroborated} coroborate, ${g.stats.conflicts} în conflict)`);
+      log(
+        `${g.stats.sources} surse, ${g.stats.claims} afirmații (${g.stats.usable} utilizabile, ${g.stats.needsConfirmation} de confirmat, ${g.stats.corroborated} coroborate, ${g.stats.conflicts} în conflict)`,
+      );
       return;
     }
     case "claims": {
       const g = claimGraph(loadResearch(need(id, "proiectul")));
-      log(`${g.stats.sources} surse · ${g.stats.claims} afirmații · ${g.stats.usable} utilizabile · ${g.stats.needsConfirmation} de confirmat · ${g.stats.corroborated} coroborate · ${g.stats.conflicts} în conflict`);
-      for (const n of g.nodes) log(`  ${(n.usable ? "✓" : "·")} ${n.confidence.padEnd(6)} ${n.claim.status.padEnd(18)} ${n.claim.id}: ${n.claim.text.slice(0, 80)}${n.sources.length ? ` [${n.sources.map((x) => x.kind).join(", ")}]` : ""}${n.conflictsWith.length ? ` ⚠ conflict cu ${n.conflictsWith.join(", ")}` : ""}${n.aboutCompetitor ? " (concurent)" : ""}`);
-      if (g.toConfirm.length) log(`
+      log(
+        `${g.stats.sources} surse · ${g.stats.claims} afirmații · ${g.stats.usable} utilizabile · ${g.stats.needsConfirmation} de confirmat · ${g.stats.corroborated} coroborate · ${g.stats.conflicts} în conflict`,
+      );
+      for (const n of g.nodes)
+        log(
+          `  ${n.usable ? "✓" : "·"} ${n.confidence.padEnd(6)} ${n.claim.status.padEnd(18)} ${n.claim.id}: ${n.claim.text.slice(0, 80)}${n.sources.length ? ` [${n.sources.map((x) => x.kind).join(", ")}]` : ""}${n.conflictsWith.length ? ` ⚠ conflict cu ${n.conflictsWith.join(", ")}` : ""}${n.aboutCompetitor ? " (concurent)" : ""}`,
+        );
+      if (g.toConfirm.length)
+        log(`
 De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}`);
       return;
     }
@@ -354,7 +427,12 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       return;
     }
     case "add-claim": {
-      const c = addUserClaim(need(id, "proiectul"), need(a._[2], "textul"), (str(a.flags.category) ?? "feature") as "feature", str(a.flags.source) ?? "dat de utilizator");
+      const c = addUserClaim(
+        need(id, "proiectul"),
+        need(a._[2], "textul"),
+        (str(a.flags.category) ?? "feature") as "feature",
+        str(a.flags.source) ?? "dat de utilizator",
+      );
       log(`Adăugată: ${c.id}`);
       return;
     }
@@ -387,7 +465,8 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       const r = await stepCompile(pid, str(a.flags.version) ?? loadProject(pid).currentVersion!, log);
       log(`Versiunea compilată: ${r.versionId}`);
       r.warnings.forEach((w) => log(`! ${w}`));
-      for (const [f, v] of Object.entries(r.validation)) for (const x of v.findings) log(`  [${f}] ${x.timecode ?? "--:--"} ${x.severity.padEnd(7)} ${x.problem}`);
+      for (const [f, v] of Object.entries(r.validation))
+        for (const x of v.findings) log(`  [${f}] ${x.timecode ?? "--:--"} ${x.severity.padEnd(7)} ${x.problem}`);
       return;
     }
     case "audio": {
@@ -400,14 +479,24 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       const pid = need(id, "proiectul");
       const from = str(a.flags.from);
       const to = str(a.flags.to);
-      const r = await stepPreview(pid, str(a.flags.version) ?? loadProject(pid).currentVersion!, str(a.flags.format) ?? null, log, { frameRange: from && to ? [Number(from), Number(to)] : undefined, onProgress: progressBar() });
+      const r = await stepPreview(pid, str(a.flags.version) ?? loadProject(pid).currentVersion!, str(a.flags.format) ?? null, log, {
+        frameRange: from && to ? [Number(from), Number(to)] : undefined,
+        onProgress: progressBar(),
+      });
       log(`\nPreview: ${path.relative(PATHS.root, r.file)}\nFoaie de contact: ${path.relative(PATHS.root, r.contactSheet)}`);
       r.check.problems.forEach((p) => log(`! ${p}`));
       return;
     }
     case "make": {
       const pid = need(id, "proiectul");
-      const r = await produce(pid, { log, depth: (str(a.flags.depth) as Depth | undefined) ?? "standard", autofix: !a.flags["no-autofix"], preview: !a.flags["skip-preview"], onProgress: progressBar(), stage: (n) => log(`\n— ${n} —`) });
+      const r = await produce(pid, {
+        log,
+        depth: (str(a.flags.depth) as Depth | undefined) ?? "standard",
+        autofix: !a.flags["no-autofix"],
+        preview: !a.flags["skip-preview"],
+        onProgress: progressBar(),
+        stage: (n) => log(`\n— ${n} —`),
+      });
       const score = r.final?.score ?? r.autofix?.finalScore ?? r.first.score;
       log(`\nVersiunea ${r.versionId}: calitate ${score.overall}/100 · ${score.verdict}`);
       for (const x of score.reasons) log(`  ${x}`);
@@ -419,17 +508,29 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       const pid = need(id, "proiectul");
       const depth = (str(a.flags.depth) as Depth | undefined) ?? (cmd === "critique" ? "fast" : "standard");
       const fmt = str(a.flags.format);
-      const r = await runQuality(pid, { versionId: str(a.flags.version), formats: fmt ? [fmt] : undefined, depth, log, force: !!a.flags.force, onProgress: progressBar() });
+      const r = await runQuality(pid, {
+        versionId: str(a.flags.version),
+        formats: fmt ? [fmt] : undefined,
+        depth,
+        log,
+        force: !!a.flags.force,
+        onProgress: progressBar(),
+      });
       printQuality(r.run);
       log(r.decision.message);
       return;
     }
     case "autofix": {
       const pid = need(id, "proiectul");
-      const r = await autoFixLoop(pid, { depth: (str(a.flags.depth) as Depth | undefined) ?? "standard", maxIterations: a.flags.max ? Number(str(a.flags.max)) : undefined, log });
+      const r = await autoFixLoop(pid, {
+        depth: (str(a.flags.depth) as Depth | undefined) ?? "standard",
+        maxIterations: a.flags.max ? Number(str(a.flags.max)) : undefined,
+        log,
+      });
       log(`\n${r.startVersion} → ${r.finalVersion}: ${r.finalScore.overall}/100 · ${r.finalScore.verdict}`);
       log(r.stopReason);
-      for (const it of r.iterations) log(`  iterația ${it.n}: ${it.from} → ${it.to} ${it.decision === "kept" ? "păstrată" : "respinsă (rollback)"} – ${it.reason}`);
+      for (const it of r.iterations)
+        log(`  iterația ${it.n}: ${it.from} → ${it.to} ${it.decision === "kept" ? "păstrată" : "respinsă (rollback)"} – ${it.reason}`);
       if (r.needsHuman.length) {
         log(`\nCer decizie creativă (${r.needsHuman.length}):`);
         for (const x of r.needsHuman.slice(0, 12)) log(`  ${x.timecode ?? "--:--"} [${x.severity}] ${x.problem} → ${x.recommendation}`);
@@ -477,7 +578,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       const pid = need(id, "proiectul");
       const c = ensureConcepts(pid, { force: !!a.flags.force });
       for (const x of [...c.concepts].sort((p, q) => q.total - p.total)) {
-        log(`${x.id === c.selectedId ? "▶" : " "} ${x.id.padEnd(22)} ${String(x.total).padStart(5)}/100  ${x.origin === "user" ? "al tău   " : x.origin === "ai" ? "Claude   " : "sugestie "} ${x.title} · ${x.templateId} · ${x.direction}`);
+        log(
+          `${x.id === c.selectedId ? "▶" : " "} ${x.id.padEnd(22)} ${String(x.total).padStart(5)}/100  ${x.origin === "user" ? "al tău   " : x.origin === "ai" ? "Claude   " : "sugestie "} ${x.title} · ${x.templateId} · ${x.direction}`,
+        );
         log(`      ${x.bigIdea}`);
         log(`      hook (${x.hook.origin}): „${x.hook.text}”${x.risks.length ? ` · riscuri: ${x.risks.join("; ")}` : ""}`);
       }
@@ -511,7 +614,11 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       return;
     }
     case "hook-variants": {
-      const r = await hookVariants(need(id, "proiectul"), { from: str(a.flags.from), count: a.flags.count !== undefined ? Number(a.flags.count) : undefined }, log);
+      const r = await hookVariants(
+        need(id, "proiectul"),
+        { from: str(a.flags.from), count: a.flags.count !== undefined ? Number(a.flags.count) : undefined },
+        log,
+      );
       for (const v of r) log(`${v.versionId}: ${v.hookId} – „${v.text}”`);
       return;
     }
@@ -564,7 +671,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
         return;
       }
       for (const r of rows)
-        log(`${r.provider.padEnd(11)} ${(r.model ?? "").padEnd(24)} ${r.op.padEnd(15)} ${String(r.calls).padStart(4)} operații · ${String(r.cached).padStart(4)} din cache · ${r.failed} eșuate${r.chars ? ` · ${r.chars} caractere sintetizate` : ""}${r.frames ? ` · ${r.frames} cadre randate` : ""} · ${(r.durationMs / 1000).toFixed(1)} s`);
+        log(
+          `${r.provider.padEnd(11)} ${(r.model ?? "").padEnd(24)} ${r.op.padEnd(15)} ${String(r.calls).padStart(4)} operații · ${String(r.cached).padStart(4)} din cache · ${r.failed} eșuate${r.chars ? ` · ${r.chars} caractere sintetizate` : ""}${r.frames ? ` · ${r.frames} cadre randate` : ""} · ${(r.durationMs / 1000).toFixed(1)} s`,
+        );
       log("Costul în bani nu e calculat: furnizorii nu îl întorc în aceste apeluri (vezi contul furnizorului).");
       return;
     }
@@ -573,7 +682,11 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       if (a.flags.prune) {
         const { pruneBundles } = await import("../renderer/node/render");
         const removed = pruneBundles();
-        log(removed.length ? `Șterse ${removed.length} bundle-uri vechi.` : "Niciun bundle de șters (se păstrează cel curent, ultimele 2 și cele folosite în ultimele 2 ore).");
+        log(
+          removed.length
+            ? `Șterse ${removed.length} bundle-uri vechi.`
+            : "Niciun bundle de șters (se păstrează cel curent, ultimele 2 și cele folosite în ultimele 2 ore).",
+        );
       }
       const rows = cacheReport(PATHS.cache);
       const mb = (b: number) => `${(b / 1024 ** 2).toFixed(0).padStart(6)} MB`;
@@ -602,14 +715,21 @@ function printQuality(r: QualityRun): void {
   log(`Calitate ${s.overall}/100 · ${s.verdict} · acoperire ${Math.round(s.coverage * 100)}%`);
   for (const [k, v] of Object.entries(s.categories)) log(`  ${k.padEnd(11)} ${v === null ? "neevaluat" : v}`);
   if (r.rubric.minScene !== null) log(`  rubrica regulii 7: scor minim pe scenă ${r.rubric.minScene}/10`);
-  log(`Randări: ${r.renders.stillsRendered} cadre noi, ${r.renders.stillsReused} din cache; mișcare ${r.renders.motionFramesRendered} cadre; video ${r.renders.fullRendered} randat, ${r.renders.fullReused} refolosit`);
+  log(
+    `Randări: ${r.renders.stillsRendered} cadre noi, ${r.renders.stillsReused} din cache; mișcare ${r.renders.motionFramesRendered} cadre; video ${r.renders.fullRendered} randat, ${r.renders.fullReused} refolosit`,
+  );
   for (const p of r.passes) {
     const ran = p.checks.filter((c) => c.status !== "skipped");
     const skipped = p.checks.filter((c) => c.status === "skipped");
-    log(`  Pas ${p.n} ${p.title}: ${ran.map((c) => `${c.id}(${c.method}${c.status === "cached" ? ", cache" : ""})`).join(" ") || "—"}${skipped.length ? ` · sărite: ${skipped.map((c) => c.id).join(", ")}` : ""}`);
+    log(
+      `  Pas ${p.n} ${p.title}: ${ran.map((c) => `${c.id}(${c.method}${c.status === "cached" ? ", cache" : ""})`).join(" ") || "—"}${skipped.length ? ` · sărite: ${skipped.map((c) => c.id).join(", ")}` : ""}`,
+    );
   }
   log(`\nProbleme (${r.issues.length}):`);
-  for (const x of r.issues.slice(0, 40)) log(`  ${(x.timecode ?? "--:--").padEnd(8)} [${x.severity}] ${x.category}/${x.dimension}${x.formatId ? ` [${x.formatId}]` : ""}: ${x.problem}${x.autoFixable ? " (corectabil automat)" : ""}`);
+  for (const x of r.issues.slice(0, 40))
+    log(
+      `  ${(x.timecode ?? "--:--").padEnd(8)} [${x.severity}] ${x.category}/${x.dimension}${x.formatId ? ` [${x.formatId}]` : ""}: ${x.problem}${x.autoFixable ? " (corectabil automat)" : ""}`,
+    );
   if (r.issues.length > 40) log(`  … și încă ${r.issues.length - 40} (versions/${r.versionId}/quality.json)`);
   for (const x of s.reasons) log(`• ${x}`);
 }

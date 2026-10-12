@@ -68,7 +68,8 @@ const IBAN = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,7}(?:\s?[A-Z0-9]{1,4})?\b/g;
 const CARD = /\b(?:\d[ -]?){13,19}\b/g;
 const ACCOUNT = /\b(?:id|cont|account|client|user|utilizator|abonat)\s*(?:nr\.?|no\.?)?\s*[:#]\s*[A-Z0-9][A-Z0-9-]{5,}\b/gi;
 // salutul poate începe cu majusculă; numele trebuie să înceapă cu majusculă (de aceea fără flag „i”)
-const GREETING = /(?<![A-Za-zăâîșțĂÂÎȘȚ])(?:[Bb]un[ăa] (?:diminea[țt]a|ziua|seara)|[Ss]alut|[Bb]ine ai venit(?: înapoi)?|[Hh]ello|[Hh]i|[Hh]ey|[Ww]elcome(?: back)?|[Gg]ood (?:morning|afternoon|evening))[,!]?\s+([A-ZĂÂÎȘȚ][a-zăâîșțé]+(?:\s[A-ZĂÂÎȘȚ][a-zăâîșțé]+)?)/g;
+const GREETING =
+  /(?<![A-Za-zăâîșțĂÂÎȘȚ])(?:[Bb]un[ăa] (?:diminea[țt]a|ziua|seara)|[Ss]alut|[Bb]ine ai venit(?: înapoi)?|[Hh]ello|[Hh]i|[Hh]ey|[Ww]elcome(?: back)?|[Gg]ood (?:morning|afternoon|evening))[,!]?\s+([A-ZĂÂÎȘȚ][a-zăâîșțé]+(?:\s[A-ZĂÂÎȘȚ][a-zăâîșțé]+)?)/g;
 
 /** Toate datele personale găsite într-un text, validate. */
 export function findPii(text: string): PiiHit[] {
@@ -82,7 +83,11 @@ export function findPii(text: string): PiiHit[] {
     const s = m[0].trim();
     // telefon: 9–13 cifre, fără să fie dată, oră, preț, card sau CNP deja găsit
     if (d.length < 9 || d.length > 13) continue;
-    if (/\d{1,2}[./]\d{1,2}[./]\d{2,4}|\d{1,2}:\d{2}/.test(s) || /[€$£]|lei|ron|eur/i.test(text.slice(Math.max(0, (m.index ?? 0) - 4), (m.index ?? 0) + s.length + 4))) continue;
+    if (
+      /\d{1,2}[./]\d{1,2}[./]\d{2,4}|\d{1,2}:\d{2}/.test(s) ||
+      /[€$£]|lei|ron|eur/i.test(text.slice(Math.max(0, (m.index ?? 0) - 4), (m.index ?? 0) + s.length + 4))
+    )
+      continue;
     if (out.some((h) => digits(h.match).includes(d))) continue;
     if (!/^\+|^0|\s|-/.test(s)) continue;
     out.push({ kind: "phone", match: s });

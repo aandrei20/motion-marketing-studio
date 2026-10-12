@@ -43,7 +43,10 @@ export function getTemplate(id: string): AdTemplate {
 }
 
 /** Alege șablonul după produs, direcție și durată (scor simplu, explicat). */
-export function chooseTemplate(input: { category: string; direction: string | null; durationSec: number; objective: string }): { template: AdTemplate; why: string } {
+export function chooseTemplate(input: { category: string; direction: string | null; durationSec: number; objective: string }): {
+  template: AdTemplate;
+  why: string;
+} {
   const all = listTemplates();
   const scored = all.map((t) => {
     let s = 0;

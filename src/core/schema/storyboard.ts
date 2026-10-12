@@ -18,31 +18,14 @@ export const NarrativeRole = z.enum([
 ]);
 export type NarrativeRole = z.infer<typeof NarrativeRole>;
 
-export const EmotionalRole = z.enum([
-  "curiosity",
-  "tension",
-  "frustration",
-  "relief",
-  "delight",
-  "confidence",
-  "urgency",
-  "aspiration",
-  "trust",
-]);
+export const EmotionalRole = z.enum(["curiosity", "tension", "frustration", "relief", "delight", "confidence", "urgency", "aspiration", "trust"]);
 export type EmotionalRole = z.infer<typeof EmotionalRole>;
 
 /** Tipul de cadru, din gramatica de montaj. */
 export const ShotType = z.enum(["establishing", "hero", "close-up", "insert", "montage", "wide", "detail", "title"]);
 export type ShotType = z.infer<typeof ShotType>;
 
-export const CompositionKind = z.enum([
-  "thirds-left",
-  "thirds-right",
-  "center",
-  "split",
-  "full-bleed",
-  "stacked",
-]);
+export const CompositionKind = z.enum(["thirds-left", "thirds-right", "center", "split", "full-bleed", "stacked"]);
 export type CompositionKind = z.infer<typeof CompositionKind>;
 
 export const CapabilityUse = z.object({
@@ -98,9 +81,7 @@ export const StoryboardScene = z.object({
       items: z.array(z.string()).optional(),
     })
     .default({}),
-  focus: z
-    .object({ assetId: z.string(), region: Slug.optional(), point: NormPoint.optional() })
-    .optional(),
+  focus: z.object({ assetId: z.string(), region: Slug.optional(), point: NormPoint.optional() }).optional(),
   camera: CapabilityUse.optional(),
   overrides: z.array(LayerOverride).default([]),
   transitionIn: TransitionUse.nullable().default(null),
@@ -112,9 +93,7 @@ export const StoryboardScene = z.object({
       musicSection: z.string().optional(),
     })
     .default({ sfx: "auto", silence: false }),
-  beat: z
-    .object({ snap: z.enum(["none", "beat", "bar"]).default("beat") })
-    .default({ snap: "beat" }),
+  beat: z.object({ snap: z.enum(["none", "beat", "bar"]).default("beat") }).default({ snap: "beat" }),
   composition: CompositionKind.default("thirds-left"),
   cta: z.enum(["none", "setup", "payoff", "hold"]).default("none"),
   notes: z.string().default(""),

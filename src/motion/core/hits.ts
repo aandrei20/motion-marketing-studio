@@ -9,16 +9,10 @@ export function hitDecay(frame: number, hits: number[], decay = 6): number {
 }
 
 /** Punch-in pe ritm: multiplicator de scară care sare la impact și revine. */
-export const punch = (frame: number, hits: number[], amount = 0.06, decay = 5): number =>
-  1 + amount * hitDecay(frame, hits, decay);
+export const punch = (frame: number, hits: number[], amount = 0.06, decay = 5): number => 1 + amount * hitDecay(frame, hits, decay);
 
 /** Tremur de impact (px), cu sămânță, care se stinge. */
-export function shake(
-  frame: number,
-  hits: Array<{ at: number; amp: number }>,
-  seed: string,
-  decay = 5,
-): { x: number; y: number; r: number } {
+export function shake(frame: number, hits: Array<{ at: number; amp: number }>, seed: string, decay = 5): { x: number; y: number; r: number } {
   let x = 0;
   let y = 0;
   let r = 0;
@@ -40,9 +34,7 @@ export function shake(
 export function exposure(frame: number, hits: number[], amt = 0.6, len = 3): string | undefined {
   let k = 0;
   for (const h of hits) if (frame >= h && frame < h + len) k = Math.max(k, 1 - (frame - h) / len);
-  return k > 0.01
-    ? `brightness(${(1 + amt * k).toFixed(3)}) contrast(${(1 + 0.18 * k).toFixed(3)}) saturate(${(1 + 0.3 * k).toFixed(3)})`
-    : undefined;
+  return k > 0.01 ? `brightness(${(1 + amt * k).toFixed(3)}) contrast(${(1 + 0.18 * k).toFixed(3)}) saturate(${(1 + 0.3 * k).toFixed(3)})` : undefined;
 }
 
 /** Whip zoom în jurul unei tăieturi: scară + blur pentru stratul care iese și cel care intră. */

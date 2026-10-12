@@ -25,7 +25,15 @@ const main = async () => {
       id: "video",
       url: app,
       viewport: "laptop",
-      record: { steps: [{ action: "wait", ms: 400 }, { action: "type", selector: "#search", text: "raport", delayMs: 140 }, { action: "wait", ms: 500 }], fps: 30, tailMs: 300 },
+      record: {
+        steps: [
+          { action: "wait", ms: 400 },
+          { action: "type", selector: "#search", text: "raport", delayMs: 140 },
+          { action: "wait", ms: 500 },
+        ],
+        fps: 30,
+        tailMs: 300,
+      },
     },
     tmp,
   );
@@ -39,7 +47,13 @@ const main = async () => {
     screenshot: { file: "library/catalog/samples/screenshot.png", w: shot.width, h: shot.height },
     "tall-screenshot": { file: "library/catalog/samples/tall-screenshot.png", w: tall.width, h: tall.height },
     image: { file: "library/catalog/samples/image.png", w: hero.width, h: hero.height },
-    video: { file: "library/catalog/samples/video.mp4", w: rec.recording!.width, h: rec.recording!.height, durationSec: rec.recording!.durationSec, fps: rec.recording!.fps },
+    video: {
+      file: "library/catalog/samples/video.mp4",
+      w: rec.recording!.width,
+      h: rec.recording!.height,
+      durationSec: rec.recording!.durationSec,
+      fps: rec.recording!.fps,
+    },
     logo: { file: "library/catalog/samples/logo.svg", w: 120, h: 120 },
   };
   fs.writeFileSync(path.join(out, "samples.json"), JSON.stringify(manifest, null, 2));

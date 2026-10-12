@@ -5,8 +5,78 @@
  */
 
 const STOP: Record<string, string[]> = {
-  ro: ["și", "si", "în", "pe", "cu", "de", "la", "că", "ca", "este", "sunt", "nu", "mai", "pentru", "fără", "din", "care", "tău", "ta", "tale", "o", "un", "una", "să", "se", "ai", "sau", "acum", "totul", "fiecare", "vrei", "poți", "doar", "foarte"],
-  en: ["the", "and", "to", "of", "in", "is", "it", "you", "your", "for", "with", "on", "that", "are", "no", "not", "or", "be", "this", "all", "can", "now", "get", "our", "we", "an", "a", "at", "from", "by", "easy", "use", "need", "without"],
+  ro: [
+    "și",
+    "si",
+    "în",
+    "pe",
+    "cu",
+    "de",
+    "la",
+    "că",
+    "ca",
+    "este",
+    "sunt",
+    "nu",
+    "mai",
+    "pentru",
+    "fără",
+    "din",
+    "care",
+    "tău",
+    "ta",
+    "tale",
+    "o",
+    "un",
+    "una",
+    "să",
+    "se",
+    "ai",
+    "sau",
+    "acum",
+    "totul",
+    "fiecare",
+    "vrei",
+    "poți",
+    "doar",
+    "foarte",
+  ],
+  en: [
+    "the",
+    "and",
+    "to",
+    "of",
+    "in",
+    "is",
+    "it",
+    "you",
+    "your",
+    "for",
+    "with",
+    "on",
+    "that",
+    "are",
+    "no",
+    "not",
+    "or",
+    "be",
+    "this",
+    "all",
+    "can",
+    "now",
+    "get",
+    "our",
+    "we",
+    "an",
+    "a",
+    "at",
+    "from",
+    "by",
+    "easy",
+    "use",
+    "need",
+    "without",
+  ],
   fr: ["le", "la", "les", "et", "des", "du", "un", "une", "est", "pour", "avec", "pas", "vous", "votre", "sur", "dans", "qui", "que", "plus", "sans"],
   de: ["der", "die", "das", "und", "ist", "nicht", "mit", "für", "auf", "ein", "eine", "sie", "ihr", "zu", "den", "von", "im", "ohne", "jetzt", "sich"],
   es: ["el", "la", "los", "las", "y", "es", "en", "con", "para", "por", "que", "una", "un", "su", "tu", "sin", "más", "del", "al", "ahora"],
@@ -22,7 +92,11 @@ export interface DetectedLanguage {
 }
 
 export function detectLanguage(text: string): DetectedLanguage {
-  const words = text.toLowerCase().normalize("NFC").match(/\p{L}+/gu) ?? [];
+  const words =
+    text
+      .toLowerCase()
+      .normalize("NFC")
+      .match(/\p{L}+/gu) ?? [];
   if (words.length < 4) return { lang: null, confidence: 0 };
   const score: Record<string, number> = {};
   for (const [lang, list] of Object.entries(STOP)) {

@@ -23,7 +23,13 @@ beforeAll(async () => {
 
 describe("versiuni imuabile", () => {
   it("creează proiectul, versiunile și îngheață părintele", () => {
-    store.createProject({ id: "t1", name: "Test", product: { name: "Produs X", category: "saas" }, formats: [formats.makeFormat("9x16", { platform: "tiktok", durationSec: 20 })], language: { text: "ro", voice: null } });
+    store.createProject({
+      id: "t1",
+      name: "Test",
+      product: { name: "Produs X", category: "saas" },
+      formats: [formats.makeFormat("9x16", { platform: "tiktok", durationSec: 20 })],
+      language: { text: "ro", voice: null },
+    });
     expect(fs.existsSync(path.join(tmp, "t1", "STATE.md"))).toBe(true);
     const v1 = store.createVersion("t1");
     expect(v1.id).toBe("v1");
@@ -31,7 +37,9 @@ describe("versiuni imuabile", () => {
     const v2 = store.createVersion("t1", { label: "a doua" });
     expect(v2.parent).toBe("v1");
     expect(store.loadVersionMeta("t1", "v1").frozen).toBe(true);
-    expect(() => store.saveScript("t1", "v1", { schemaVersion: 1, textLanguage: "ro", voiceLanguage: null, lines: [{ id: "b", origin: "ai" }] })).toThrow(/înghețată/);
+    expect(() => store.saveScript("t1", "v1", { schemaVersion: 1, textLanguage: "ro", voiceLanguage: null, lines: [{ id: "b", origin: "ai" }] })).toThrow(
+      /înghețată/,
+    );
     // conținutul a fost copiat, iar v1 a rămas neatinsă
     expect(store.loadScript("t1", "v2").lines[0].id).toBe("a");
     expect(store.loadScript("t1", "v1").lines[0].id).toBe("a");
@@ -49,7 +57,20 @@ describe("versiuni imuabile", () => {
 });
 
 function layer(p: Partial<TimelineLayer> & Pick<TimelineLayer, "capability">): TimelineLayer {
-  return { id: `l-${Math.random().toString(36).slice(2)}`, from: 0, durationInFrames: 60, z: 1, box: { x: 200, y: 400, w: 600, h: 200 }, params: {}, depth: 0, role: "hero", modifiers: [], assets: [], children: [], ...p };
+  return {
+    id: `l-${Math.random().toString(36).slice(2)}`,
+    from: 0,
+    durationInFrames: 60,
+    z: 1,
+    box: { x: 200, y: 400, w: 600, h: 200 },
+    params: {},
+    depth: 0,
+    role: "hero",
+    modifiers: [],
+    assets: [],
+    children: [],
+    ...p,
+  };
 }
 
 function timeline(scenes: Timeline["scenes"]): Timeline {
@@ -67,7 +88,11 @@ function timeline(scenes: Timeline["scenes"]): Timeline {
     safeZone: { top: 240, right: 120, bottom: 660, left: 120 },
     fonts: [],
     palette: { primary: "#6c5cff", secondary: "#333333", accent: "#2de2b0", background: "#0e0f1a", surface: "#171a2b", text: "#eef0ff", textMuted: "#9aa0c3" },
-    typography: { display: { family: "Inter", weight: 700, tracking: 0, uppercase: false }, body: { family: "Inter", weight: 500, tracking: 0, uppercase: false }, mono: { family: "Inter", weight: 500, tracking: 0, uppercase: false } },
+    typography: {
+      display: { family: "Inter", weight: 700, tracking: 0, uppercase: false },
+      body: { family: "Inter", weight: 500, tracking: 0, uppercase: false },
+      mono: { family: "Inter", weight: 500, tracking: 0, uppercase: false },
+    },
     scenes,
     overlays: [],
     captions: null,
@@ -77,17 +102,60 @@ function timeline(scenes: Timeline["scenes"]): Timeline {
   };
 }
 
-const cam = { keys: [{ at: 0, x: 540, y: 960, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" as const }], handheld: 0, shake: [], punches: [], perspective: 1600, motionBlur: true };
+const cam = {
+  keys: [{ at: 0, x: 540, y: 960, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" as const }],
+  handheld: 0,
+  shake: [],
+  punches: [],
+  perspective: 1600,
+  motionBlur: true,
+};
 const meta = (role = "feature") => ({ purpose: "p", narrativeRole: role, recipe: "r", shot: "hero", energy: 0.5 });
 
 describe("validatorul de timeline", () => {
-  const ctx = () => ({ assets: { schemaVersion: 1 as const, assets: [] }, research: { schemaVersion: 1 as const, productSummary: "", sources: [], claims: [], openQuestions: [] }, format: formats.makeFormat("9x16", { platform: "tiktok", durationSec: 10 }) });
+  const ctx = () => ({
+    assets: { schemaVersion: 1 as const, assets: [] },
+    research: { schemaVersion: 1 as const, productSummary: "", sources: [], claims: [], openQuestions: [] },
+    format: formats.makeFormat("9x16", { platform: "tiktok", durationSec: 10 }),
+  });
   it("prinde golurile (cadre goale), flash-urile prea dese, cifrele fără sursă, textul ieșit din zona sigură", () => {
     const t = timeline([
-      { id: "a", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [layer({ capability: "text.word-reveal", params: { text: "Salut", fontSize: 120 }, box: { x: 200, y: 1500, w: 600, h: 200 } })], meta: meta() },
-      { id: "b", from: 40, durationInFrames: 16, transitionIn: { capability: "tr.flash", durationInFrames: 4, params: {} }, camera: cam, layers: [layer({ capability: "text.counter", params: { value: 99 }, durationInFrames: 16 })], meta: meta() },
-      { id: "c", from: 52, durationInFrames: 12, transitionIn: { capability: "tr.flash", durationInFrames: 4, params: {} }, camera: cam, layers: [], meta: meta() },
-      { id: "d", from: 60, durationInFrames: 90, transitionIn: { capability: "tr.flash", durationInFrames: 4, params: {} }, camera: cam, layers: [], meta: meta("cta") },
+      {
+        id: "a",
+        from: 0,
+        durationInFrames: 30,
+        transitionIn: null,
+        camera: cam,
+        layers: [layer({ capability: "text.word-reveal", params: { text: "Salut", fontSize: 120 }, box: { x: 200, y: 1500, w: 600, h: 200 } })],
+        meta: meta(),
+      },
+      {
+        id: "b",
+        from: 40,
+        durationInFrames: 16,
+        transitionIn: { capability: "tr.flash", durationInFrames: 4, params: {} },
+        camera: cam,
+        layers: [layer({ capability: "text.counter", params: { value: 99 }, durationInFrames: 16 })],
+        meta: meta(),
+      },
+      {
+        id: "c",
+        from: 52,
+        durationInFrames: 12,
+        transitionIn: { capability: "tr.flash", durationInFrames: 4, params: {} },
+        camera: cam,
+        layers: [],
+        meta: meta(),
+      },
+      {
+        id: "d",
+        from: 60,
+        durationInFrames: 90,
+        transitionIn: { capability: "tr.flash", durationInFrames: 4, params: {} },
+        camera: cam,
+        layers: [],
+        meta: meta("cta"),
+      },
     ]);
     const r = validate.validateTimeline(t, ctx());
     const dims = r.findings.map((f) => f.dimension);
@@ -98,31 +166,152 @@ describe("validatorul de timeline", () => {
     expect(r.ok).toBe(false);
   });
   it("interfața produsului trebuie să vină din captură reală sau de la utilizator", () => {
-    const asset = { id: "screenshot-1", file: "assets/screenshot-1.png", originalName: "x.png", sha256: "x", bytes: 1, mime: "image/png", type: "image" as const, origin: "generated" as const, role: "screenshot" as const, roleSource: "user" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: false, status: "owned" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, pii: { regions: [], blurApproved: false, keepApproved: false }, tags: [], notes: "", addedAt: "2026" };
-    const t = timeline([{ id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: [layer({ capability: "media.screen", depth: 1, assets: ["projects/t1/assets/screenshot-1.png"], params: { src: "projects/t1/assets/screenshot-1.png", imageWidth: 100, imageHeight: 100 } })], meta: meta("cta") }]);
+    const asset = {
+      id: "screenshot-1",
+      file: "assets/screenshot-1.png",
+      originalName: "x.png",
+      sha256: "x",
+      bytes: 1,
+      mime: "image/png",
+      type: "image" as const,
+      origin: "generated" as const,
+      role: "screenshot" as const,
+      roleSource: "user" as const,
+      roleConfidence: 1,
+      showsProductUI: true,
+      rights: { thirdParty: false, status: "owned" as const, note: "" },
+      media: {},
+      analysis: { palette: [], nearDuplicates: [] },
+      pii: { regions: [], blurApproved: false, keepApproved: false },
+      tags: [],
+      notes: "",
+      addedAt: "2026",
+    };
+    const t = timeline([
+      {
+        id: "a",
+        from: 0,
+        durationInFrames: 90,
+        transitionIn: null,
+        camera: cam,
+        layers: [
+          layer({
+            capability: "media.screen",
+            depth: 1,
+            assets: ["projects/t1/assets/screenshot-1.png"],
+            params: { src: "projects/t1/assets/screenshot-1.png", imageWidth: 100, imageHeight: 100 },
+          }),
+        ],
+        meta: meta("cta"),
+      },
+    ]);
     const r = validate.validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets: [asset] } });
     expect(r.findings.some((f) => f.dimension === "real-footage" && f.severity === "critical")).toBe(true);
   });
   it("datele personale din capturi cer decizia utilizatorului; estomparea aprobată trebuie să existe în timeline", () => {
     const pii = { id: "pii-1", label: "email", kind: "pii" as const, rect: { x: 10, y: 10, w: 200, h: 30 } };
-    const base = { id: "screenshot-2", file: "assets/screenshot-2.png", originalName: "app.png", sha256: "y", bytes: 1, mime: "image/png", type: "image" as const, origin: "real_capture" as const, role: "screenshot" as const, roleSource: "user" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: false, status: "owned" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, tags: [], notes: "", addedAt: "2026" };
-    const screen = (children: TimelineLayer[] = []) => timeline([{ id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: [layer({ capability: "media.screen", depth: 1, assets: ["projects/t1/assets/screenshot-2.png"], params: { src: "projects/t1/assets/screenshot-2.png", imageWidth: 400, imageHeight: 300 }, children })], meta: meta("cta") }]);
-    const blockers = (asset: typeof base & { pii: { regions: (typeof pii)[]; blurApproved: boolean; keepApproved: boolean } }, t: Timeline) => validate.validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets: [asset] } }).findings.filter((f) => f.severity === "critical" && /personale/.test(f.problem));
+    const base = {
+      id: "screenshot-2",
+      file: "assets/screenshot-2.png",
+      originalName: "app.png",
+      sha256: "y",
+      bytes: 1,
+      mime: "image/png",
+      type: "image" as const,
+      origin: "real_capture" as const,
+      role: "screenshot" as const,
+      roleSource: "user" as const,
+      roleConfidence: 1,
+      showsProductUI: true,
+      rights: { thirdParty: false, status: "owned" as const, note: "" },
+      media: {},
+      analysis: { palette: [], nearDuplicates: [] },
+      tags: [],
+      notes: "",
+      addedAt: "2026",
+    };
+    const screen = (children: TimelineLayer[] = []) =>
+      timeline([
+        {
+          id: "a",
+          from: 0,
+          durationInFrames: 90,
+          transitionIn: null,
+          camera: cam,
+          layers: [
+            layer({
+              capability: "media.screen",
+              depth: 1,
+              assets: ["projects/t1/assets/screenshot-2.png"],
+              params: { src: "projects/t1/assets/screenshot-2.png", imageWidth: 400, imageHeight: 300 },
+              children,
+            }),
+          ],
+          meta: meta("cta"),
+        },
+      ]);
+    const blockers = (asset: typeof base & { pii: { regions: (typeof pii)[]; blurApproved: boolean; keepApproved: boolean } }, t: Timeline) =>
+      validate
+        .validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets: [asset] } })
+        .findings.filter((f) => f.severity === "critical" && /personale/.test(f.problem));
     expect(blockers({ ...base, pii: { regions: [pii], blurApproved: false, keepApproved: false } }, screen())).toHaveLength(1);
     expect(blockers({ ...base, pii: { regions: [pii], blurApproved: false, keepApproved: true } }, screen())).toHaveLength(0);
     expect(blockers({ ...base, pii: { regions: [pii], blurApproved: true, keepApproved: false } }, screen())).toHaveLength(1);
-    expect(blockers({ ...base, pii: { regions: [pii], blurApproved: true, keepApproved: false } }, screen([layer({ capability: "ui.blur-region", box: pii.rect })]))).toHaveLength(0);
+    expect(
+      blockers({ ...base, pii: { regions: [pii], blurApproved: true, keepApproved: false } }, screen([layer({ capability: "ui.blur-region", box: pii.rect })])),
+    ).toHaveLength(0);
   });
 });
 
 describe("poarta de drepturi pe sursă", () => {
-  const ctx = () => ({ research: { schemaVersion: 1 as const, productSummary: "", sources: [], claims: [], openQuestions: [] }, format: formats.makeFormat("9x16", { platform: "tiktok", durationSec: 10 }) });
-  const cap = (id: string, url: string, width: number, tags: string[]) => ({ id, file: `assets/${id}.png`, originalName: `${id}.png`, sha256: id, bytes: 1, mime: "image/png", type: "image" as const, origin: "real_capture" as const, role: "screenshot" as const, roleSource: "inferred" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: true, status: "not-confirmed" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, capture: { url, viewport: { width, height: 900 }, deviceScaleFactor: 2, capturedAt: "2026-10-12", fullPage: false, regions: [] }, pii: { regions: [], blurApproved: false, keepApproved: false }, tags, notes: "", addedAt: "2026" });
+  const ctx = () => ({
+    research: { schemaVersion: 1 as const, productSummary: "", sources: [], claims: [], openQuestions: [] },
+    format: formats.makeFormat("9x16", { platform: "tiktok", durationSec: 10 }),
+  });
+  const cap = (id: string, url: string, width: number, tags: string[]) => ({
+    id,
+    file: `assets/${id}.png`,
+    originalName: `${id}.png`,
+    sha256: id,
+    bytes: 1,
+    mime: "image/png",
+    type: "image" as const,
+    origin: "real_capture" as const,
+    role: "screenshot" as const,
+    roleSource: "inferred" as const,
+    roleConfidence: 1,
+    showsProductUI: true,
+    rights: { thirdParty: true, status: "not-confirmed" as const, note: "" },
+    media: {},
+    analysis: { palette: [], nearDuplicates: [] },
+    capture: { url, viewport: { width, height: 900 }, deviceScaleFactor: 2, capturedAt: "2026-10-12", fullPage: false, regions: [] },
+    pii: { regions: [], blurApproved: false, keepApproved: false },
+    tags,
+    notes: "",
+    addedAt: "2026",
+  });
   const logo = { ...cap("logo-1", "", 0, ["logo", "landing"]), role: "logo" as const, type: "svg" as const, file: "assets/logo-1.svg", capture: undefined };
-  const screen = (file: string, id: string) => layer({ id, capability: "media.screen", depth: 1, assets: [`projects/t1/${file}`], params: { src: `projects/t1/${file}`, imageWidth: 400, imageHeight: 300 } });
+  const screen = (file: string, id: string) =>
+    layer({
+      id,
+      capability: "media.screen",
+      depth: 1,
+      assets: [`projects/t1/${file}`],
+      params: { src: `projects/t1/${file}`, imageWidth: 400, imageHeight: 300 },
+    });
   it("capturile aceluiași site (desktop, telefon, logo-ul din pagină) sunt o singură întrebare", () => {
-    const assets = [cap("landing", "https://exemplu.ro/", 1440, ["landing"]), cap("landing-mobile", "https://exemplu.ro/", 390, ["landing-mobile"]), logo, cap("blog", "https://alt-site.ro/blog", 1440, ["blog"])];
-    const t = { ...timeline([{ id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: assets.map((a, i) => screen(a.file, `l${i}`)), meta: meta("cta") }]), concept: true };
+    const assets = [
+      cap("landing", "https://exemplu.ro/", 1440, ["landing"]),
+      cap("landing-mobile", "https://exemplu.ro/", 390, ["landing-mobile"]),
+      logo,
+      cap("blog", "https://alt-site.ro/blog", 1440, ["blog"]),
+    ];
+    const t = {
+      ...timeline([
+        { id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: assets.map((a, i) => screen(a.file, `l${i}`)), meta: meta("cta") },
+      ]),
+      concept: true,
+    };
     const rights = validate.validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets } }).findings.filter((f) => f.dimension === "rights");
     expect(rights.map((f) => f.problem).sort()).toEqual([
       "Capturile de pe alt-site.ro aparțin unui terț și nu au drepturi confirmate. Preview-ul e marcat „concept”, iar exportul final e blocat.",
@@ -159,8 +348,24 @@ describe("livrare: copertă și variante de hook", () => {
     const steps = await import("../../src/pipeline/steps");
     const t = timeline([
       { id: "h", from: 0, durationInFrames: 60, transitionIn: null, camera: cam, layers: [], meta: meta("hook") },
-      { id: "r", from: 50, durationInFrames: 70, transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} }, camera: cam, layers: [], meta: meta("reveal") },
-      { id: "c", from: 110, durationInFrames: 60, transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} }, camera: cam, layers: [], meta: meta("cta") },
+      {
+        id: "r",
+        from: 50,
+        durationInFrames: 70,
+        transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} },
+        camera: cam,
+        layers: [],
+        meta: meta("reveal"),
+      },
+      {
+        id: "c",
+        from: 110,
+        durationInFrames: 60,
+        transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} },
+        camera: cam,
+        layers: [],
+        meta: meta("cta"),
+      },
     ]);
     const f = steps.coverFrame(t);
     expect(f).toBeGreaterThanOrEqual(60);
@@ -172,15 +377,77 @@ describe("livrare: copertă și variante de hook", () => {
     const { applyOps, parseCommand } = await import("../../src/iterate/intents");
     const ops = parseCommand("folosește hook-ul hook-2");
     expect(ops[0]).toMatchObject({ op: "use-hook", hookId: "hook-2" });
-    const script = { schemaVersion: 1 as const, textLanguage: "ro", voiceLanguage: "ro", hooks: [{ id: "hook-1", text: "Primul", origin: "user-verbatim" as const, selected: true }, { id: "hook-2", text: "Al doilea", origin: "ai" as const, selected: false }], lines: [{ id: "l1", origin: "user-verbatim" as const, isHook: true, isCta: false, voiceover: "Primul", onScreen: "Primul", emphasis: [], claimIds: [], mandatoryPhrase: false, emotion: "", visualIntent: "" }, { id: "l2", origin: "ai" as const, isHook: false, isCta: true, voiceover: "Încearcă", onScreen: "Încearcă", emphasis: [], claimIds: [], mandatoryPhrase: false, emotion: "", visualIntent: "" }] };
-    const sb = { schemaVersion: 1, scenes: [{ id: "s1", lineIds: ["l1"], text: { headline: "Primul" } }, { id: "s2", lineIds: ["l2"], text: { headline: "Încearcă" } }] };
-    const r = applyOps({ storyboard: sb as never, script: script as never, brief: {} as never, timeline: timeline([{ id: "s1", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [], meta: meta("hook") }]), assets: { schemaVersion: 1, assets: [] } }, ops);
+    const script = {
+      schemaVersion: 1 as const,
+      textLanguage: "ro",
+      voiceLanguage: "ro",
+      hooks: [
+        { id: "hook-1", text: "Primul", origin: "user-verbatim" as const, selected: true },
+        { id: "hook-2", text: "Al doilea", origin: "ai" as const, selected: false },
+      ],
+      lines: [
+        {
+          id: "l1",
+          origin: "user-verbatim" as const,
+          isHook: true,
+          isCta: false,
+          voiceover: "Primul",
+          onScreen: "Primul",
+          emphasis: [],
+          claimIds: [],
+          mandatoryPhrase: false,
+          emotion: "",
+          visualIntent: "",
+        },
+        {
+          id: "l2",
+          origin: "ai" as const,
+          isHook: false,
+          isCta: true,
+          voiceover: "Încearcă",
+          onScreen: "Încearcă",
+          emphasis: [],
+          claimIds: [],
+          mandatoryPhrase: false,
+          emotion: "",
+          visualIntent: "",
+        },
+      ],
+    };
+    const sb = {
+      schemaVersion: 1,
+      scenes: [
+        { id: "s1", lineIds: ["l1"], text: { headline: "Primul" } },
+        { id: "s2", lineIds: ["l2"], text: { headline: "Încearcă" } },
+      ],
+    };
+    const r = applyOps(
+      {
+        storyboard: sb as never,
+        script: script as never,
+        brief: {} as never,
+        timeline: timeline([{ id: "s1", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [], meta: meta("hook") }]),
+        assets: { schemaVersion: 1, assets: [] },
+      },
+      ops,
+    );
     expect(r.script.lines[0].onScreen).toBe("Al doilea");
     expect(r.script.lines[0].origin).toBe("ai");
     expect(r.script.hooks.find((h) => h.selected)?.id).toBe("hook-2");
     expect(r.script.lines[1].onScreen).toBe("Încearcă");
     expect((r.storyboard.scenes[0] as { text: { headline: string } }).text.headline).toBe("Al doilea");
     expect(script.lines[0].onScreen).toBe("Primul");
-    expect(() => applyOps({ storyboard: sb as never, script: script as never, brief: {} as never, timeline: timeline([{ id: "s1", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [], meta: meta("hook") }]), assets: { schemaVersion: 1, assets: [] } }, [{ op: "use-hook", hookId: "hook-9" }])).toThrow(/hook-9/);
+    expect(() =>
+      applyOps(
+        {
+          storyboard: sb as never,
+          script: script as never,
+          brief: {} as never,
+          timeline: timeline([{ id: "s1", from: 0, durationInFrames: 30, transitionIn: null, camera: cam, layers: [], meta: meta("hook") }]),
+          assets: { schemaVersion: 1, assets: [] },
+        },
+        [{ op: "use-hook", hookId: "hook-9" }],
+      ),
+    ).toThrow(/hook-9/);
   });
 });

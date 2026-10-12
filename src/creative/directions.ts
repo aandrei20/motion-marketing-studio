@@ -39,7 +39,10 @@ export const DIRECTIONS: Record<CreativeDirection, DirectionProfile> = {
     text: { hook: "text.blur-reveal", headline: "text.mask-reveal", support: "text.body", list: "text.word-reveal" },
     camera: { calm: "camera.parallax-drift", active: "camera.push", ui: "camera.push" },
     background: { capability: "bg.gradient", params: { from: "background", to: "primary", strength: 0.35, mode: "radial" } },
-    overlays: [{ capability: "fx.light-leak", params: { opacity: 0.25 } }, { capability: "fx.grain", params: { opacity: 0.05 } }],
+    overlays: [
+      { capability: "fx.light-leak", params: { opacity: 0.25 } },
+      { capability: "fx.grain", params: { opacity: 0.05 } },
+    ],
     displayPersonality: ["emotional", "editorial"],
     uppercaseHook: false,
     sfxDensity: "low",
@@ -57,7 +60,10 @@ export const DIRECTIONS: Record<CreativeDirection, DirectionProfile> = {
     text: { hook: "text.slam", headline: "text.slam", support: "text.word-reveal", list: "text.pop" },
     camera: { calm: "camera.beat-punch", active: "camera.shake", ui: "camera.push" },
     background: { capability: "bg.grid", params: { perspective: true, opacity: 0.14, speed: 60 } },
-    overlays: [{ capability: "fx.grain", params: { opacity: 0.07 } }, { capability: "fx.vignette", params: { strength: 0.5 } }],
+    overlays: [
+      { capability: "fx.grain", params: { opacity: 0.07 } },
+      { capability: "fx.vignette", params: { strength: 0.5 } },
+    ],
     displayPersonality: ["aggressive", "bold"],
     uppercaseHook: true,
     sfxDensity: "high",
@@ -75,7 +81,11 @@ export const DIRECTIONS: Record<CreativeDirection, DirectionProfile> = {
     text: { hook: "text.mask-reveal", headline: "text.mask-reveal", support: "text.body", list: "text.blur-reveal" },
     camera: { calm: "camera.orbit", active: "camera.tilt", ui: "camera.push" },
     background: { capability: "bg.mesh", params: { intensity: 0.45, speed: 0.4 } },
-    overlays: [{ capability: "fx.glow-orbs", params: { intensity: 0.3 } }, { capability: "fx.grain", params: { opacity: 0.04 } }, { capability: "fx.vignette", params: { strength: 0.4 } }],
+    overlays: [
+      { capability: "fx.glow-orbs", params: { intensity: 0.3 } },
+      { capability: "fx.grain", params: { opacity: 0.04 } },
+      { capability: "fx.vignette", params: { strength: 0.4 } },
+    ],
     displayPersonality: ["premium", "cinematic"],
     uppercaseHook: false,
     sfxDensity: "medium",
@@ -137,7 +147,12 @@ export const DIRECTIONS: Record<CreativeDirection, DirectionProfile> = {
 };
 
 /** Propune 3 direcții când utilizatorul nu a ales una (nu se forțează alternative dacă viziunea e clară). */
-export function suggestDirections(input: { tone: string[]; pacing: Pacing; category: string; platforms: string[] }): Array<{ direction: CreativeDirection; why: string }> {
+export function suggestDirections(input: {
+  tone: string[];
+  pacing: Pacing;
+  category: string;
+  platforms: string[];
+}): Array<{ direction: CreativeDirection; why: string }> {
   const scores: Record<CreativeDirection, number> = { emotional: 0, aggressive: 0, premium: 0, technical: 0, minimal: 0, energetic: 0 };
   const tone = input.tone.join(" ").toLowerCase();
   const bump = (d: CreativeDirection, w: number) => (scores[d] += w);
@@ -149,10 +164,10 @@ export function suggestDirections(input: { tone: string[]; pacing: Pacing; categ
   if (/energic|amuzant|fun|tânăr|tanar|social/.test(tone)) bump("energetic", 3);
   if (input.pacing === "aggressive") bump("aggressive", 2);
   if (input.pacing === "fast") bump("energetic", 2);
-  if (input.pacing === "slow") (bump("emotional", 1), bump("premium", 1));
+  if (input.pacing === "slow") bump("emotional", 1), bump("premium", 1);
   if (/developer|ai-product|saas/.test(input.category)) bump("technical", 1);
   if (/fintech|enterprise/.test(input.category)) bump("premium", 1);
-  if (input.platforms.some((p) => ["tiktok", "reels", "shorts"].includes(p))) (bump("energetic", 1), bump("aggressive", 1));
+  if (input.platforms.some((p) => ["tiktok", "reels", "shorts"].includes(p))) bump("energetic", 1), bump("aggressive", 1);
   return (Object.keys(scores) as CreativeDirection[])
     .sort((a, b) => scores[b] - scores[a])
     .slice(0, 3)

@@ -24,13 +24,34 @@ describe("planul de research pe site", () => {
     expect(plan[0].kind).toBe("pricing");
   });
   it("pe file:// pagina de start nu se recitește", () => {
-    const plan = planCrawl("file:///C:/site/index.html", [{ text: "Acasă", href: "file:///C:/site/index.html#hero" }, { text: "Prețuri", href: "file:///C:/site/preturi.html" }]);
+    const plan = planCrawl("file:///C:/site/index.html", [
+      { text: "Acasă", href: "file:///C:/site/index.html#hero" },
+      { text: "Prețuri", href: "file:///C:/site/preturi.html" },
+    ]);
     expect(plan.map((p) => p.url)).toEqual(["file:///C:/site/preturi.html"]);
   });
 });
 
-const src = (id: string, kind = "official-site", reliability = "official") => ({ id, kind, title: id, fetchedAt: "2026-10-08T00:00:00Z", contentHash: id, reliability });
-const claim = (id: string, text: string, sourceIds: string[], o: Record<string, unknown> = {}) => ({ id, text, quote: text, kind: "fact", category: "feature", sourceIds, confidence: "medium", status: "verified", checkedAt: "2026-10-08", ...o });
+const src = (id: string, kind = "official-site", reliability = "official") => ({
+  id,
+  kind,
+  title: id,
+  fetchedAt: "2026-10-08T00:00:00Z",
+  contentHash: id,
+  reliability,
+});
+const claim = (id: string, text: string, sourceIds: string[], o: Record<string, unknown> = {}) => ({
+  id,
+  text,
+  quote: text,
+  kind: "fact",
+  category: "feature",
+  sourceIds,
+  confidence: "medium",
+  status: "verified",
+  checkedAt: "2026-10-08",
+  ...o,
+});
 
 describe("graful de afirmații", () => {
   it("coroborarea în două surse oficiale ridică încrederea; conflictele de preț blochează folosirea", () => {

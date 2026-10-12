@@ -28,22 +28,40 @@ function saturation(hex: string): number {
 }
 
 /** Alege fontul din bibliotecă: același nume dacă există, altfel unul cu personalitate apropiată. */
-export function matchLibraryFont(family: string | undefined, role: "display" | "body" | "mono", personality: string[] = []): { id: string; family: string; note: string } {
+export function matchLibraryFont(
+  family: string | undefined,
+  role: "display" | "body" | "mono",
+  personality: string[] = [],
+): { id: string; family: string; note: string } {
   const exact = family ? LIBRARY_FONTS.find((f) => f.family.toLowerCase() === family.toLowerCase()) : undefined;
   if (exact) return { id: exact.id, family: exact.family, note: "Același font ca pe site (din biblioteca liberă)." };
   const candidates = LIBRARY_FONTS.filter((f) => f.roles.includes(role) && f.style !== "italic");
   const scored = candidates.map((f) => ({ f, s: f.personality.filter((p) => personality.includes(p)).length }));
   scored.sort((a, b) => b.s - a.s);
   const pick = scored[0]?.f ?? candidates[0];
-  return { id: pick.id, family: pick.family, note: family ? `Fontul „${family}” nu e în bibliotecă; folosesc alternativa liberă „${pick.family}”.` : "Font ales după personalitatea brandului." };
+  return {
+    id: pick.id,
+    family: pick.family,
+    note: family ? `Fontul „${family}” nu e în bibliotecă; folosesc alternativa liberă „${pick.family}”.` : "Font ales după personalitatea brandului.",
+  };
 }
 
 /** Forma brandului (rază, umbră, spațiere, gradiente) din CSS-ul real al paginii; null = fără date. */
-export function brandShape(page: PageData | null): { radius: number | null; shadow: "none" | "soft" | "deep" | null; spacing: number | null; gradients: Array<{ from: string; to: string; angle: number }>; notes: string[] } {
+export function brandShape(page: PageData | null): {
+  radius: number | null;
+  shadow: "none" | "soft" | "deep" | null;
+  spacing: number | null;
+  gradients: Array<{ from: string; to: string; angle: number }>;
+  notes: string[];
+} {
   const notes: string[] = [];
   const sh = page?.shapes;
-  if (!sh) return { radius: null, shadow: null, spacing: null, gradients: [], notes: ["Captura nu are datele de formă (captură veche): raze și umbre implicite."] };
-  const numeric = sh.radii.filter(([r]) => r !== "pill").map(([r, n]) => [Number(r), n] as const).filter(([r]) => r > 0);
+  if (!sh)
+    return { radius: null, shadow: null, spacing: null, gradients: [], notes: ["Captura nu are datele de formă (captură veche): raze și umbre implicite."] };
+  const numeric = sh.radii
+    .filter(([r]) => r !== "pill")
+    .map(([r, n]) => [Number(r), n] as const)
+    .filter(([r]) => r > 0);
   const pill = sh.radii.find(([r]) => r === "pill")?.[1] ?? 0;
   const topRadius = numeric.sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   const radius = topRadius !== null ? Math.min(80, Math.round(topRadius)) : pill ? 40 : sh.radii.length ? 0 : null;
@@ -72,7 +90,11 @@ export function brandShape(page: PageData | null): { radius: number | null; shad
 
 export function inferBrand(name: string, page: PageData | null, logo: Asset | null, personality: string[] = []): { brand: BrandInput; notes: string[] } {
   const notes: string[] = [];
-  const vars = page ? Object.entries(page.cssVars).map(([k, v]) => [k, cssToHex(v)] as const).filter((x): x is readonly [string, string] => !!x[1]) : [];
+  const vars = page
+    ? Object.entries(page.cssVars)
+        .map(([k, v]) => [k, cssToHex(v)] as const)
+        .filter((x): x is readonly [string, string] => !!x[1])
+    : [];
   const byVar = (re: RegExp) => vars.find(([k]) => re.test(k))?.[1];
   const bgs = (page?.colors.backgrounds ?? []).map(([c]) => cssToHex(c)).filter((c): c is string => !!c);
   const texts = (page?.colors.texts ?? []).map(([c]) => cssToHex(c)).filter((c): c is string => !!c);
@@ -85,9 +107,11 @@ export function inferBrand(name: string, page: PageData | null, logo: Asset | nu
   const logoColors = (logo?.analysis.palette ?? []).filter((c) => saturation(c) > 0.3);
 
   const background = byVar(/^--(bg|background)$/) ?? bgs[0] ?? "#0f1020";
-  const text = byVar(/^--(text|fg|foreground)$/) ?? texts.find((t) => contrastRatio(t, background) > 4.5) ?? (luminance(background) < 0.4 ? "#f5f5f7" : "#111114");
+  const text =
+    byVar(/^--(text|fg|foreground)$/) ?? texts.find((t) => contrastRatio(t, background) > 4.5) ?? (luminance(background) < 0.4 ? "#f5f5f7" : "#111114");
   const primary = byVar(/^--(primary|brand|accent-?1)$/) ?? accents[0] ?? logoColors[0] ?? mix(background, "#6c5cff", 0.9);
-  const accent = byVar(/^--(accent|secondary|highlight)$/) ?? accents.find((a) => a !== primary) ?? logoColors.find((c) => c !== primary) ?? mix(primary, "#ffffff", 0.35);
+  const accent =
+    byVar(/^--(accent|secondary|highlight)$/) ?? accents.find((a) => a !== primary) ?? logoColors.find((c) => c !== primary) ?? mix(primary, "#ffffff", 0.35);
   const surface = byVar(/^--(surface|card|panel)$/) ?? bgs.find((b) => b !== background) ?? mix(background, text, 0.08);
   const muted = byVar(/^--(muted|text-?muted|subtle)$/) ?? mix(text, background, 0.4);
   if (!page) notes.push("Fără captură de pagină: culorile vin doar din logo sau sunt implicite.");

@@ -4,26 +4,7 @@
  * momentele mari. Deterministă: aceeași intrare → același fișier.
  */
 import { hashString, mulberry32 } from "../core/random";
-import {
-  Biquad,
-  adsr,
-  band,
-  dbToGain,
-  haas,
-  mtof,
-  mul,
-  noise,
-  pan,
-  perc,
-  place,
-  reverb,
-  samples,
-  saturate,
-  sawOsc,
-  sineOsc,
-  squareOsc,
-  sweep,
-} from "./dsp";
+import { Biquad, adsr, band, dbToGain, haas, mtof, mul, noise, pan, perc, place, reverb, samples, saturate, sawOsc, sineOsc, squareOsc, sweep } from "./dsp";
 import { SR, makeStereo, type Stereo } from "./wav";
 
 export type Mood = "driving" | "uplifting" | "dark" | "calm" | "playful";
@@ -60,8 +41,14 @@ const env = (n: number, f: (t: number) => number) => {
 
 function kick(punch = 1): Float32Array {
   const n = samples(0.42);
-  const body = mul(sineOsc((t) => 47 + 125 * Math.exp(-t * 32) + 380 * Math.exp(-t * 260), n), env(n, (t) => Math.exp(-t / 0.2) * Math.min(1, t / 0.0015)));
-  const click = mul(band(noise(n, "kick"), 1800, 9000), env(n, (t) => Math.exp(-t * 900) * 0.35 * punch));
+  const body = mul(
+    sineOsc((t) => 47 + 125 * Math.exp(-t * 32) + 380 * Math.exp(-t * 260), n),
+    env(n, (t) => Math.exp(-t / 0.2) * Math.min(1, t / 0.0015)),
+  );
+  const click = mul(
+    band(noise(n, "kick"), 1800, 9000),
+    env(n, (t) => Math.exp(-t * 900) * 0.35 * punch),
+  );
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) out[i] = body[i] * 1.1 + click[i];
   return mul(saturate(out, 1.6), 0.95);
@@ -78,13 +65,23 @@ function clap(seed: number): Float32Array {
     return s;
   });
   const x = mul(band(noise(n, `clap${seed}`), 850, 5200), e);
-  return mul(x, 0.8 / Math.max(1e-6, x.reduce((m, v) => Math.max(m, Math.abs(v)), 0)));
+  return mul(
+    x,
+    0.8 /
+      Math.max(
+        1e-6,
+        x.reduce((m, v) => Math.max(m, Math.abs(v)), 0),
+      ),
+  );
 }
 
 function snare(pitch: number, length: number, seed: number): Float32Array {
   const n = samples(length);
   const body = env(n, (t) => Math.sin(2 * Math.PI * 190 * pitch * t + 3 * Math.exp(-t * 60)) * Math.exp(-t * 28) * 0.5);
-  const sn = mul(band(noise(n, `sn${seed}`), 1200 * pitch, 8500), env(n, (t) => Math.exp(-t * 24) * 0.9));
+  const sn = mul(
+    band(noise(n, `sn${seed}`), 1200 * pitch, 8500),
+    env(n, (t) => Math.exp(-t * 24) * 0.9),
+  );
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) out[i] = body[i] + sn[i];
   return mul(saturate(out, 1.3), 0.7);
@@ -100,7 +97,10 @@ function hat(open: boolean, seed: number): Float32Array {
   const nz = noise(n, `hat${seed}`);
   const mixed = new Float32Array(n);
   for (let i = 0; i < n; i++) mixed[i] = metal[i] * 0.6 + nz[i] * 0.7;
-  return mul(band(mixed, 6800, 16000), env(n, (t) => Math.exp(-t * (open ? 9 : 75)) * 0.5));
+  return mul(
+    band(mixed, 6800, 16000),
+    env(n, (t) => Math.exp(-t * (open ? 9 : 75)) * 0.5),
+  );
 }
 
 function crash(): Float32Array {
@@ -112,7 +112,10 @@ function crash(): Float32Array {
   });
   const nz = noise(n, "crash");
   for (let i = 0; i < n; i++) metal[i] += nz[i] * 0.9;
-  const x = mul(band(metal, 3800, 15500), env(n, (t) => Math.exp(-t / 0.65) * Math.min(1, t / 0.004)));
+  const x = mul(
+    band(metal, 3800, 15500),
+    env(n, (t) => Math.exp(-t / 0.65) * Math.min(1, t / 0.004)),
+  );
   const p = x.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
   return mul(x, 0.6 / Math.max(1e-6, p));
 }
@@ -169,7 +172,11 @@ function supersaw(midis: number[], length: number, cutoff: number, sustain: numb
 
 function noiseRiser(length: number, seed: number): Stereo {
   const n = samples(length);
-  const y = sweep(noise(n, `nr${seed}`), (t) => 300 * 40 ** Math.min(1, t / length), (t) => 1500 * 9 ** Math.min(1, t / length));
+  const y = sweep(
+    noise(n, `nr${seed}`),
+    (t) => 300 * 40 ** Math.min(1, t / length),
+    (t) => 1500 * 9 ** Math.min(1, t / length),
+  );
   for (let i = 0; i < n; i++) y[i] *= (i / n) ** 2.2 * 0.5;
   return haas(y, 9);
 }
@@ -178,11 +185,56 @@ function noiseRiser(length: number, seed: number): Stereo {
 
 const PROGRESSIONS: Record<Mood, { root: number; minor: boolean; chords: number[][] }> = {
   // grade (semitonuri față de rădăcină) pentru fiecare acord
-  driving: { root: 53, minor: false, chords: [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]] },
-  uplifting: { root: 55, minor: false, chords: [[9, 12, 16], [5, 9, 12], [0, 4, 7], [7, 11, 14]] },
-  dark: { root: 50, minor: true, chords: [[0, 3, 7], [8, 12, 15], [3, 7, 10], [10, 14, 17]] },
-  calm: { root: 52, minor: false, chords: [[0, 4, 7, 11], [9, 12, 16, 19], [5, 9, 12, 16], [7, 11, 14, 17]] },
-  playful: { root: 57, minor: false, chords: [[0, 4, 7], [5, 9, 12], [7, 11, 14], [5, 9, 12]] },
+  driving: {
+    root: 53,
+    minor: false,
+    chords: [
+      [0, 4, 7],
+      [7, 11, 14],
+      [9, 12, 16],
+      [5, 9, 12],
+    ],
+  },
+  uplifting: {
+    root: 55,
+    minor: false,
+    chords: [
+      [9, 12, 16],
+      [5, 9, 12],
+      [0, 4, 7],
+      [7, 11, 14],
+    ],
+  },
+  dark: {
+    root: 50,
+    minor: true,
+    chords: [
+      [0, 3, 7],
+      [8, 12, 15],
+      [3, 7, 10],
+      [10, 14, 17],
+    ],
+  },
+  calm: {
+    root: 52,
+    minor: false,
+    chords: [
+      [0, 4, 7, 11],
+      [9, 12, 16, 19],
+      [5, 9, 12, 16],
+      [7, 11, 14, 17],
+    ],
+  },
+  playful: {
+    root: 57,
+    minor: false,
+    chords: [
+      [0, 4, 7],
+      [5, 9, 12],
+      [7, 11, 14],
+      [5, 9, 12],
+    ],
+  },
 };
 
 export interface MusicResult {
@@ -260,7 +312,13 @@ export function composeMusic(spec: MusicSpec): MusicResult {
     }
     if (e >= 0.35) place(bus.bass, subBass(bassNote, bar), t0, 0.32);
     if (e >= 0.75) {
-      for (const [st, ln] of [[0, 1.5], [3, 1.5], [6, 2], [10, 1.5], [13, 2]] as const) {
+      for (const [st, ln] of [
+        [0, 1.5],
+        [3, 1.5],
+        [6, 2],
+        [10, 1.5],
+        [13, 2],
+      ] as const) {
         place(bus.chords, supersaw([...voicing, voicing[0] + 12], ln * step, 9000, 0.5, b * 7 + st), t0 + st * step, 0.5);
       }
     }

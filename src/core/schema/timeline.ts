@@ -71,7 +71,11 @@ export const TimelineCamera = z.object({
   motionBlur: z.boolean().default(true),
   /** profunzimea de câmp: straturile departe de planul focalizat se estompează */
   depthOfField: z
-    .object({ focusDepth: z.number(), strength: z.number().min(0).max(30), keys: z.array(z.object({ at: z.number().int(), focusDepth: z.number() })).default([]) })
+    .object({
+      focusDepth: z.number(),
+      strength: z.number().min(0).max(30),
+      keys: z.array(z.object({ at: z.number().int(), focusDepth: z.number() })).default([]),
+    })
     .optional(),
 });
 export type TimelineCamera = z.infer<typeof TimelineCamera>;

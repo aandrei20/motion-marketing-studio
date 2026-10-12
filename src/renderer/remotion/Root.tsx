@@ -41,8 +41,35 @@ const sheetCalc: CalculateMetadataFunction<ContactSheetProps> = async ({ props }
 
 export const Root: React.FC = () => (
   <>
-    <Composition id="ContactSheet" component={ContactSheet} defaultProps={{ images: [], labels: [], cols: 6, cellWidth: 320, cellHeight: 180, title: "" } as ContactSheetProps} calculateMetadata={sheetCalc} durationInFrames={1} fps={30} width={1920} height={1080} />
-    <Composition id="Timeline" component={Render} defaultProps={{ timeline: null, timelinePath: null, quality: "full", muted: false } as Props} calculateMetadata={calc} durationInFrames={1} fps={30} width={1920} height={1080} />
-    <Composition id="Catalog" component={Render} defaultProps={{ timeline: null, quality: "full", muted: true } as Props} calculateMetadata={catalogCalc} durationInFrames={1} fps={30} width={1920} height={1080} />
+    <Composition
+      id="ContactSheet"
+      component={ContactSheet}
+      defaultProps={{ images: [], labels: [], cols: 6, cellWidth: 320, cellHeight: 180, title: "" } as ContactSheetProps}
+      calculateMetadata={sheetCalc}
+      durationInFrames={1}
+      fps={30}
+      width={1920}
+      height={1080}
+    />
+    <Composition
+      id="Timeline"
+      component={Render}
+      defaultProps={{ timeline: null, timelinePath: null, quality: "full", muted: false } as Props}
+      calculateMetadata={calc}
+      durationInFrames={1}
+      fps={30}
+      width={1920}
+      height={1080}
+    />
+    <Composition
+      id="Catalog"
+      component={Render}
+      defaultProps={{ timeline: null, quality: "full", muted: true } as Props}
+      calculateMetadata={catalogCalc}
+      durationInFrames={1}
+      fps={30}
+      width={1920}
+      height={1080}
+    />
   </>
 );

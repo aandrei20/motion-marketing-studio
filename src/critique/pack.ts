@@ -59,7 +59,12 @@ export async function critiquePack(projectId: string, o: { versionId?: string; f
     frames.map((f) => projectPublicPath(projectId, path.relative(projectDir(projectId), f.file).replace(/\\/g, "/"))),
     frames.map((f) => `${f.timecode} ${f.sceneId}`),
     path.join(dir, "contact.png"),
-    { cols: Math.min(frames.length, t.width > t.height ? 4 : 7), cellWidth: cell.w, cellHeight: cell.h, title: `${project.name} · ${versionId} · ${fid} · cadre-cheie` },
+    {
+      cols: Math.min(frames.length, t.width > t.height ? 4 : 7),
+      cellWidth: cell.w,
+      cellHeight: cell.h,
+      title: `${project.name} · ${versionId} · ${fid} · cadre-cheie`,
+    },
   );
   const previewSheet = versionFile(projectId, versionId, `renders/contact-${fid}.png`);
   const run = loadQualityRun(projectId, versionId);
@@ -91,7 +96,8 @@ export async function critiquePack(projectId: string, o: { versionId?: string; f
     );
   }
   lines.push("## Ce să cauți", "", ...VISUAL_CHECKLIST.map((x) => `- ${x}`), "", `## Deja găsite automat (${auto.length})`, "");
-  for (const f of auto.slice(0, 60)) lines.push(`- ${f.timecode ?? "--"} [${f.severity}] ${f.category}/${f.dimension}${f.sceneId ? ` (${f.sceneId})` : ""}: ${f.problem}`);
+  for (const f of auto.slice(0, 60))
+    lines.push(`- ${f.timecode ?? "--"} [${f.severity}] ${f.category}/${f.dimension}${f.sceneId ? ` (${f.sceneId})` : ""}: ${f.problem}`);
   lines.push(
     "",
     "## Răspunsul",
@@ -99,7 +105,26 @@ export async function critiquePack(projectId: string, o: { versionId?: string; f
     "Scrie un fișier JSON după `review-schema.json` (alături), de exemplu:",
     "",
     "```json",
-    JSON.stringify({ reviewer: "claude-visual", findings: [{ sec: 4.2, dimension: "composition", severity: "medium", problem: "Captura e lipită de marginea de jos; titlul plutește sus.", whyItMatters: "Cadrul pare neterminat și ochiul nu are un punct de sprijin.", recommendation: "Coboară titlul lângă captură sau mărește captura cu 15%.", confidence: 0.8, suggestedFix: [] }], sceneScores: [] }, null, 2),
+    JSON.stringify(
+      {
+        reviewer: "claude-visual",
+        findings: [
+          {
+            sec: 4.2,
+            dimension: "composition",
+            severity: "medium",
+            problem: "Captura e lipită de marginea de jos; titlul plutește sus.",
+            whyItMatters: "Cadrul pare neterminat și ochiul nu are un punct de sprijin.",
+            recommendation: "Coboară titlul lângă captură sau mărește captura cu 15%.",
+            confidence: 0.8,
+            suggestedFix: [],
+          },
+        ],
+        sceneScores: [],
+      },
+      null,
+      2,
+    ),
     "```",
     "",
     `Apoi: \`npm run mms -- review ${projectId} --version ${versionId} --file review.json\`. Observațiile mari deschise blochează verdictul PASS până se rezolvă.`,

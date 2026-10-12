@@ -22,7 +22,9 @@ beforeAll(async () => {
     hits.push(`${host}${req.url}`);
     if (req.url === "/direct") {
       res.writeHead(200, { "Content-Type": "text/html" });
-      return res.end(`<img src="http://127.0.0.1:${port}/secret-direct.png"><script>try { new WebSocket("ws://127.0.0.1:${port}/ws") } catch {}</script><h1>pagina</h1>`);
+      return res.end(
+        `<img src="http://127.0.0.1:${port}/secret-direct.png"><script>try { new WebSocket("ws://127.0.0.1:${port}/ws") } catch {}</script><h1>pagina</h1>`,
+      );
     }
     if (req.url === "/hop") {
       res.writeHead(200, { "Content-Type": "text/html" });
@@ -76,7 +78,10 @@ describe("filtrul de rețea pentru o pagină publică", () => {
     const { browser, guard, page } = await openPublic("/hop");
     try {
       expect(guard.violations.some((u) => u.includes("127.0.0.1") && u.includes("secret-hop"))).toBe(true);
-      const err = await guard.assertClean(page).then(() => null, (e: unknown) => e);
+      const err = await guard.assertClean(page).then(
+        () => null,
+        (e: unknown) => e,
+      );
       expect(err).toBeInstanceOf(MmsError);
       expect((err as MmsError).code).toBe("CAPTURE_REDIRECT");
     } finally {

@@ -47,7 +47,12 @@ export const now = (): string => new Date().toISOString();
  * comandă (de ex. „..%2F..%2Fx”) nu poate ieși din projects/ și nu creează foldere înainte de validare.
  */
 export function projectDir(id: string): string {
-  if (!Slug.safeParse(id).success) throw new MmsError("PROJECT_ID", `Id de proiect invalid: „${String(id).slice(0, 60)}”.`, "Folosește doar litere mici, cifre și cratimă (de ex. reclama-mea).");
+  if (!Slug.safeParse(id).success)
+    throw new MmsError(
+      "PROJECT_ID",
+      `Id de proiect invalid: „${String(id).slice(0, 60)}”.`,
+      "Folosește doar litere mici, cifre și cratimă (de ex. reclama-mea).",
+    );
   return path.join(PATHS.projects, id);
 }
 
@@ -120,8 +125,7 @@ export function createProject(opts: CreateProjectOptions): Project {
 // ─── citire / scriere pe entități ──────────────────────────────────────────
 
 export const loadProject = (id: string): Project => {
-  if (!projectExists(id))
-    throw new MmsError("PROJECT_MISSING", `Nu există proiectul „${id}”.`, "Vezi lista cu: npm run mms -- list");
+  if (!projectExists(id)) throw new MmsError("PROJECT_MISSING", `Nu există proiectul „${id}”.`, "Vezi lista cu: npm run mms -- list");
   return readJson(projectFile(id, "project.json"), Project);
 };
 
@@ -132,19 +136,16 @@ export function saveProject(p: Project): Project {
 export const hasFile = (id: string, rel: string): boolean => fs.existsSync(projectFile(id, rel));
 
 export const loadBrief = (id: string): Brief => readJson(projectFile(id, "brief.json"), Brief);
-export const saveBrief = (id: string, b: unknown): Brief =>
-  writeValidated(projectFile(id, "brief.json"), Brief, b as Brief);
+export const saveBrief = (id: string, b: unknown): Brief => writeValidated(projectFile(id, "brief.json"), Brief, b as Brief);
 
 export const loadResearch = (id: string): Research => readJson(projectFile(id, "research.json"), Research);
-export const saveResearch = (id: string, r: Research): Research =>
-  writeValidated(projectFile(id, "research.json"), Research, r);
+export const saveResearch = (id: string, r: Research): Research => writeValidated(projectFile(id, "research.json"), Research, r);
 
 export const loadBrand = (id: string): Brand => readJson(projectFile(id, "brand.json"), Brand);
 export const saveBrand = (id: string, b: unknown): Brand => writeValidated(projectFile(id, "brand.json"), Brand, b as Brand);
 
 export const loadAssets = (id: string): AssetManifest => readJson(projectFile(id, "assets.json"), AssetManifest);
-export const saveAssets = (id: string, m: AssetManifest): AssetManifest =>
-  writeValidated(projectFile(id, "assets.json"), AssetManifest, m);
+export const saveAssets = (id: string, m: AssetManifest): AssetManifest => writeValidated(projectFile(id, "assets.json"), AssetManifest, m);
 
 export const loadApprovals = (id: string): Approvals => readJson(projectFile(id, "approvals.json"), Approvals);
 
@@ -309,16 +310,14 @@ export function saveScript(id: string, v: string, s: unknown): Script {
   return writeValidated(versionFile(id, v, "script.json"), Script, s as Script);
 }
 
-export const loadStoryboard = (id: string, v: string): Storyboard =>
-  readJson(versionFile(id, v, "storyboard.json"), Storyboard);
+export const loadStoryboard = (id: string, v: string): Storyboard => readJson(versionFile(id, v, "storyboard.json"), Storyboard);
 export function saveStoryboard(id: string, v: string, s: unknown): Storyboard {
   assertWritable(id, v);
   return writeValidated(versionFile(id, v, "storyboard.json"), Storyboard, s as Storyboard);
 }
 
 export const timelineFileName = (formatId: string): string => `timeline-${formatId}.json`;
-export const loadTimeline = (id: string, v: string, formatId: string): Timeline =>
-  readJson(versionFile(id, v, timelineFileName(formatId)), Timeline);
+export const loadTimeline = (id: string, v: string, formatId: string): Timeline => readJson(versionFile(id, v, timelineFileName(formatId)), Timeline);
 export function saveTimeline(id: string, v: string, t: Timeline): Timeline {
   assertWritable(id, v);
   return writeValidated(versionFile(id, v, timelineFileName(t.formatId)), Timeline, t);

@@ -8,7 +8,18 @@ import { Asset, AssetManifest, type AssetInput, type Region } from "../../src/co
 
 const region = (id: string, text: string, kind: Region["kind"] = "heading"): Region => ({ id, label: text, kind, text, rect: { x: 0, y: 0, w: 100, h: 40 } });
 
-function shot(id: string, o: { url?: string; width?: number; fullPage?: boolean; regions?: Region[]; rights?: AssetInput["rights"]; pii?: AssetInput["pii"]; role?: AssetInput["role"] } = {}) {
+function shot(
+  id: string,
+  o: {
+    url?: string;
+    width?: number;
+    fullPage?: boolean;
+    regions?: Region[];
+    rights?: AssetInput["rights"];
+    pii?: AssetInput["pii"];
+    role?: AssetInput["role"];
+  } = {},
+) {
   return Asset.parse({
     id,
     file: `assets/${id}.png`,
@@ -24,7 +35,14 @@ function shot(id: string, o: { url?: string; width?: number; fullPage?: boolean;
     showsProductUI: true,
     rights: o.rights ?? { thirdParty: false, status: "owned" },
     media: { width: 1000, height: 1000 },
-    capture: { url: o.url ?? "https://exemplu.ro/", viewport: { width: o.width ?? 1440, height: 900 }, deviceScaleFactor: 2, capturedAt: "2026-10-12T10:00:00Z", fullPage: o.fullPage ?? false, regions: o.regions ?? [] },
+    capture: {
+      url: o.url ?? "https://exemplu.ro/",
+      viewport: { width: o.width ?? 1440, height: 900 },
+      deviceScaleFactor: 2,
+      capturedAt: "2026-10-12T10:00:00Z",
+      fullPage: o.fullPage ?? false,
+      regions: o.regions ?? [],
+    },
     pii: o.pii,
     addedAt: "2026-10-12T10:00:00Z",
   });
@@ -43,7 +61,11 @@ describe("captura de telefon pentru vertical", () => {
   const desktop = shot("landing", { regions: [region("heading-simplu", "Simplu și rapid"), region("heading-tabla", "Tabla echipei")] });
   const desktopFull = shot("landing-full", { fullPage: true });
   const phone = shot("landing-mobile", { width: 390, regions: [region("heading-simplu", "Simplu și rapid")] });
-  const phoneFull = shot("landing-full-mobile", { width: 390, fullPage: true, regions: [region("heading-simplu", "Simplu și rapid"), region("heading-tabla", "Tabla echipei")] });
+  const phoneFull = shot("landing-full-mobile", {
+    width: 390,
+    fullPage: true,
+    regions: [region("heading-simplu", "Simplu și rapid"), region("heading-tabla", "Tabla echipei")],
+  });
   const first = (m: ReturnType<typeof AssetManifest.parse>, a: typeof desktop) => mobileCounterparts(m, a)?.usable[0]?.id ?? null;
 
   it("alege captura de telefon a aceleiași pagini, de același tip (ecran / pagină întreagă)", () => {
@@ -77,13 +99,19 @@ describe("captura de telefon pentru vertical", () => {
   it("nu alege o captură cu drepturi refuzate, una neadaptată pentru telefon sau una cu date personale fără decizie", () => {
     const denied = shot("landing-mobile", { width: 390, rights: { thirdParty: true, status: "denied" } });
     expect(mobileCounterparts(AssetManifest.parse({ schemaVersion: 1, assets: [desktop, denied] }), desktop)).toBeNull();
-    const undecided = shot("landing-mobile", { width: 390, pii: { regions: [region("pii-email", "ana@exemplu.ro", "pii")], blurApproved: false, keepApproved: false } });
+    const undecided = shot("landing-mobile", {
+      width: 390,
+      pii: { regions: [region("pii-email", "ana@exemplu.ro", "pii")], blurApproved: false, keepApproved: false },
+    });
     const c = chooseCounterpart(AssetManifest.parse({ schemaVersion: 1, assets: [desktop, undecided] }), desktop, []);
     expect(c.asset).toBeNull();
     expect(c.note).toMatch(/date personale/);
     const wide = Asset.parse({ ...shot("landing-mobile", { width: 390 }), capture: { ...shot("x", { width: 390 }).capture!, overflowX: true } });
     expect(chooseCounterpart(AssetManifest.parse({ schemaVersion: 1, assets: [desktop, wide] }), desktop, []).note).toMatch(/nu e adaptată/);
-    const decided = shot("landing-mobile", { width: 390, pii: { regions: [region("pii-email", "ana@exemplu.ro", "pii")], blurApproved: true, keepApproved: false } });
+    const decided = shot("landing-mobile", {
+      width: 390,
+      pii: { regions: [region("pii-email", "ana@exemplu.ro", "pii")], blurApproved: true, keepApproved: false },
+    });
     expect(first(AssetManifest.parse({ schemaVersion: 1, assets: [desktop, decided] }), desktop)).toBe("landing-mobile");
   });
 

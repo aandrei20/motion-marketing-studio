@@ -56,7 +56,12 @@ export function planCrawl(start: string, links: Array<{ text: string; href: stri
     if (/\.(pdf|zip|png|jpe?g|svg|mp4|dmg|exe)$/i.test(u.pathname)) continue;
     if (/login|log-in|signin|sign-in|signup|register|cont\/|account|cart|checkout|privacy|terms|cookie|legal|gdpr|confiden/i.test(u.pathname)) continue;
     // aplicația din spatele contului nu e o sursă de afirmații despre produs (datele de test din ea nu sunt fapte)
-    if (/intr[ăa] [îi]n cont|log ?in|sign ?in|sign ?up|autentific|deschide aplica|open (the )?app|dashboard|contul meu|my account|cont nou|[îi]nregistr/i.test(l.text)) continue;
+    if (
+      /intr[ăa] [îi]n cont|log ?in|sign ?in|sign ?up|autentific|deschide aplica|open (the )?app|dashboard|contul meu|my account|cont nou|[îi]nregistr/i.test(
+        l.text,
+      )
+    )
+      continue;
     const key = keyOf(u);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -83,7 +88,11 @@ export interface CrawlResult {
  * capturată, și fără concurenți) devin și materiale: o funcție citată de pe pagina ei se poate arăta pe
  * captura ei reală. Drepturile urmează capturile existente de pe același site (`thirdParty` explicit altfel).
  */
-export async function crawlSite(projectId: string, startUrl: string, o: { max?: number; competitors?: string[]; log?: (m: string) => void; ingest?: boolean; thirdParty?: boolean } = {}): Promise<CrawlResult> {
+export async function crawlSite(
+  projectId: string,
+  startUrl: string,
+  o: { max?: number; competitors?: string[]; log?: (m: string) => void; ingest?: boolean; thirdParty?: boolean } = {},
+): Promise<CrawlResult> {
   const log = o.log ?? (() => undefined);
   const host = new URL(startUrl).hostname.replace(/^www\./, "");
   const sameSite = (u: string | undefined) => !!u && /^https?:/.test(u) && new URL(u).hostname.replace(/^www\./, "") === host;
@@ -115,7 +124,12 @@ export async function crawlSite(projectId: string, startUrl: string, o: { max?: 
       const ex = extractFromPage(r.page, { capturedAt: r.capturedAt });
       // despre concurenți: sursă terță, afirmații mereu de confirmat (nu se folosesc ca fapte despre produs)
       ex.source = { ...ex.source, kind: "competitor", reliability: "third-party" };
-      ex.claims = ex.claims.map((c) => ({ ...c, status: "needs-confirmation", confidence: "low", notes: `${c.notes} Pagina unui concurent: doar pentru context; nu intră în video fără aprobare.`.trim() }));
+      ex.claims = ex.claims.map((c) => ({
+        ...c,
+        status: "needs-confirmation",
+        confidence: "low",
+        notes: `${c.notes} Pagina unui concurent: doar pentru context; nu intră în video fără aprobare.`.trim(),
+      }));
       mergeIntoResearch(projectId, ex, r.page.fullText);
       pages.push({ url, kind: "competitor", claims: ex.claims.length });
     } catch (e) {
@@ -125,6 +139,10 @@ export async function crawlSite(projectId: string, startUrl: string, o: { max?: 
   const research = loadResearch(projectId);
   research.openQuestions = [...new Set([...research.openQuestions, ...skipped.map((s) => `Pagină necitită: ${s}`)])];
   saveResearch(projectId, research);
-  updateState(projectId, { step: "research", note: `${research.sources.length} surse, ${research.claims.length} afirmații`, log: `Research pe site: ${pages.length} pagini citite, ${skipped.length} sărite.` });
+  updateState(projectId, {
+    step: "research",
+    note: `${research.sources.length} surse, ${research.claims.length} afirmații`,
+    log: `Research pe site: ${pages.length} pagini citite, ${skipped.length} sărite.`,
+  });
   return { pages, research, skipped };
 }

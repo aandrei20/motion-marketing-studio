@@ -34,7 +34,12 @@ export const logoReveal = defineLayer({
   tags: ["logo", "reveal", "brand", "ending", "intro", "pop"],
   performance: "light",
   sfx: [{ sound: "impact-small", at: "param:at" }],
-  params: z.object({ src: z.string(), mode: z.enum(["pop", "scale", "rise", "mask", "assemble"]).default("pop"), at: z.number().int().min(0).default(0), strips: z.number().int().min(2).max(16).default(6) }),
+  params: z.object({
+    src: z.string(),
+    mode: z.enum(["pop", "scale", "rise", "mask", "assemble"]).default("pop"),
+    at: z.number().int().min(0).default(0),
+    strips: z.number().int().min(2).max(16).default(6),
+  }),
   Component: ({ params: p, frame, env }) => {
     if (p.mode === "assemble") {
       return (
@@ -43,7 +48,16 @@ export const logoReveal = defineLayer({
             const s = sp(frame, env.fps, p.at + i * 2, SPRINGS.ui);
             const dir = i % 2 ? 1 : -1;
             return (
-              <div key={i} style={{ position: "absolute", inset: 0, clipPath: `inset(${(i / p.strips) * 100}% 0 ${100 - ((i + 1) / p.strips) * 100}% 0)`, transform: `translateX(${(dir * (1 - s) * 60).toFixed(2)}%)`, opacity: clamp(s * 2, 0, 1) }}>
+              <div
+                key={i}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  clipPath: `inset(${(i / p.strips) * 100}% 0 ${100 - ((i + 1) / p.strips) * 100}% 0)`,
+                  transform: `translateX(${(dir * (1 - s) * 60).toFixed(2)}%)`,
+                  opacity: clamp(s * 2, 0, 1),
+                }}
+              >
                 <LogoImg src={p.src} />
               </div>
             );
@@ -74,7 +88,13 @@ export const logoLightPass = defineLayer({
   tags: ["logo", "shine", "glint", "light", "premium", "sheen"],
   performance: "light",
   sfx: [{ sound: "shimmer", at: "param:at", gainDb: -6 }],
-  params: z.object({ src: z.string(), at: z.number().int().min(0).default(10), frames: z.number().int().min(6).default(22), color: z.string().default("#ffffff"), intensity: z.number().min(0).max(1).default(0.85) }),
+  params: z.object({
+    src: z.string(),
+    at: z.number().int().min(0).default(10),
+    frames: z.number().int().min(6).default(22),
+    color: z.string().default("#ffffff"),
+    intensity: z.number().min(0).max(1).default(0.85),
+  }),
   Component: ({ params: p, frame, env }) => {
     const url = useAssetUrl();
     const t = prog(frame, p.at, p.at + p.frames, EASE.inOut);
@@ -85,7 +105,15 @@ export const logoLightPass = defineLayer({
       <div style={{ position: "absolute", inset: 0 }}>
         <LogoImg src={p.src} />
         {t > 0 && t < 1 ? (
-          <div style={{ position: "absolute", inset: 0, mask, WebkitMask: mask, background: `linear-gradient(110deg, transparent ${pos - 18}%, ${withAlpha(c, p.intensity)} ${pos}%, transparent ${pos + 18}%)` }} />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              mask,
+              WebkitMask: mask,
+              background: `linear-gradient(110deg, transparent ${pos - 18}%, ${withAlpha(c, p.intensity)} ${pos}%, transparent ${pos + 18}%)`,
+            }}
+          />
         ) : null}
       </div>
     );
@@ -100,8 +128,16 @@ export const logoParticles = defineLayer({
   description: "Particule vin din toate direcțiile spre centru, iar la sosire apare logo-ul cu un flash discret.",
   tags: ["logo", "particles", "assemble", "magic", "launch", "reveal"],
   performance: "medium",
-  sfx: [{ sound: "riser-short", at: "start", gainDb: -8 }, { sound: "impact", at: "param:arrive" }],
-  params: z.object({ src: z.string(), arrive: z.number().int().min(4).default(24), count: z.number().int().min(10).max(400).default(120), colors: z.array(z.string()).min(1).default(["primary", "accent", "#ffffff"]) }),
+  sfx: [
+    { sound: "riser-short", at: "start", gainDb: -8 },
+    { sound: "impact", at: "param:arrive" },
+  ],
+  params: z.object({
+    src: z.string(),
+    arrive: z.number().int().min(4).default(24),
+    count: z.number().int().min(10).max(400).default(120),
+    colors: z.array(z.string()).min(1).default(["primary", "accent", "#ffffff"]),
+  }),
   Component: ({ params: p, frame, box, env, layer }) => {
     const r = mulberry32(hashString(`${layer.id}:lp`));
     const n = env.quality === "draft" ? Math.ceil(p.count / 2) : p.count;
@@ -120,10 +156,32 @@ export const logoParticles = defineLayer({
               const y = ty + Math.sin(a) * d * (1 - t);
               const c = resolveColor(env.palette, p.colors[i % p.colors.length], "primary");
               const sz = 4 + r() * 6;
-              return <div key={i} style={{ position: "absolute", left: x - sz / 2, top: y - sz / 2, width: sz, height: sz, borderRadius: "50%", background: c, opacity: 0.4 + 0.6 * t }} />;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    left: x - sz / 2,
+                    top: y - sz / 2,
+                    width: sz,
+                    height: sz,
+                    borderRadius: "50%",
+                    background: c,
+                    opacity: 0.4 + 0.6 * t,
+                  }}
+                />
+              );
             })
           : null}
-        <div style={{ position: "absolute", inset: 0, transform: `scale(${logoS})`, opacity: frame >= p.arrive ? 1 : 0, filter: flash > 0.02 ? `brightness(${1 + flash})` : undefined }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            transform: `scale(${logoS})`,
+            opacity: frame >= p.arrive ? 1 : 0,
+            filter: flash > 0.02 ? `brightness(${1 + flash})` : undefined,
+          }}
+        >
           <LogoImg src={p.src} />
         </div>
       </div>
@@ -139,8 +197,18 @@ export const logoLockup = defineLayer({
   description: "Logo-ul apare, apoi se mută lateral și lasă loc unui text (nume, slogan sau CTA), care se dezvăluie din spatele lui.",
   tags: ["logo", "lockup", "tagline", "ending", "cta", "brand"],
   performance: "light",
-  sfx: [{ sound: "pop", at: "start" }, { sound: "swipe", at: "param:textAt", gainDb: -8 }],
-  params: z.object({ src: z.string(), text: z.string().min(1), textAt: z.number().int().min(0).default(14), logoSize: z.number().min(0.1).max(0.9).default(0.32), font: z.enum(["display", "body"]).default("display"), color: z.string().default("text") }),
+  sfx: [
+    { sound: "pop", at: "start" },
+    { sound: "swipe", at: "param:textAt", gainDb: -8 },
+  ],
+  params: z.object({
+    src: z.string(),
+    text: z.string().min(1),
+    textAt: z.number().int().min(0).default(14),
+    logoSize: z.number().min(0.1).max(0.9).default(0.32),
+    font: z.enum(["display", "body"]).default("display"),
+    color: z.string().default("text"),
+  }),
   Component: ({ params: p, frame, box, env }) => {
     const s = sp(frame, env.fps, 0, SPRINGS.pop);
     const m = prog(frame, p.textAt, p.textAt + 16, EASE.expoOut);
@@ -155,7 +223,20 @@ export const logoLockup = defineLayer({
           <LogoImg src={p.src} />
         </div>
         <div style={{ position: "absolute", left: lw + box.w * 0.03, right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", overflow: "hidden" }}>
-          <div style={{ fontFamily: `"${font.family}"`, fontWeight: font.weight, letterSpacing: `${font.tracking}em`, textTransform: font.uppercase ? "uppercase" : "none", fontSize: fs, color: resolveColor(env.palette, p.color, "text"), transform: `translateX(${((1 - m) * -110).toFixed(2)}%)`, whiteSpace: "nowrap" }}>{p.text}</div>
+          <div
+            style={{
+              fontFamily: `"${font.family}"`,
+              fontWeight: font.weight,
+              letterSpacing: `${font.tracking}em`,
+              textTransform: font.uppercase ? "uppercase" : "none",
+              fontSize: fs,
+              color: resolveColor(env.palette, p.color, "text"),
+              transform: `translateX(${((1 - m) * -110).toFixed(2)}%)`,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {p.text}
+          </div>
         </div>
       </div>
     );

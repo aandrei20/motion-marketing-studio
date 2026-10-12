@@ -73,9 +73,7 @@ export const Brief = z.object({
     sfxDensity: z.enum(["none", "low", "medium", "high"]).default("medium"),
     intentionalSilence: z.boolean().default(false),
   }),
-  references: z
-    .array(z.object({ assetId: Slug, aspects: z.array(z.string()).default([]), note: z.string().default("") }))
-    .default([]),
+  references: z.array(z.object({ assetId: Slug, aspects: z.array(z.string()).default([]), note: z.string().default("") })).default([]),
   /** subtitrări arse în video și/sau fișier .srt */
   captions: z.object({ burnIn: z.boolean().default(true), srt: z.boolean().default(true) }).default({ burnIn: true, srt: true }),
   /** livrare (grupa G): pachet de postare, variante de hook, câte preview-uri înainte de predare */

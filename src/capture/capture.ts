@@ -38,7 +38,9 @@ export const CaptureRequest = z.object({
   /** pași înainte de captură (de ex. tastare într-un câmp) */
   before: z.array(CaptureStep).default([]),
   /** înregistrare: pașii executați în timp ce se fac cadre */
-  record: z.object({ steps: z.array(CaptureStep).min(1), fps: z.number().int().min(10).max(60).default(30), tailMs: z.number().int().min(0).default(600) }).optional(),
+  record: z
+    .object({ steps: z.array(CaptureStep).min(1), fps: z.number().int().min(10).max(60).default(30), tailMs: z.number().int().min(0).default(600) })
+    .optional(),
   /** CSS injectat (de ex. ascunde banner de cookie) */
   css: z.string().default(""),
   /** profil persistent pentru pagini cu autentificare (sesiunea rămâne doar local) */
@@ -104,74 +106,114 @@ const slug = (s: string) =>
     .slice(0, 40) || "zona";
 
 /** Extrage zonele interesante (butoane, câmpuri, titluri, navigație) cu cutiile lor, în pixeli CSS ai documentului. */
-async function extractRegions(page: Page, fullPage: boolean): Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }> {
-  return page.evaluate(({ full, piiSource }) => {
-    const out: Array<{ idHint: string; label: string; kind: string; rect: { x: number; y: number; w: number; h: number }; text?: string; selector?: string }> = [];
-    const pii: typeof out = [];
-    const sx = full ? window.scrollX : 0;
-    const sy = full ? window.scrollY : 0;
-    const vw = window.innerWidth;
-    const vh = full ? document.documentElement.scrollHeight : window.innerHeight;
-    const visible = (el: Element) => {
-      const r = el.getBoundingClientRect();
-      const st = getComputedStyle(el);
-      return r.width > 4 && r.height > 4 && st.visibility !== "hidden" && st.display !== "none" && Number(st.opacity) > 0.05 && r.bottom + sy > 0 && r.right > 0 && r.left < vw && r.top + sy < vh;
-    };
-    const selectorOf = (el: Element): string => {
-      if (el.id) return `#${CSS.escape(el.id)}`;
-      const parts: string[] = [];
-      let e: Element | null = el;
-      while (e && e !== document.body && parts.length < 4) {
-        let p = e.tagName.toLowerCase();
-        const parent: Element | null = e.parentElement;
-        if (parent) {
-          const same = Array.from(parent.children).filter((c) => c.tagName === e!.tagName);
-          if (same.length > 1) p += `:nth-of-type(${same.indexOf(e) + 1})`;
+async function extractRegions(
+  page: Page,
+  fullPage: boolean,
+): Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }> {
+  return page.evaluate(
+    ({ full, piiSource }) => {
+      const out: Array<{
+        idHint: string;
+        label: string;
+        kind: string;
+        rect: { x: number; y: number; w: number; h: number };
+        text?: string;
+        selector?: string;
+      }> = [];
+      const pii: typeof out = [];
+      const sx = full ? window.scrollX : 0;
+      const sy = full ? window.scrollY : 0;
+      const vw = window.innerWidth;
+      const vh = full ? document.documentElement.scrollHeight : window.innerHeight;
+      const visible = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        const st = getComputedStyle(el);
+        return (
+          r.width > 4 &&
+          r.height > 4 &&
+          st.visibility !== "hidden" &&
+          st.display !== "none" &&
+          Number(st.opacity) > 0.05 &&
+          r.bottom + sy > 0 &&
+          r.right > 0 &&
+          r.left < vw &&
+          r.top + sy < vh
+        );
+      };
+      const selectorOf = (el: Element): string => {
+        if (el.id) return `#${CSS.escape(el.id)}`;
+        const parts: string[] = [];
+        let e: Element | null = el;
+        while (e && e !== document.body && parts.length < 4) {
+          let p = e.tagName.toLowerCase();
+          const parent: Element | null = e.parentElement;
+          if (parent) {
+            const same = Array.from(parent.children).filter((c) => c.tagName === e!.tagName);
+            if (same.length > 1) p += `:nth-of-type(${same.indexOf(e) + 1})`;
+          }
+          parts.unshift(p);
+          e = parent;
         }
-        parts.unshift(p);
-        e = parent;
+        return parts.join(" > ");
+      };
+      const labelOf = (el: Element) =>
+        (
+          el.getAttribute("aria-label") ||
+          (el as HTMLInputElement).placeholder ||
+          el.getAttribute("title") ||
+          (el as HTMLElement).innerText ||
+          el.getAttribute("alt") ||
+          ""
+        )
+          .trim()
+          .replace(/\s+/g, " ")
+          .slice(0, 80);
+      const push = (el: Element, kind: string, target = out, labelFrom?: Element) => {
+        if (!visible(el)) return;
+        const r = el.getBoundingClientRect();
+        const label = labelOf(labelFrom ?? el) || labelOf(el);
+        target.push({
+          idHint: `${kind}-${label || el.tagName.toLowerCase()}`,
+          label: label || el.tagName.toLowerCase(),
+          kind,
+          rect: { x: r.left + sx, y: r.top + sy, w: r.width, h: r.height },
+          text: label,
+          selector: selectorOf(el),
+        });
+      };
+      document.querySelectorAll("input, textarea, select, [contenteditable=true]").forEach((el) => {
+        // cutia vine de la eticheta care înconjoară câmpul (arată ca un câmp), textul de la câmpul însuși
+        const lbl = el.closest("label");
+        push(lbl && lbl.getBoundingClientRect().height < 120 ? lbl : el, "input", out, el);
+      });
+      document.querySelectorAll("button, [role=button], a.btn, .btn").forEach((el) => push(el, "button"));
+      document.querySelectorAll("h1, h2, h3").forEach((el) => push(el, "heading"));
+      document.querySelectorAll("nav, aside, [role=navigation]").forEach((el) => push(el, "nav"));
+      document.querySelectorAll("article, .card, [class*=card], section, .panel").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width * r.height > 8000 && r.width < vw * 0.98) push(el, "custom");
+      });
+      document.querySelectorAll("img, svg").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width * r.height > 20000) push(el, "image");
+      });
+      // date personale: candidați largi aici (email, șiruri de cifre, saluturi cu nume, ID-uri); validarea
+      // (sume de control, excluderea datelor și prețurilor) se face în Node, cu src/assets/pii.ts
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const candRe = new RegExp(piiSource, "i");
+      let n: Node | null;
+      while ((n = walker.nextNode())) {
+        const t = (n.textContent ?? "").trim();
+        if (t && candRe.test(t) && n.parentElement) {
+          push(n.parentElement, "pii", pii);
+          const last = pii[pii.length - 1];
+          if (last) last.text = t.slice(0, 200);
+        }
       }
-      return parts.join(" > ");
-    };
-    const labelOf = (el: Element) =>
-      (el.getAttribute("aria-label") || (el as HTMLInputElement).placeholder || el.getAttribute("title") || (el as HTMLElement).innerText || el.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 80);
-    const push = (el: Element, kind: string, target = out, labelFrom?: Element) => {
-      if (!visible(el)) return;
-      const r = el.getBoundingClientRect();
-      const label = labelOf(labelFrom ?? el) || labelOf(el);
-      target.push({ idHint: `${kind}-${label || el.tagName.toLowerCase()}`, label: label || el.tagName.toLowerCase(), kind, rect: { x: r.left + sx, y: r.top + sy, w: r.width, h: r.height }, text: label, selector: selectorOf(el) });
-    };
-    document.querySelectorAll("input, textarea, select, [contenteditable=true]").forEach((el) => {
-      // cutia vine de la eticheta care înconjoară câmpul (arată ca un câmp), textul de la câmpul însuși
-      const lbl = el.closest("label");
-      push(lbl && lbl.getBoundingClientRect().height < 120 ? lbl : el, "input", out, el);
-    });
-    document.querySelectorAll("button, [role=button], a.btn, .btn").forEach((el) => push(el, "button"));
-    document.querySelectorAll("h1, h2, h3").forEach((el) => push(el, "heading"));
-    document.querySelectorAll("nav, aside, [role=navigation]").forEach((el) => push(el, "nav"));
-    document.querySelectorAll("article, .card, [class*=card], section, .panel").forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.width * r.height > 8000 && r.width < vw * 0.98) push(el, "custom");
-    });
-    document.querySelectorAll("img, svg").forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.width * r.height > 20000) push(el, "image");
-    });
-    // date personale: candidați largi aici (email, șiruri de cifre, saluturi cu nume, ID-uri); validarea
-    // (sume de control, excluderea datelor și prețurilor) se face în Node, cu src/assets/pii.ts
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const candRe = new RegExp(piiSource, "i");
-    let n: Node | null;
-    while ((n = walker.nextNode())) {
-      const t = (n.textContent ?? "").trim();
-      if (t && candRe.test(t) && n.parentElement) {
-        push(n.parentElement, "pii", pii);
-        const last = pii[pii.length - 1];
-        if (last) last.text = t.slice(0, 200);
-      }
-    }
-    return { regions: out.slice(0, 120), pii };
-  }, { full: fullPage, piiSource: PII_CANDIDATE_SOURCE }) as Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }>;
+      return { regions: out.slice(0, 120), pii };
+    },
+    { full: fullPage, piiSource: PII_CANDIDATE_SOURCE },
+  ) as Promise<{ regions: Array<Omit<Region, "id"> & { idHint: string }>; pii: Array<Omit<Region, "id"> & { idHint: string }> }>;
 }
 
 /**
@@ -183,7 +225,13 @@ async function extractLogo(page: Page): Promise<{ kind: "svg"; svg: string } | {
   return page.evaluate(() => {
     const mentions = (el: Element | null, depth: number): boolean => {
       for (let e = el, d = 0; e && d <= depth; e = e.parentElement, d++) {
-        const attrs = [e.id, e.getAttribute("class") ?? "", e.getAttribute("alt") ?? "", e.getAttribute("aria-label") ?? "", e.getAttribute("title") ?? ""].join(" ");
+        const attrs = [
+          e.id,
+          e.getAttribute("class") ?? "",
+          e.getAttribute("alt") ?? "",
+          e.getAttribute("aria-label") ?? "",
+          e.getAttribute("title") ?? "",
+        ].join(" ");
         if (/logo|brand/i.test(attrs)) return true;
       }
       return false;
@@ -226,12 +274,26 @@ async function extractLogo(page: Page): Promise<{ kind: "svg"; svg: string } | {
   });
 }
 
-async function saveLogo(page: Page, found: NonNullable<Awaited<ReturnType<typeof extractLogo>>>, base: string, start: CheckedUrl): Promise<CaptureResult["logo"] | undefined> {
+async function saveLogo(
+  page: Page,
+  found: NonNullable<Awaited<ReturnType<typeof extractLogo>>>,
+  base: string,
+  start: CheckedUrl,
+): Promise<CaptureResult["logo"] | undefined> {
   if (found.kind === "svg") {
     fs.writeFileSync(`${base}.svg`, found.svg);
     return { file: `${base}.svg`, source: "inline-svg" };
   }
-  const ext = (type: string, url: string) => (/svg/.test(type) || /\.svg(\?|$)/i.test(url) ? "svg" : /png/.test(type) || /\.png(\?|$)/i.test(url) ? "png" : /webp/.test(type) ? "webp" : /jpe?g/.test(type) || /\.jpe?g(\?|$)/i.test(url) ? "jpg" : null);
+  const ext = (type: string, url: string) =>
+    /svg/.test(type) || /\.svg(\?|$)/i.test(url)
+      ? "svg"
+      : /png/.test(type) || /\.png(\?|$)/i.test(url)
+        ? "png"
+        : /webp/.test(type)
+          ? "webp"
+          : /jpe?g/.test(type) || /\.jpe?g(\?|$)/i.test(url)
+            ? "jpg"
+            : null;
   let bytes: Buffer | null = null;
   let type = "";
   if (found.src.startsWith("data:")) {
@@ -278,7 +340,8 @@ async function extractPageData(page: Page): Promise<PageData> {
         count(fgs, st.color, (el as HTMLElement).innerText.length);
         count(fonts, st.fontFamily.split(",")[0].replace(/["']/g, "").trim(), (el as HTMLElement).innerText.length);
       }
-      if ((el.matches("button, .btn, a.btn, [role=button]") || st.cursor === "pointer") && !st.backgroundColor.includes("rgba(0, 0, 0, 0)")) count(acc, st.backgroundColor, 1);
+      if ((el.matches("button, .btn, a.btn, [role=button]") || st.cursor === "pointer") && !st.backgroundColor.includes("rgba(0, 0, 0, 0)"))
+        count(acc, st.backgroundColor, 1);
     });
     const top = (m: Map<string, number>, n: number) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n) as Array<[string, number]>;
     const cssVars: Record<string, string> = {};
@@ -343,12 +406,26 @@ async function extractPageData(page: Page): Promise<PageData> {
       title: document.title,
       description: document.querySelector("meta[name=description]")?.getAttribute("content") ?? "",
       og,
-      headings: Array.from(document.querySelectorAll("h1, h2, h3, h4")).filter((h) => !chrome(h)).map((h) => ({ level: Number(h.tagName[1]), text: txt(h) })).filter((h) => h.text),
-      paragraphs: Array.from(document.querySelectorAll("p")).map(txt).filter((t) => t.length > 20).slice(0, 80),
+      headings: Array.from(document.querySelectorAll("h1, h2, h3, h4"))
+        .filter((h) => !chrome(h))
+        .map((h) => ({ level: Number(h.tagName[1]), text: txt(h) }))
+        .filter((h) => h.text),
+      paragraphs: Array.from(document.querySelectorAll("p"))
+        .map(txt)
+        .filter((t) => t.length > 20)
+        .slice(0, 80),
       listItems: Array.from(document.querySelectorAll("li")).map(txt).filter(Boolean).slice(0, 120),
-      links: Array.from(document.querySelectorAll("a[href]")).map((a) => ({ text: txt(a), href: (a as HTMLAnchorElement).href })).slice(0, 150),
+      links: Array.from(document.querySelectorAll("a[href]"))
+        .map((a) => ({ text: txt(a), href: (a as HTMLAnchorElement).href }))
+        .slice(0, 150),
       // textul unui buton e scurt; cardurile de meniu cu rol de buton (titlu + descriere) nu sunt butoane de acțiune
-      buttons: [...new Set([...Array.from(document.querySelectorAll("button, .btn, [role=button]")), ...Array.from(document.querySelectorAll("a[href]")).filter(buttonLike)].map((el) => txt(el).replace(/^[-–•·]\s*/, "")).filter((t) => t && t.split(/\s+/).length <= 6))].slice(0, 40),
+      buttons: [
+        ...new Set(
+          [...Array.from(document.querySelectorAll("button, .btn, [role=button]")), ...Array.from(document.querySelectorAll("a[href]")).filter(buttonLike)]
+            .map((el) => txt(el).replace(/^[-–•·]\s*/, ""))
+            .filter((t) => t && t.split(/\s+/).length <= 6),
+        ),
+      ].slice(0, 40),
       colors: { backgrounds: top(bgs, 8), texts: top(fgs, 6), accents: top(acc, 6) },
       fonts: top(fonts, 5),
       shapes: { radii: top(radii, 5), shadows: top(shadows, 4), gradients: top(grads, 4), gaps: top(gaps, 5) },
@@ -427,7 +504,28 @@ async function recordSteps(page: Page, steps: CaptureStep[], fps: number, tailMs
   lines.push(`file '${shots[shots.length - 1].file.replace(/\\/g, "/")}'`);
   const listFile = path.join(workDir, "frames.txt");
   fs.writeFileSync(listFile, lines.join("\n"));
-  await ffmpeg(["-y", "-f", "concat", "-safe", "0", "-i", listFile, "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2`, "-r", String(fps), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", "-preset", "medium", path.resolve(outFile)]);
+  await ffmpeg([
+    "-y",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    listFile,
+    "-vf",
+    `scale=trunc(iw/2)*2:trunc(ih/2)*2`,
+    "-r",
+    String(fps),
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-crf",
+    "16",
+    "-preset",
+    "medium",
+    path.resolve(outFile),
+  ]);
   fs.rmSync(framesDir, { recursive: true, force: true });
   return { frames: n, durationSec: n / fps, shots: shots.length };
 }
@@ -513,7 +611,13 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
         total++;
         if (r.right > W + 8) cut++;
       }
-      return { w: window.innerWidth, h: full ? document.documentElement.scrollHeight : window.innerHeight, sw: document.documentElement.scrollWidth, cut, total };
+      return {
+        w: window.innerWidth,
+        h: full ? document.documentElement.scrollHeight : window.innerHeight,
+        sw: document.documentElement.scrollWidth,
+        cut,
+        total,
+      };
     }, req.fullPage);
     const used = new Set<string>();
     const toRegion = (r: Omit<Region, "id"> & { idHint: string }): Region => {
@@ -521,7 +625,14 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
       let k = 2;
       while (used.has(id)) id = `${slug(r.idHint)}-${k++}`;
       used.add(id);
-      return { id, label: r.label, kind: r.kind as Region["kind"], text: r.text, selector: r.selector, rect: { x: r.rect.x * vp.dpr, y: r.rect.y * vp.dpr, w: r.rect.w * vp.dpr, h: r.rect.h * vp.dpr } };
+      return {
+        id,
+        label: r.label,
+        kind: r.kind as Region["kind"],
+        text: r.text,
+        selector: r.selector,
+        rect: { x: r.rect.x * vp.dpr, y: r.rect.y * vp.dpr, w: r.rect.w * vp.dpr, h: r.rect.h * vp.dpr },
+      };
     };
     const result: CaptureResult = {
       id: req.id,
@@ -551,14 +662,23 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
       if (req.fullPage) await page.evaluate(() => window.scrollTo(0, 0));
       const vfile = path.join(outDir, `${req.id}.mp4`);
       const r = await recordSteps(page, req.record.steps, req.record.fps, req.record.tailMs, vfile, outDir);
-      result.recording = { file: vfile, fps: req.record.fps, frames: r.frames, durationSec: r.durationSec, width: Math.round(vp.width * vp.dpr) - (Math.round(vp.width * vp.dpr) % 2), height: Math.round(vp.height * vp.dpr) - (Math.round(vp.height * vp.dpr) % 2) };
+      result.recording = {
+        file: vfile,
+        fps: req.record.fps,
+        frames: r.frames,
+        durationSec: r.durationSec,
+        width: Math.round(vp.width * vp.dpr) - (Math.round(vp.width * vp.dpr) % 2),
+        height: Math.round(vp.height * vp.dpr) - (Math.round(vp.height * vp.dpr) % 2),
+      };
     }
     await guard.assertClean(page);
     fs.writeFileSync(path.join(outDir, `${req.id}.json`), JSON.stringify(result, null, 2));
     return result;
   } catch (e) {
     // o pagină publică ce a atins rețeaua locală nu lasă nimic pe disc (captura, logo-ul, înregistrarea)
-    if (e instanceof MmsError && e.code === "CAPTURE_REDIRECT") for (const f of fs.readdirSync(outDir)) if (f.startsWith(`${req.id}.`) || f.startsWith(`${req.id}-logo.`)) fs.rmSync(path.join(outDir, f), { force: true });
+    if (e instanceof MmsError && e.code === "CAPTURE_REDIRECT")
+      for (const f of fs.readdirSync(outDir))
+        if (f.startsWith(`${req.id}.`) || f.startsWith(`${req.id}-logo.`)) fs.rmSync(path.join(outDir, f), { force: true });
     throw e;
   } finally {
     await close();

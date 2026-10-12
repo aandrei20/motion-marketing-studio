@@ -84,7 +84,6 @@ export interface CompileResult {
   warnings: string[];
 }
 
-
 function fontsAndTypography(brand: Brand, projectId: string, assets: AssetManifest): { fonts: TimelineFont[]; typography: TypographySet; warnings: string[] } {
   const warnings: string[] = [];
   const fonts: TimelineFont[] = [];
@@ -95,14 +94,17 @@ function fontsAndTypography(brand: Brand, projectId: string, assets: AssetManife
     if (ref.source === "project-asset") {
       const a = assets.assets.find((x) => x.id === ref.ref);
       if (!a) throw new MmsError("FONT_MISSING", `Fontul ${ref.ref} nu există în materialele proiectului.`);
-      if (a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned") warnings.push(`Fontul ${a.originalName} nu are drepturi confirmate.`);
+      if (a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned")
+        warnings.push(`Fontul ${a.originalName} nu are drepturi confirmate.`);
       add({ family: ref.family, src: projectPublicPath(projectId, a.file), weight: "100 900", style: "normal" });
     } else add(toTimelineFont(libraryFont(ref.ref)));
     return { family: ref.family, weight: role === "display" ? ref.displayWeight : ref.weight, tracking: ref.tracking, uppercase: ref.uppercase };
   };
   const display = resolve(brand.typography.display, "display");
   const body = resolve(brand.typography.body, "body");
-  const mono = brand.typography.mono ? resolve(brand.typography.mono, "mono") : resolve({ family: "JetBrains Mono", source: "library", ref: "jetbrains-mono", weight: 500, displayWeight: 700, tracking: 0, uppercase: false }, "mono");
+  const mono = brand.typography.mono
+    ? resolve(brand.typography.mono, "mono")
+    : resolve({ family: "JetBrains Mono", source: "library", ref: "jetbrains-mono", weight: 500, displayWeight: 700, tracking: 0, uppercase: false }, "mono");
   return { fonts, typography: { display, body, mono }, warnings };
 }
 
@@ -162,7 +164,11 @@ function lineTexts(script: Script, ids: string[]) {
 function parseLayer(l: TimelineLayer, sceneId: string): TimelineLayer {
   const cap = getLayer(l.capability);
   const r = cap.params.safeParse(l.params);
-  if (!r.success) throw new MmsError("LAYER_PARAMS", `Parametri invalizi pentru ${l.capability} în scena ${sceneId}: ${r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+  if (!r.success)
+    throw new MmsError(
+      "LAYER_PARAMS",
+      `Parametri invalizi pentru ${l.capability} în scena ${sceneId}: ${r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+    );
   const modifiers = l.modifiers.map((m) => {
     const mr = getModifier(m.capability).params.safeParse(m.params);
     if (!mr.success) throw new MmsError("MODIFIER_PARAMS", `Parametri invalizi pentru ${m.capability} (${l.capability}, ${sceneId}).`);
@@ -204,7 +210,17 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const onScreen = sc.text.headline ?? lines.map((l) => l.onScreen).join(" ");
     const recipe = getRecipe(sc.recipe.id);
     const recipeMin = Math.max(recipe.minSec, recipe.minSecFor?.({ headline: sc.text.headline, sub: sc.text.sub, items: sc.text.items ?? [] }) ?? 0);
-    const d = sceneDuration({ voSec, onScreen: [onScreen, sc.text.sub ?? ""].join(" ").trim(), shot: sc.shot, energy: sc.energy, role: sc.narrativeRole, recipeMinSec: recipeMin, explicitSec: sc.durationSec, dir, pacing });
+    const d = sceneDuration({
+      voSec,
+      onScreen: [onScreen, sc.text.sub ?? ""].join(" ").trim(),
+      shot: sc.shot,
+      energy: sc.energy,
+      role: sc.narrativeRole,
+      recipeMinSec: recipeMin,
+      explicitSec: sc.durationSec,
+      dir,
+      pacing,
+    });
     return { sc, lines, d, recipe };
   });
   // 2. potrivire cu durata cerută: timpul în plus se împarte scenelor fără voce care pot crește
@@ -217,7 +233,9 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const tw = weights.reduce((a, b) => a + b, 0) || 1;
     flexible.forEach((p, i) => (p.d.sec += (extra * weights[i]) / tw));
   } else if (natural > target * 1.15) {
-    warnings.push(`Durata naturală (${natural.toFixed(1)} s) depășește ținta (${target} s) cu peste 15%: vocea și timpul de citire nu permit mai scurt. Scurtează scriptul sau acceptă durata.`);
+    warnings.push(
+      `Durata naturală (${natural.toFixed(1)} s) depășește ținta (${target} s) cu peste 15%: vocea și timpul de citire nu permit mai scurt. Scurtează scriptul sau acceptă durata.`,
+    );
   }
 
   // 3. tranziții și tăieturi pe ritm. Structura se calculează o singură dată, la REF_FPS (duratele tranzițiilor
@@ -227,7 +245,10 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const beatRef: number[] = [];
   // tăieturile se aliniază pe bătăi doar dacă tempo-ul e sigur (detectat cu încredere mică = fără aliniere, nu aliniere greșită)
   const reliable = !!input.beatGrid && (input.beatGrid.source !== "detected" || input.beatGrid.confidence >= 0.35);
-  if (input.beatGrid && !reliable) warnings.push(`Tempo-ul muzicii e detectat cu încredere mică (${input.beatGrid.confidence.toFixed(2)}): tăieturile nu se aliniază pe bătăi. Fixează tempo-ul în brief (audio.music.bpm) dacă îl știi.`);
+  if (input.beatGrid && !reliable)
+    warnings.push(
+      `Tempo-ul muzicii e detectat cu încredere mică (${input.beatGrid.confidence.toFixed(2)}): tăieturile nu se aliniază pe bătăi. Fixează tempo-ul în brief (audio.music.bpm) dacă îl știi.`,
+    );
   if (input.beatGrid && reliable) {
     const step = (60 / input.beatGrid.bpm) * R;
     for (let f = input.beatGrid.offsetSec * R; f < (target + 20) * R; f += step) beatRef.push(Math.round(f));
@@ -240,7 +261,16 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const trRef: Array<{ capability: string; frames: number; params: Record<string, unknown> } | null> = plans.map((p, i) => {
     if (i === 0) return null;
     const prev = plans[i - 1].sc;
-    const chosen = p.sc.transitionIn?.capability ?? chooseTransition({ energy: prev.energy, role: prev.narrativeRole }, { energy: p.sc.energy, role: p.sc.narrativeRole, id: p.sc.id }, dir, project.seed, forbidden, previousTransition);
+    const chosen =
+      p.sc.transitionIn?.capability ??
+      chooseTransition(
+        { energy: prev.energy, role: prev.narrativeRole },
+        { energy: p.sc.energy, role: p.sc.narrativeRole, id: p.sc.id },
+        dir,
+        project.seed,
+        forbidden,
+        previousTransition,
+      );
     previousTransition = chosen;
     const tr = getTransition(chosen);
     const params = tr.params.parse(p.sc.transitionIn?.params ?? {}) as Record<string, unknown>;
@@ -298,8 +328,14 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const from = starts[i];
     const focusOrig = sc.focus ? resolveAsset(project.id, assets, sc.focus.assetId) : null;
     // zona cerută poate fi și una cu date personale (de ex. ca să arăți că e estompată)
-    const origRegion = sc.focus?.region && focusOrig ? (focusOrig.regions.find((r) => r.id === sc.focus!.region) ?? focusOrig.asset.pii.regions.find((r) => r.id === sc.focus!.region) ?? null) : null;
-    if (sc.focus?.region && focusOrig && !origRegion) warnings.push(`Zona „${sc.focus.region}” din scena ${sc.id} nu există în ${focusOrig.asset.id}; rețeta alege zona cea mai potrivită textului. Zonele disponibile: captures/<id>.json → regions.`);
+    const origRegion =
+      sc.focus?.region && focusOrig
+        ? (focusOrig.regions.find((r) => r.id === sc.focus!.region) ?? focusOrig.asset.pii.regions.find((r) => r.id === sc.focus!.region) ?? null)
+        : null;
+    if (sc.focus?.region && focusOrig && !origRegion)
+      warnings.push(
+        `Zona „${sc.focus.region}” din scena ${sc.id} nu există în ${focusOrig.asset.id}; rețeta alege zona cea mai potrivită textului. Zonele disponibile: captures/<id>.json → regions.`,
+      );
     // pe vertical, o captură desktop se înlocuiește cu captura de telefon a aceleiași pagini, dacă există și
     // dacă arată zona demonstrată în scenă; aceeași alegere pentru slot și pentru focus
     const sceneNotes = new Set<string>();
@@ -318,13 +354,17 @@ export function compileTimeline(input: CompileInput): CompileResult {
       if (orientation !== "portrait") return r;
       const done = chosen.get(r.asset.id);
       if (done) return done;
-      const wanted = [...(focusOrig?.asset.id === r.asset.id && origRegion ? [origRegion] : []), ...r.regions.filter((x) => paramStrings.has(x.id) && x.id !== origRegion?.id)];
+      const wanted = [
+        ...(focusOrig?.asset.id === r.asset.id && origRegion ? [origRegion] : []),
+        ...r.regions.filter((x) => paramStrings.has(x.id) && x.id !== origRegion?.id),
+      ];
       const c = chooseCounterpart(assets, r.asset, wanted);
       if (c.note) sceneNotes.add(c.note);
-      if (c.asset) for (const w of wanted) {
-        const m = counterpartRegion(w, c.asset);
-        if (m && m.id !== w.id) regionRemap.set(w.id, m.id);
-      }
+      if (c.asset)
+        for (const w of wanted) {
+          const m = counterpartRegion(w, c.asset);
+          if (m && m.id !== w.id) regionRemap.set(w.id, m.id);
+        }
       const out = c.asset ? resolveAsset(project.id, assets, c.asset.id) : r;
       chosen.set(r.asset.id, out);
       return out;
@@ -357,7 +397,12 @@ export function compileTimeline(input: CompileInput): CompileResult {
       dir,
       energy: sc.energy,
       text: {
-        headline: sc.text.headline ?? lines.map((l) => l.onScreen).filter(Boolean).join(" "),
+        headline:
+          sc.text.headline ??
+          lines
+            .map((l) => l.onScreen)
+            .filter(Boolean)
+            .join(" "),
         sub: sc.text.sub ?? "",
         items: sc.text.items ?? [],
         emphasis: lines.flatMap((l) => l.emphasis),
@@ -378,7 +423,14 @@ export function compileTimeline(input: CompileInput): CompileResult {
       forbidden,
       uid: (hint) => `${sc.id}-${hint}-${++uidCounter}`,
     };
-    const remap = (v: unknown): unknown => (typeof v === "string" ? (regionRemap.get(v) ?? v) : Array.isArray(v) ? v.map(remap) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, remap(x)])) : v);
+    const remap = (v: unknown): unknown =>
+      typeof v === "string"
+        ? (regionRemap.get(v) ?? v)
+        : Array.isArray(v)
+          ? v.map(remap)
+          : v && typeof v === "object"
+            ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, remap(x)]))
+            : v;
     const params = plan.recipe.params.parse(regionRemap.size ? remap(sc.recipe.params) : sc.recipe.params);
     const out = plan.recipe.build(ctx, params);
     // suprascrieri explicite din storyboard pe straturile rețetei (după capabilitate)
@@ -404,9 +456,24 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const layoutLayer = (l: TimelineLayer): TimelineLayer => {
       if (TEXT_CAPS.has(l.capability)) {
         const cap = getLayer(l.capability);
-        const p = cap.params.parse(l.params) as Record<string, unknown> & { text: string; font: "display" | "body" | "mono"; maxSize: number; minSize: number; lineHeight: number; maxLines?: number; weight?: number; uppercase?: boolean; tracking?: number };
+        const p = cap.params.parse(l.params) as Record<string, unknown> & {
+          text: string;
+          font: "display" | "body" | "mono";
+          maxSize: number;
+          minSize: number;
+          lineHeight: number;
+          maxLines?: number;
+          weight?: number;
+          uppercase?: boolean;
+          tracking?: number;
+        };
         const spec = fontSpecFor({ typography } as never, p);
-        const lay = layoutText(p.text, spec, { w: l.box.w, h: l.box.h }, measure, { maxSize: p.maxSize, minSize: p.minSize, lineHeight: p.lineHeight, maxLines: p.maxLines });
+        const lay = layoutText(p.text, spec, { w: l.box.w, h: l.box.h }, measure, {
+          maxSize: p.maxSize,
+          minSize: p.minSize,
+          lineHeight: p.lineHeight,
+          maxLines: p.maxLines,
+        });
         if (lay.overflow) warnings.push(`Textul „${p.text.slice(0, 40)}” nu încape în cutie nici la ${p.minSize}px (scena ${sc.id}).`);
         return { ...l, params: { ...l.params, lines: lay.lines, fontSize: lay.fontSize } };
       }
@@ -418,16 +485,42 @@ export function compileTimeline(input: CompileInput): CompileResult {
       if (l.capability !== "media.screen") return { ...l, children };
       const a = l.assets.map((p) => assetByPublicPath.get(p)).find((x) => x && x.pii.blurApproved && x.pii.regions.length);
       if (!a) return { ...l, children };
-      const blur = a.pii.regions.map((r, k) => ({ id: `${l.id}-pii-${k + 1}`, capability: "ui.blur-region", from: 0, durationInFrames: l.durationInFrames, z: 900, box: { x: r.rect.x - 6, y: r.rect.y - 4, w: r.rect.w + 12, h: r.rect.h + 8 }, params: { amount: 18 }, depth: 1, role: "support" as const, modifiers: [], assets: [], children: [] }));
+      const blur = a.pii.regions.map((r, k) => ({
+        id: `${l.id}-pii-${k + 1}`,
+        capability: "ui.blur-region",
+        from: 0,
+        durationInFrames: l.durationInFrames,
+        z: 900,
+        box: { x: r.rect.x - 6, y: r.rect.y - 4, w: r.rect.w + 12, h: r.rect.h + 8 },
+        params: { amount: 18 },
+        depth: 1,
+        role: "support" as const,
+        modifiers: [],
+        assets: [],
+        children: [],
+      }));
       return { ...l, children: [...children, ...blur] };
     };
-    const layers = out.layers.map(layoutLayer).map(blurPii).map((l) => parseLayer(l, sc.id));
+    const layers = out.layers
+      .map(layoutLayer)
+      .map(blurPii)
+      .map((l) => parseLayer(l, sc.id));
     // camera
     // o cameră aleasă explicit (editor, corectură automată) păstrează reglajele rețetei când e aceeași mișcare
     // (de ex. zoom-ul limitat ca materialul să nu intre peste titlu); parametrii dați explicit au prioritate
     const camCap = getCamera(sc.camera?.capability ?? out.camera.capability);
-    const camParams = camCap.params.parse(sc.camera ? { ...(sc.camera.capability === out.camera.capability ? out.camera.params : {}), ...sc.camera.params } : out.camera.params);
-    const built = camCap.build(camParams as never, { duration, width: W, height: H, focus: out.focus ? { x: out.focus.x, y: out.focus.y } : null, focusZoom: out.focus?.zoom ?? 1.5, energy: sc.energy, target: out.focus?.target });
+    const camParams = camCap.params.parse(
+      sc.camera ? { ...(sc.camera.capability === out.camera.capability ? out.camera.params : {}), ...sc.camera.params } : out.camera.params,
+    );
+    const built = camCap.build(camParams as never, {
+      duration,
+      width: W,
+      height: H,
+      focus: out.focus ? { x: out.focus.x, y: out.focus.y } : null,
+      focusZoom: out.focus?.zoom ?? 1.5,
+      energy: sc.energy,
+      target: out.focus?.target,
+    });
     const camera = {
       keys: out.cameraKeys ?? built.keys,
       handheld: built.handheld ?? 0,
@@ -457,7 +550,16 @@ export function compileTimeline(input: CompileInput): CompileResult {
       // dacă replica e deja scrisă pe ecran (același text), subtitrarea ar dubla-o: o omitem
       const onScreenSame = coveredByScreen(l.voiceover, [l.onScreen, sc.text.headline ?? "", sc.text.sub ?? ""]);
       voiceCues.push({ lineId: l.id, at: Math.max(0, vAt), src: v.src, durationSec: v.durationSec, words: onScreenSame ? [] : v.words });
-      cues.push({ id: `vo-${l.id}`, kind: "voice", atFrame: Math.max(0, vAt), sound: v.src, gainDb: 0, pan: 0, sceneId: sc.id, reason: `vocea replicii ${l.id}` });
+      cues.push({
+        id: `vo-${l.id}`,
+        kind: "voice",
+        atFrame: Math.max(0, vAt),
+        sound: v.src,
+        gainDb: 0,
+        pan: 0,
+        sceneId: sc.id,
+        reason: `vocea replicii ${l.id}`,
+      });
       vAt += Math.round((v.durationSec + l.pauseAfterMs / 1000) * fps);
     }
     // sunetele declarate de capabilități (efecte vizuale) și de rețetă
@@ -469,20 +571,68 @@ export function compileTimeline(input: CompileInput): CompileResult {
           let frames: Array<{ at: number; gainDb?: number; sound?: string }> = [];
           if (s.at === "start") frames = [{ at: at0 + (s.offsetFrames ?? 0) }];
           else if (s.at === "end") frames = [{ at: at0 + l.durationInFrames - 1 }];
-          else if (s.at === "each") frames = (cap.events?.(l.params as never, l.durationInFrames) ?? []).map((e) => ({ at: at0 + e.at, gainDb: e.gainDb, sound: e.sound }));
+          else if (s.at === "each")
+            frames = (cap.events?.(l.params as never, l.durationInFrames) ?? []).map((e) => ({ at: at0 + e.at, gainDb: e.gainDb, sound: e.sound }));
           else {
             const v = l.params[s.at.slice("param:".length)];
             if (typeof v === "number") frames = [{ at: at0 + v }];
           }
-          for (const f of frames) if (f.at < from + duration && f.at >= 0) cues.push({ id: `sfx-${l.id}-${f.at}-${s.sound}`, kind: "sfx", atFrame: f.at, sound: f.sound ?? s.sound, gainDb: (s.gainDb ?? 0) + (f.gainDb ?? 0), pan: 0, sceneId: sc.id, layerId: l.id, reason: `${l.capability}${s.at === "each" ? " (fiecare element)" : ""}` });
+          for (const f of frames)
+            if (f.at < from + duration && f.at >= 0)
+              cues.push({
+                id: `sfx-${l.id}-${f.at}-${s.sound}`,
+                kind: "sfx",
+                atFrame: f.at,
+                sound: f.sound ?? s.sound,
+                gainDb: (s.gainDb ?? 0) + (f.gainDb ?? 0),
+                pan: 0,
+                sceneId: sc.id,
+                layerId: l.id,
+                reason: `${l.capability}${s.at === "each" ? " (fiecare element)" : ""}`,
+              });
         }
         for (const c of l.children) collect(c, base + l.from);
       };
       for (const l of layers) collect(l, from);
-      for (const c of out.cues ?? []) cues.push({ id: `rc-${sc.id}-${c.at}-${c.sound}`, kind: "sfx", atFrame: from + c.at, sound: c.sound, gainDb: c.gainDb ?? 0, pan: 0, sceneId: sc.id, reason: c.reason });
-      if (tr) for (const s of getTransition(tr.capability).sfx) cues.push({ id: `tr-${sc.id}-${s.sound}`, kind: "sfx", atFrame: Math.max(0, from + (s.at === "end" ? tr.frames : 0) + (s.offsetFrames ?? 0) - (s.sound.startsWith("whoosh") || s.sound === "swipe" ? Math.round(fps * 0.12) : 0)), sound: s.sound, gainDb: s.gainDb ?? 0, pan: 0, sceneId: sc.id, reason: `tranziția ${tr.capability}` });
+      for (const c of out.cues ?? [])
+        cues.push({
+          id: `rc-${sc.id}-${c.at}-${c.sound}`,
+          kind: "sfx",
+          atFrame: from + c.at,
+          sound: c.sound,
+          gainDb: c.gainDb ?? 0,
+          pan: 0,
+          sceneId: sc.id,
+          reason: c.reason,
+        });
+      if (tr)
+        for (const s of getTransition(tr.capability).sfx)
+          cues.push({
+            id: `tr-${sc.id}-${s.sound}`,
+            kind: "sfx",
+            atFrame: Math.max(
+              0,
+              from +
+                (s.at === "end" ? tr.frames : 0) +
+                (s.offsetFrames ?? 0) -
+                (s.sound.startsWith("whoosh") || s.sound === "swipe" ? Math.round(fps * 0.12) : 0),
+            ),
+            sound: s.sound,
+            gainDb: s.gainDb ?? 0,
+            pan: 0,
+            sceneId: sc.id,
+            reason: `tranziția ${tr.capability}`,
+          });
     }
-    reports.push({ id: sc.id, recipe: sc.recipe.id, durationSec: duration / fps, minSec: plan.d.minSec, reasons: plan.d.reasons, transition: tr?.capability ?? null, notes: [...sceneNotes, ...(out.notes ?? [])] });
+    reports.push({
+      id: sc.id,
+      recipe: sc.recipe.id,
+      durationSec: duration / fps,
+      minSec: plan.d.minSec,
+      reasons: plan.d.reasons,
+      transition: tr?.capability ?? null,
+      notes: [...sceneNotes, ...(out.notes ?? [])],
+    });
   });
 
   // 5. densitatea efectelor sonore (brief): filtrare deterministă și fără aglomerare
@@ -490,7 +640,8 @@ export function compileTimeline(input: CompileInput): CompileResult {
   let sfx = cues.filter((c) => c.kind === "sfx");
   if (density === "none") sfx = [];
   else {
-    const keepEvery = density === "low" ? ["impact", "impact-small", "bass-hit", "whoosh", "whoosh-fast", "whoosh-long", "swipe", "shimmer", "click", "pop"] : null;
+    const keepEvery =
+      density === "low" ? ["impact", "impact-small", "bass-hit", "whoosh", "whoosh-fast", "whoosh-long", "swipe", "shimmer", "click", "pop"] : null;
     if (keepEvery) sfx = sfx.filter((c) => keepEvery.includes(c.sound));
     sfx.sort((a, b) => a.atFrame - b.atFrame || a.id.localeCompare(b.id));
     const kept: AudioCue[] = [];
@@ -506,12 +657,31 @@ export function compileTimeline(input: CompileInput): CompileResult {
   // 6. subtitrări din cuvintele vocii
   let captions: Timeline["captions"] = null;
   if (brief.captions.burnIn && voiceCues.length) {
-    const words = voiceCues.flatMap((v) => v.words.map((w) => ({ text: w.text, from: v.at + Math.round(w.startSec * fps), to: v.at + Math.max(Math.round(w.startSec * fps) + 2, Math.round(w.endSec * fps)) })));
+    const words = voiceCues.flatMap((v) =>
+      v.words.map((w) => ({
+        text: w.text,
+        from: v.at + Math.round(w.startSec * fps),
+        to: v.at + Math.max(Math.round(w.startSec * fps) + 2, Math.round(w.endSec * fps)),
+      })),
+    );
     const s = safe.rect;
     const h = orientation === "portrait" ? H * 0.075 : H * 0.11;
     const box = { x: s.x, y: s.y + s.h - h, w: s.w, h };
     const segments = captionSegments(scenes, box, safe.rect, { width: W, height: H, fps });
-    captions = { words, box, segments, params: { maxWords: orientation === "portrait" ? 3 : 5, style: "highlight", color: "#ffffff", activeColor: captionActiveColor(palette), size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05), uppercase: false, backdrop: true } };
+    captions = {
+      words,
+      box,
+      segments,
+      params: {
+        maxWords: orientation === "portrait" ? 3 : 5,
+        style: "highlight",
+        color: "#ffffff",
+        activeColor: captionActiveColor(palette),
+        size: Math.round(orientation === "portrait" ? W * 0.055 : H * 0.05),
+        uppercase: false,
+        backdrop: true,
+      },
+    };
   }
 
   // 7. materiale fără drepturi confirmate → marcaj „concept”
@@ -524,7 +694,9 @@ export function compileTimeline(input: CompileInput): CompileResult {
     l.children.forEach(visit);
   };
   scenes.forEach((s) => s.layers.forEach(visit));
-  const concept = assets.assets.some((a) => usedAssetIds.has(a.id) && a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned");
+  const concept = assets.assets.some(
+    (a) => usedAssetIds.has(a.id) && a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned",
+  );
   if (concept) warnings.push("Se folosesc materiale ale unor terți fără drepturi confirmate: preview-ul e marcat „concept”, iar exportul final e blocat.");
 
   const timeline: Timeline = Timeline.parse({
@@ -547,7 +719,9 @@ export function compileTimeline(input: CompileInput): CompileResult {
     audio: { src: null, cues: finalCues, beatGrid: input.beatGrid },
     markers: [
       ...scenes.map((s) => ({ frame: s.from, label: `${s.id} (${s.meta.recipe})`, kind: "scene" })),
-      ...scenes.filter((s) => s.meta.narrativeRole === "cta").map((s) => ({ frame: s.from + Math.max(0, s.durationInFrames - Math.round(2.5 * fps)), label: "hold CTA", kind: "cta-hold" })),
+      ...scenes
+        .filter((s) => s.meta.narrativeRole === "cta")
+        .map((s) => ({ frame: s.from + Math.max(0, s.durationInFrames - Math.round(2.5 * fps)), label: "hold CTA", kind: "cta-hold" })),
     ],
     concept,
   });
@@ -559,7 +733,14 @@ export function compileTimeline(input: CompileInput): CompileResult {
  * dubla mesajul (același lucru de două ori pe ecran).
  */
 export function coveredByScreen(voice: string, screen: string[]): boolean {
-  const norm = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter((w) => w.length > 1 || /\d/.test(w));
+  const norm = (x: string) =>
+    x
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\p{L}\p{N} ]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 1 || /\d/.test(w));
   const v = norm(voice);
   if (!v.length) return false;
   const pool = new Set(norm(screen.join(" ")));
@@ -573,7 +754,12 @@ export function coveredByScreen(voice: string, screen: string[]): boolean {
  * nu acoperă nici elementul, nici textul fix. Fără element demonstrat, banda peste interfață e acceptată (are
  * fundal). Scenele consecutive cu aceeași poziție se comasează; fără nicio mutare, lista e goală.
  */
-export function captionSegments(scenes: TimelineScene[], base: Rect, safeRect: Rect, t: { width: number; height: number; fps: number }): Array<{ from: number; to: number; box: Rect }> {
+export function captionSegments(
+  scenes: TimelineScene[],
+  base: Rect,
+  safeRect: Rect,
+  t: { width: number; height: number; fps: number },
+): Array<{ from: number; to: number; box: Rect }> {
   const out: Array<{ from: number; to: number; box: Rect }> = [];
   let moved = false;
   const pad = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + 2 * p, h: r.h + 2 * p });

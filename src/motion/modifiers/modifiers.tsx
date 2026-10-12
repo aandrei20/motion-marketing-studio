@@ -17,7 +17,12 @@ const base = {
 
 const hex = (c: string) => (c.startsWith("#") ? c : "#ffffff");
 /** strat de probă pentru catalog: o imagine sau o formă pe care se aplică modificatorul */
-const modExample = (params: Record<string, unknown>, durationInFrames = 45) => ({ params, durationInFrames, box: "center" as const, needs: ["screenshot" as const] });
+const modExample = (params: Record<string, unknown>, durationInFrames = 45) => ({
+  params,
+  durationInFrames,
+  box: "center" as const,
+  needs: ["screenshot" as const],
+});
 
 export const modEnter = defineModifier({
   ...base,
@@ -74,7 +79,14 @@ export const modEnter = defineModifier({
         opacity: appear * (1 - ex),
         filter: blurred ? `url(#${fid})` : undefined,
       },
-      wrap: blurred ? (c) => (<>{<DirBlurDefs id={fid} x={bx} y={by} />}{c}</>) : undefined,
+      wrap: blurred
+        ? (c) => (
+            <>
+              {<DirBlurDefs id={fid} x={bx} y={by} />}
+              {c}
+            </>
+          )
+        : undefined,
     };
   },
   example: modExample({ style: "rise", exit: "snap" }),
@@ -88,12 +100,22 @@ export const modGlow = defineModifier({
   tags: ["glow", "neon", "bloom", "pulse", "light"],
   performance: "medium",
   sfx: [],
-  params: z.object({ color: z.string().default("primary"), radius: z.number().min(1).max(120).default(28), intensity: z.number().min(0).max(1).default(0.8), pulse: z.number().min(0).max(1).default(0), pulseHz: z.number().min(0.1).max(8).default(1.5) }),
+  params: z.object({
+    color: z.string().default("primary"),
+    radius: z.number().min(1).max(120).default(28),
+    intensity: z.number().min(0).max(1).default(0.8),
+    pulse: z.number().min(0).max(1).default(0),
+    pulseHz: z.number().min(0.1).max(8).default(1.5),
+  }),
   apply: ({ params: p, frame, env }) => {
     const c = hex(resolveColor(env.palette, p.color, "primary"));
     const k = p.pulse ? 1 - p.pulse * (0.5 + 0.5 * Math.sin((frame / env.fps) * Math.PI * 2 * p.pulseHz)) : 1;
     const a = p.intensity * k;
-    return { style: { filter: `drop-shadow(0 0 ${(p.radius * 0.35).toFixed(1)}px ${withAlpha(c, a)}) drop-shadow(0 0 ${p.radius.toFixed(1)}px ${withAlpha(c, a * 0.7)})` } };
+    return {
+      style: {
+        filter: `drop-shadow(0 0 ${(p.radius * 0.35).toFixed(1)}px ${withAlpha(c, a)}) drop-shadow(0 0 ${p.radius.toFixed(1)}px ${withAlpha(c, a * 0.7)})`,
+      },
+    };
   },
   example: modExample({ color: "accent", pulse: 0.6 }),
 });
@@ -128,7 +150,9 @@ export const modReflection = defineModifier({
   performance: "light",
   sfx: [],
   params: z.object({ gap: z.number().min(0).max(200).default(8), strength: z.number().min(0).max(1).default(0.25) }),
-  apply: ({ params: p }) => ({ style: { WebkitBoxReflect: `below ${p.gap}px linear-gradient(transparent 55%, rgba(255,255,255,${p.strength}))` } as React.CSSProperties }),
+  apply: ({ params: p }) => ({
+    style: { WebkitBoxReflect: `below ${p.gap}px linear-gradient(transparent 55%, rgba(255,255,255,${p.strength}))` } as React.CSSProperties,
+  }),
   example: { ...modExample({ strength: 0.35 }), box: { x: 660, y: 120, w: 600, h: 420 } },
 });
 
@@ -140,7 +164,12 @@ export const modBlur = defineModifier({
   tags: ["blur", "defocus", "depth", "soft"],
   performance: "medium",
   sfx: [],
-  params: z.object({ from: z.number().min(0).max(80).default(0), to: z.number().min(0).max(80).default(16), start: z.number().min(0).max(1).default(0), end: z.number().min(0).max(1).default(0.5) }),
+  params: z.object({
+    from: z.number().min(0).max(80).default(0),
+    to: z.number().min(0).max(80).default(16),
+    start: z.number().min(0).max(1).default(0),
+    end: z.number().min(0).max(1).default(0.5),
+  }),
   apply: ({ params: p, frame, duration }) => {
     const t = prog(frame, p.start * duration, p.end * duration, EASE.inOut);
     const b = p.from + (p.to - p.from) * t;
@@ -165,7 +194,15 @@ export const modChromatic = defineModifier({
     const off = p.amount * k;
     if (off < 0.3) return {};
     const fid = filterId("chroma", id);
-    return { style: { filter: `url(#${fid})` }, wrap: (c) => (<><ChromaFilterDefs id={fid} offset={off} />{c}</>) };
+    return {
+      style: { filter: `url(#${fid})` },
+      wrap: (c) => (
+        <>
+          <ChromaFilterDefs id={fid} offset={off} />
+          {c}
+        </>
+      ),
+    };
   },
   example: modExample({ amount: 14 }),
 });
@@ -179,13 +216,23 @@ export const modRipple = defineModifier({
   tags: ["ripple", "liquid", "displacement", "distortion", "water", "dream"],
   performance: "heavy",
   sfx: [],
-  params: z.object({ strength: z.number().min(0).max(300).default(40), frequency: z.number().min(0.001).max(0.1).default(0.012), speed: z.number().min(0).max(30).default(6), envelope: z.enum(["constant", "in-out", "decay"]).default("constant") }),
+  params: z.object({
+    strength: z.number().min(0).max(300).default(40),
+    frequency: z.number().min(0.001).max(0.1).default(0.012),
+    speed: z.number().min(0).max(30).default(6),
+    envelope: z.enum(["constant", "in-out", "decay"]).default("constant"),
+  }),
   apply: ({ params: p, frame, duration, id }) => {
     const env = p.envelope === "in-out" ? Math.sin(Math.PI * clamp(frame / duration, 0, 1)) : p.envelope === "decay" ? Math.exp(-frame / 15) : 1;
     const fid = filterId("ripple", id);
     return {
       style: { filter: `url(#${fid})` },
-      wrap: (c) => (<><RippleFilterDefs id={fid} scale={p.strength * env} freq={p.frequency} seed={Math.floor((frame * p.speed) / 30) % 997} />{c}</>),
+      wrap: (c) => (
+        <>
+          <RippleFilterDefs id={fid} scale={p.strength * env} freq={p.frequency} seed={Math.floor((frame * p.speed) / 30) % 997} />
+          {c}
+        </>
+      ),
     };
   },
   example: modExample({ strength: 60 }),
@@ -205,7 +252,15 @@ export const modPixelate = defineModifier({
     const size = p.from + (p.to - p.from) * prog(frame, 0, p.end * duration, EASE.out);
     if (size < 2) return {};
     const fid = filterId("pix", id, Math.round(size));
-    return { style: { filter: `url(#${fid})` }, wrap: (c) => (<><PixelateDefs id={fid} size={size} />{c}</>) };
+    return {
+      style: { filter: `url(#${fid})` },
+      wrap: (c) => (
+        <>
+          <PixelateDefs id={fid} size={size} />
+          {c}
+        </>
+      ),
+    };
   },
   example: modExample({ from: 48, to: 1 }),
 });
@@ -218,15 +273,32 @@ export const modColorGrade = defineModifier({
   tags: ["color", "grade", "duotone", "lut", "mood", "cinematic"],
   performance: "medium",
   sfx: [],
-  params: z.object({ preset: z.enum(["duotone", "warm", "cool", "mono", "cinematic"]).default("cinematic"), dark: z.string().default("background"), light: z.string().default("primary") }),
+  params: z.object({
+    preset: z.enum(["duotone", "warm", "cool", "mono", "cinematic"]).default("cinematic"),
+    dark: z.string().default("background"),
+    light: z.string().default("primary"),
+  }),
   apply: ({ params: p, env, id }) => {
     if (p.preset === "duotone") {
       const d = hexToRgb(hex(resolveColor(env.palette, p.dark, "background")));
       const l = hexToRgb(hex(resolveColor(env.palette, p.light, "primary")));
       const fid = filterId("duo", id);
-      return { style: { filter: `url(#${fid})` }, wrap: (c) => (<><DuotoneDefs id={fid} dark={[d.r, d.g, d.b]} light={[l.r, l.g, l.b]} />{c}</>) };
+      return {
+        style: { filter: `url(#${fid})` },
+        wrap: (c) => (
+          <>
+            <DuotoneDefs id={fid} dark={[d.r, d.g, d.b]} light={[l.r, l.g, l.b]} />
+            {c}
+          </>
+        ),
+      };
     }
-    const f = { warm: "sepia(0.25) saturate(1.15) hue-rotate(-8deg)", cool: "saturate(0.9) hue-rotate(12deg) brightness(1.02)", mono: "grayscale(1) contrast(1.1)", cinematic: "contrast(1.12) saturate(1.08) brightness(0.97)" }[p.preset];
+    const f = {
+      warm: "sepia(0.25) saturate(1.15) hue-rotate(-8deg)",
+      cool: "saturate(0.9) hue-rotate(12deg) brightness(1.02)",
+      mono: "grayscale(1) contrast(1.1)",
+      cinematic: "contrast(1.12) saturate(1.08) brightness(0.97)",
+    }[p.preset];
     return { style: { filter: f } };
   },
   example: modExample({ preset: "duotone" }),
@@ -240,7 +312,11 @@ export const modMaskReveal = defineModifier({
   tags: ["mask", "reveal", "wipe", "circle", "clip"],
   performance: "light",
   sfx: [{ sound: "swipe", at: "start", gainDb: -8 }],
-  params: z.object({ shape: z.enum(["left", "right", "up", "down", "circle", "diagonal"]).default("right"), frames: z.number().int().min(2).max(90).default(16), at: z.number().int().min(0).default(0) }),
+  params: z.object({
+    shape: z.enum(["left", "right", "up", "down", "circle", "diagonal"]).default("right"),
+    frames: z.number().int().min(2).max(90).default(16),
+    at: z.number().int().min(0).default(0),
+  }),
   apply: ({ params: p, frame }) => {
     const t = prog(frame, p.at, p.at + p.frames, EASE.inOut);
     const r = (100 - t * 100).toFixed(2);
@@ -269,7 +345,12 @@ export const modFloat = defineModifier({
   tags: ["float", "idle", "bob", "alive", "subtle"],
   performance: "light",
   sfx: [],
-  params: z.object({ amplitude: z.number().min(0).max(80).default(10), periodSec: z.number().min(0.5).max(20).default(4), rotate: z.number().min(0).max(10).default(0.6), phase: z.number().default(0) }),
+  params: z.object({
+    amplitude: z.number().min(0).max(80).default(10),
+    periodSec: z.number().min(0.5).max(20).default(4),
+    rotate: z.number().min(0).max(10).default(0.6),
+    phase: z.number().default(0),
+  }),
   apply: ({ params: p, frame, env }) => {
     const t = (frame / env.fps / p.periodSec) * Math.PI * 2 + p.phase;
     return { style: { transform: `translateY(${(Math.sin(t) * p.amplitude).toFixed(2)}px) rotate(${(Math.sin(t * 0.7) * p.rotate).toFixed(3)}deg)` } };
@@ -286,12 +367,36 @@ export const modTilt3d = defineModifier({
   tags: ["3d", "tilt", "perspective", "rotate", "device", "premium"],
   performance: "light",
   sfx: [],
-  params: z.object({ fromX: z.number().default(18), toX: z.number().default(6), fromY: z.number().default(-24), toY: z.number().default(-10), perspective: z.number().min(200).max(6000).default(1800), ease: z.enum(["inOut", "out", "linear"]).default("out") }),
+  params: z.object({
+    fromX: z.number().default(18),
+    toX: z.number().default(6),
+    fromY: z.number().default(-24),
+    toY: z.number().default(-10),
+    perspective: z.number().min(200).max(6000).default(1800),
+    ease: z.enum(["inOut", "out", "linear"]).default("out"),
+  }),
   apply: ({ params: p, frame, duration }) => {
     const t = prog(frame, 0, duration, p.ease === "out" ? EASE.out : p.ease === "linear" ? EASE.linear : EASE.inOut);
-    return { style: { transform: `perspective(${p.perspective}px) rotateX(${(p.fromX + (p.toX - p.fromX) * t).toFixed(3)}deg) rotateY(${(p.fromY + (p.toY - p.fromY) * t).toFixed(3)}deg)` } };
+    return {
+      style: {
+        transform: `perspective(${p.perspective}px) rotateX(${(p.fromX + (p.toX - p.fromX) * t).toFixed(3)}deg) rotateY(${(p.fromY + (p.toY - p.fromY) * t).toFixed(3)}deg)`,
+      },
+    };
   },
   example: modExample({}),
 });
 
-export const MODIFIERS = [modEnter, modGlow, modShadow, modReflection, modBlur, modChromatic, modRipple, modPixelate, modColorGrade, modMaskReveal, modFloat, modTilt3d];
+export const MODIFIERS = [
+  modEnter,
+  modGlow,
+  modShadow,
+  modReflection,
+  modBlur,
+  modChromatic,
+  modRipple,
+  modPixelate,
+  modColorGrade,
+  modMaskReveal,
+  modFloat,
+  modTilt3d,
+];

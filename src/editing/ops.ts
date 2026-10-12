@@ -39,7 +39,8 @@ export function applyEditOps(input: Storyboard, ops: EditOp[], o: ApplyEditsOpti
   };
   const needCap = (id: string, kind: "layer" | "camera" | "transition") => {
     const c = getCapability(id);
-    if (!c || c.kind !== kind) throw new MmsError("CAPABILITY_UNKNOWN", `„${id}” nu e o capabilitate de tip ${kind} din registry.`, "Vezi: npm run mms -- catalog");
+    if (!c || c.kind !== kind)
+      throw new MmsError("CAPABILITY_UNKNOWN", `„${id}” nu e o capabilitate de tip ${kind} din registry.`, "Vezi: npm run mms -- catalog");
   };
   const override = (sceneId: string, slot: string) => {
     const s = sceneOf(sceneId);
@@ -65,7 +66,11 @@ export function applyEditOps(input: Storyboard, ops: EditOp[], o: ApplyEditsOpti
     switch (op.op) {
       case "scene-duration": {
         sceneOf(op.sceneId).durationSec = op.sec;
-        applied.push({ op, description: op.sec === null ? `Scena ${op.sceneId}: durata se calculează din nou (voce, citire, ritm).` : `Scena ${op.sceneId}: durata ${op.sec.toFixed(2)} s.` });
+        applied.push({
+          op,
+          description:
+            op.sec === null ? `Scena ${op.sceneId}: durata se calculează din nou (voce, citire, ritm).` : `Scena ${op.sceneId}: durata ${op.sec.toFixed(2)} s.`,
+        });
         break;
       }
       case "scene-extend": {
@@ -120,14 +125,20 @@ export function applyEditOps(input: Storyboard, ops: EditOp[], o: ApplyEditsOpti
       case "scene-text": {
         const s = sceneOf(op.sceneId);
         s.text = { ...s.text, ...(op.headline !== undefined ? { headline: op.headline } : {}), ...(op.sub !== undefined ? { sub: op.sub } : {}) };
-        applied.push({ op, description: `Scena ${op.sceneId}: text${op.headline !== undefined ? ` „${op.headline}”` : ""}${op.sub !== undefined ? ` / „${op.sub}”` : ""}.` });
+        applied.push({
+          op,
+          description: `Scena ${op.sceneId}: text${op.headline !== undefined ? ` „${op.headline}”` : ""}${op.sub !== undefined ? ` / „${op.sub}”` : ""}.`,
+        });
         break;
       }
       case "set-transition": {
         const s = sceneOf(op.sceneId);
         if (op.capability) needCap(op.capability, "transition");
         s.transitionIn = op.capability ? { capability: op.capability, durationFrames: op.durationFrames, params: {} } : null;
-        applied.push({ op, description: `Scena ${op.sceneId}: tranziția ${op.capability ?? "aleasă automat"}${op.durationFrames ? ` (${op.durationFrames} cadre la 30 fps)` : ""}.` });
+        applied.push({
+          op,
+          description: `Scena ${op.sceneId}: tranziția ${op.capability ?? "aleasă automat"}${op.durationFrames ? ` (${op.durationFrames} cadre la 30 fps)` : ""}.`,
+        });
         break;
       }
       case "set-camera":
@@ -148,7 +159,8 @@ export function applyEditOps(input: Storyboard, ops: EditOp[], o: ApplyEditsOpti
         applied.push({ op, description: `Scena ${op.sceneId}: tăietura ${op.snap === "none" ? "liberă" : `pe ${op.snap === "bar" ? "măsură" : "bătaie"}`}.` });
         break;
       case "replace-asset": {
-        if (o.assets && !op.assetId.startsWith("tag:") && !o.assets.assets.some((a) => a.id === op.assetId)) throw new MmsError("ASSET_MISSING", `Materialul „${op.assetId}” nu există în proiect.`);
+        if (o.assets && !op.assetId.startsWith("tag:") && !o.assets.assets.some((a) => a.id === op.assetId))
+          throw new MmsError("ASSET_MISSING", `Materialul „${op.assetId}” nu există în proiect.`);
         const s = sceneOf(op.sceneId);
         s.slots = { ...s.slots, [op.slot]: op.assetId };
         if (s.focus && s.focus.assetId !== op.assetId) s.focus = undefined;
@@ -158,7 +170,12 @@ export function applyEditOps(input: Storyboard, ops: EditOp[], o: ApplyEditsOpti
       case "layer-params": {
         const ov = override(op.sceneId, op.slot);
         ov.params = { ...ov.params, ...op.params };
-        applied.push({ op, description: `Scena ${op.sceneId}, stratul „${op.slot}”: ${Object.entries(op.params).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ")}.` });
+        applied.push({
+          op,
+          description: `Scena ${op.sceneId}, stratul „${op.slot}”: ${Object.entries(op.params)
+            .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+            .join(", ")}.`,
+        });
         break;
       }
       case "layer-capability": {

@@ -3,7 +3,18 @@
  * o rețetă, materialele potrivite (cea mai potrivită captură pentru textul scenei) și punctul de interes.
  * Rezultatul e executabil (compilatorul îl transformă în timeline), nu proză.
  */
-import { assetRegions, isClaimUsable, type Asset, type Brief, type Claim, type Research, type Script, type ScriptLine, type Storyboard, type StoryboardScene } from "../core/schema";
+import {
+  assetRegions,
+  isClaimUsable,
+  type Asset,
+  type Brief,
+  type Claim,
+  type Research,
+  type Script,
+  type ScriptLine,
+  type Storyboard,
+  type StoryboardScene,
+} from "../core/schema";
 import { PHONE_MAX_CSS_WIDTH, samePageKey } from "../assets/counterpart";
 import { bestRegion, norm } from "../recipes/kit";
 import { getRecipe } from "../recipes/recipes";
@@ -48,7 +59,9 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
   // varianta de telefon a unei pagini capturate și pe desktop nu intră în storyboard: storyboard-ul e comun
   // tuturor formatelor, iar compilatorul o alege singur pe vertical (assets/counterpart.ts)
   const isPhone = (a: Asset) => !!a.capture && a.capture.viewport.width < PHONE_MAX_CSS_WIDTH;
-  const desktopPages = new Set(inp.assets.filter((a) => a.role === "screenshot" && a.capture && !isPhone(a)).map((a) => `${samePageKey(a.capture!.url)}|${a.capture!.fullPage}`));
+  const desktopPages = new Set(
+    inp.assets.filter((a) => a.role === "screenshot" && a.capture && !isPhone(a)).map((a) => `${samePageKey(a.capture!.url)}|${a.capture!.fullPage}`),
+  );
   const twin = (a: Asset) => isPhone(a) && desktopPages.has(`${samePageKey(a.capture!.url)}|${a.capture!.fullPage}`);
   const screenshots = inp.assets.filter((a) => a.role === "screenshot" && a.showsProductUI && !a.capture?.fullPage && !twin(a));
   const tall = inp.assets.filter((a) => a.role === "screenshot" && a.capture?.fullPage && !twin(a));
@@ -71,8 +84,15 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
   const sourceUrl = new Map(inp.research.sources.map((s) => [s.id, pageKey(s.url)]));
   const uses = new Map<string, number>();
   const rankScreens = (text: string, avoid: string | null, line: ScriptLine | null) => {
-    const pages = new Set((line?.claimIds ?? []).flatMap((id) => claims.get(id)?.sourceIds ?? []).map((s) => sourceUrl.get(s)).filter(Boolean));
-    const words = norm(text).split(/\s+/).filter((w) => w.length > 3);
+    const pages = new Set(
+      (line?.claimIds ?? [])
+        .flatMap((id) => claims.get(id)?.sourceIds ?? [])
+        .map((s) => sourceUrl.get(s))
+        .filter(Boolean),
+    );
+    const words = norm(text)
+      .split(/\s+/)
+      .filter((w) => w.length > 3);
     // capturile de pagină întreagă intră doar cu o zonă care chiar se potrivește textului (camera derulează până la ea)
     return [...screenshots, ...tall]
       .map((a) => {
@@ -118,7 +138,11 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
         }
       }
       // mai multe ecrane: cele mai potrivite 3 capturi (nu toate), fără paginile întregi
-      if (s.kind === "screenshot" && s.multiple && screenshots.length) slots[s.name] = rankScreens(text, null, l).filter((x) => !x.a.capture?.fullPage).slice(0, 3).map((x) => x.a.id);
+      if (s.kind === "screenshot" && s.multiple && screenshots.length)
+        slots[s.name] = rankScreens(text, null, l)
+          .filter((x) => !x.a.capture?.fullPage)
+          .slice(0, 3)
+          .map((x) => x.a.id);
       if (s.kind === "tall-screenshot" && tall.length) slots[s.name] = tall[0].id;
     }
     const missing = recipe.slots.filter((s) => s.required && !slots[s.name]);
@@ -127,7 +151,13 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       rationale.push(`Scena ${i + 1}: rețeta „${recipeId}” cere ${missing.map((m) => m.kind).join(", ")}, care lipsește; folosesc „${fallback}”.`);
       recipeId = fallback;
     }
-    const items = recipeId === "feature-montage" ? featureLines.map((f) => f.onScreen).filter(Boolean).slice(0, 4) : [];
+    const items =
+      recipeId === "feature-montage"
+        ? featureLines
+            .map((f) => f.onScreen)
+            .filter(Boolean)
+            .slice(0, 4)
+        : [];
     const id = `s${scenes.length + 1}-${slug(ts.role)}`;
     const sceneText: StoryboardScene["text"] = {};
     if (l?.onScreen) sceneText.headline = l.onScreen;
@@ -146,7 +176,10 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
       shot: ts.shot,
       durationSec: null,
       lineIds: l ? [l.id] : [],
-      recipe: { id: recipeId, params: recipeId === "cta-end" && inp.brief.cta.url ? { url: inp.brief.cta.url.replace(/^https?:\/\//, "").replace(/\/$/, "") } : {} },
+      recipe: {
+        id: recipeId,
+        params: recipeId === "cta-end" && inp.brief.cta.url ? { url: inp.brief.cta.url.replace(/^https?:\/\//, "").replace(/\/$/, "") } : {},
+      },
       slots,
       text: sceneText,
       focus,
@@ -220,7 +253,13 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
   scenes.forEach((s, i) => (s.id = s.id.replace(/^s\d+/, `s${i + 1}`)));
   const unusable = inp.research.claims.filter((c) => !isClaimUsable(c)).length;
   if (unusable) rationale.push(`${unusable} afirmații nu sunt confirmate și nu au fost folosite.`);
-  return { schemaVersion: 1, templateId: inp.template.id, audio: { duckDb: -10, musicGainDb: 0, sfxGainDb: 0, music: inp.brief.audio.music.mode !== "none" }, rationale, scenes };
+  return {
+    schemaVersion: 1,
+    templateId: inp.template.id,
+    audio: { duckDb: -10, musicGainDb: 0, sfxGainDb: 0, music: inp.brief.audio.music.mode !== "none" },
+    rationale,
+    scenes,
+  };
 }
 
 function purposeFor(ts: TemplateScene, l: ScriptLine | null): string {

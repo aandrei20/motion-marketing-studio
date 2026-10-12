@@ -31,7 +31,11 @@ async function saveVersioned(ctx: Ctx, kind: "script" | "storyboard", data: unkn
   let target = v;
   if (frozen) {
     if (!window.confirm(`Versiunea ${v} e înghețată (nu se mai modifică). Creez versiunea următoare cu modificările tale?`)) return;
-    const meta = await fetch(`/api/projects/${id}/versions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: v, label: `editare ${kind}` }) }).then((r) => r.json());
+    const meta = await fetch(`/api/projects/${id}/versions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: v, label: `editare ${kind}` }),
+    }).then((r) => r.json());
     if (meta.error) throw new Error(meta.error);
     target = meta.id;
   }
@@ -49,7 +53,19 @@ function Markdownish({ text }: { text: string }) {
       {text.split("\n").map((l, i) => {
         if (l.startsWith("# ")) return <h2 key={i}>{l.slice(2)}</h2>;
         if (l.startsWith("## ")) return <h3 key={i}>{l.slice(3)}</h3>;
-        if (l.startsWith("- ") || l.startsWith("  - ")) return <div key={i} className={l.startsWith("  ") ? "li sub" : "li"} dangerouslySetInnerHTML={{ __html: l.replace(/^\s*- /, "").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>") }} />;
+        if (l.startsWith("- ") || l.startsWith("  - "))
+          return (
+            <div
+              key={i}
+              className={l.startsWith("  ") ? "li sub" : "li"}
+              dangerouslySetInnerHTML={{
+                __html: l
+                  .replace(/^\s*- /, "")
+                  .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+                  .replace(/`(.+?)`/g, "<code>$1</code>"),
+              }}
+            />
+          );
         return l.trim() ? <p key={i}>{l}</p> : null;
       })}
     </div>
@@ -61,56 +77,63 @@ export function OverviewPanel({ ctx }: { ctx: Ctx }) {
   const approved = p.status !== "intake";
   return (
     <>
-    <ProductionFlow ctx={ctx} />
-    <div className="cols">
-      <Section title="Pașii de producție">
-        <p className="muted small">Fiecare pas e un job; progresul apare în stânga. Lucrul de producție începe doar după aprobarea brief-ului.</p>
-        <div className="steps">
-          <button className="btn" disabled={!approved} onClick={() => ctx.runJob("capture", { demo: false, url: p.product.url, captureId: `cap-${Date.now() % 100000}` })}>
-            Captură reală (URL produs)
-          </button>
-          <button className="btn" disabled={!approved} onClick={() => ctx.runJob("brand")}>
-            Brand kit din captură
-          </button>
-          <button className="btn" disabled={!approved} onClick={() => ctx.runJob("script")}>
-            Schiță de script
-          </button>
-          <button className="btn" disabled={!approved} onClick={() => ctx.runJob("storyboard")}>
-            Storyboard
-          </button>
-          <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("voice")}>
-            Voce
-          </button>
-          <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
-            Compilează timeline
-          </button>
-          <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("audio")}>
-            Audio (mix)
-          </button>
-          <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("preview")}>
-            Preview
-          </button>
-          <button className="btn primary" disabled={!approved} onClick={() => ctx.runJob("make")}>
-            Producție completă
-          </button>
-        </div>
-        {!approved ? <p className="warn">Brief-ul nu e aprobat. Completează-l în tabul Brief și scrie „aprob”.</p> : null}
-        <h3>Joburi recente</h3>
-        <div className="joblist">
-          {ctx.jobs.slice(-8).reverse().map((j) => (
-            <details key={j.id}>
-              <summary>
-                <span className={`chip ${j.state}`}>{j.state}</span> {j.label}
-              </summary>
-              <pre className="log">{[...j.log, j.error ?? ""].join("\n")}</pre>
-            </details>
-          ))}
-        </div>
-      </Section>
-      <Section title="STATE.md">
-        <Markdownish text={ctx.bundle.stateMd} />
-      </Section>
-    </div>
+      <ProductionFlow ctx={ctx} />
+      <div className="cols">
+        <Section title="Pașii de producție">
+          <p className="muted small">Fiecare pas e un job; progresul apare în stânga. Lucrul de producție începe doar după aprobarea brief-ului.</p>
+          <div className="steps">
+            <button
+              className="btn"
+              disabled={!approved}
+              onClick={() => ctx.runJob("capture", { demo: false, url: p.product.url, captureId: `cap-${Date.now() % 100000}` })}
+            >
+              Captură reală (URL produs)
+            </button>
+            <button className="btn" disabled={!approved} onClick={() => ctx.runJob("brand")}>
+              Brand kit din captură
+            </button>
+            <button className="btn" disabled={!approved} onClick={() => ctx.runJob("script")}>
+              Schiță de script
+            </button>
+            <button className="btn" disabled={!approved} onClick={() => ctx.runJob("storyboard")}>
+              Storyboard
+            </button>
+            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("voice")}>
+              Voce
+            </button>
+            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
+              Compilează timeline
+            </button>
+            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("audio")}>
+              Audio (mix)
+            </button>
+            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("preview")}>
+              Preview
+            </button>
+            <button className="btn primary" disabled={!approved} onClick={() => ctx.runJob("make")}>
+              Producție completă
+            </button>
+          </div>
+          {!approved ? <p className="warn">Brief-ul nu e aprobat. Completează-l în tabul Brief și scrie „aprob”.</p> : null}
+          <h3>Joburi recente</h3>
+          <div className="joblist">
+            {ctx.jobs
+              .slice(-8)
+              .reverse()
+              .map((j) => (
+                <details key={j.id}>
+                  <summary>
+                    <span className={`chip ${j.state}`}>{j.state}</span> {j.label}
+                  </summary>
+                  <pre className="log">{[...j.log, j.error ?? ""].join("\n")}</pre>
+                </details>
+              ))}
+          </div>
+        </Section>
+        <Section title="STATE.md">
+          <Markdownish text={ctx.bundle.stateMd} />
+        </Section>
+      </div>
     </>
   );
 }
@@ -133,14 +156,23 @@ const EMPTY_BRIEF: Brief = {
   doNotShow: [],
   platforms: ["tiktok"],
   durationSec: 30,
-  audio: { voice: { mode: "tts", provider: "windows", voiceId: "", rate: 1 }, music: { mode: "synth", mood: "driving" }, sfxDensity: "medium", intentionalSilence: false },
+  audio: {
+    voice: { mode: "tts", provider: "windows", voiceId: "", rate: 1 },
+    music: { mode: "synth", mood: "driving" },
+    sfxDensity: "medium",
+    intentionalSilence: false,
+  },
   references: [],
   captions: { burnIn: true, srt: true },
   delivery: { postPack: false, hookVariants: 0, previews: "until-threshold" },
   approvedAt: null,
 };
 
-const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+const lines = (s: string) =>
+  s
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 export function BriefPanel({ ctx }: { ctx: Ctx }) {
   const [b, setB] = useState<Brief>(ctx.bundle.brief ?? EMPTY_BRIEF);
@@ -149,7 +181,14 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
   const [voices, setVoices] = useState<Array<{ provider: string; name: string; language: string }>>([]);
   const [suggest, setSuggest] = useState<Array<{ direction: string; why: string }>>([]);
   useEffect(() => setB(ctx.bundle.brief ?? EMPTY_BRIEF), [ctx.bundle.brief]);
-  useEffect(() => void api.voices().then(setVoices).catch(() => undefined), []);
+  useEffect(
+    () =>
+      void api
+        .voices()
+        .then(setVoices)
+        .catch(() => undefined),
+    [],
+  );
   const up = (patch: Partial<Brief>) => setB((x) => ({ ...x, ...patch }));
   const save = async () => {
     try {
@@ -165,7 +204,14 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
   const approvedAt = ctx.bundle.approvals.items.find((a) => a.kind === "brief")?.at;
   return (
     <div className="cols">
-      <Section title="Brief" aside={<button className="btn ghost" onClick={() => setRaw(raw === null ? JSON.stringify(b, null, 2) : null)}>{raw === null ? "JSON avansat" : "Formular"}</button>}>
+      <Section
+        title="Brief"
+        aside={
+          <button className="btn ghost" onClick={() => setRaw(raw === null ? JSON.stringify(b, null, 2) : null)}>
+            {raw === null ? "JSON avansat" : "Formular"}
+          </button>
+        }
+      >
         {raw !== null ? (
           <textarea className="code" rows={30} value={raw} onChange={(e) => setRaw(e.target.value)} />
         ) : (
@@ -174,7 +220,9 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             <label>
               Obiectiv
               <select value={b.objective} onChange={(e) => up({ objective: e.target.value as Brief["objective"] })}>
-                {["awareness", "signups", "downloads", "sales", "launch", "feature-adoption", "other"].map((o) => <option key={o}>{o}</option>)}
+                {["awareness", "signups", "downloads", "sales", "launch", "feature-adoption", "other"].map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
               </select>
             </label>
             <label>
@@ -187,7 +235,11 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             </label>
             <label>
               Ce îl doare (câte una pe rând)
-              <textarea rows={2} value={b.audience.painPoints.join("\n")} onChange={(e) => up({ audience: { ...b.audience, painPoints: lines(e.target.value) } })} />
+              <textarea
+                rows={2}
+                value={b.audience.painPoints.join("\n")}
+                onChange={(e) => up({ audience: { ...b.audience, painPoints: lines(e.target.value) } })}
+              />
             </label>
             <div className="grid2">
               <label>
@@ -207,7 +259,12 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             <div className="chips">
               {["tiktok", "reels", "shorts", "youtube", "feed", "linkedin", "x"].map((p) => (
                 <label key={p} className="check">
-                  <input type="checkbox" checked={b.platforms.includes(p as never)} onChange={(e) => up({ platforms: (e.target.checked ? [...b.platforms, p] : b.platforms.filter((x) => x !== p)) as Brief["platforms"] })} /> {p}
+                  <input
+                    type="checkbox"
+                    checked={b.platforms.includes(p as never)}
+                    onChange={(e) => up({ platforms: (e.target.checked ? [...b.platforms, p] : b.platforms.filter((x) => x !== p)) as Brief["platforms"] })}
+                  />{" "}
+                  {p}
                 </label>
               ))}
             </div>
@@ -222,11 +279,26 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             </label>
             <label>
               Hook-urile tale (câte unul pe rând)
-              <textarea rows={2} value={b.userVision.hooks.join("\n")} onChange={(e) => up({ userVision: { ...b.userVision, hooks: lines(e.target.value) } })} />
+              <textarea
+                rows={2}
+                value={b.userVision.hooks.join("\n")}
+                onChange={(e) => up({ userVision: { ...b.userVision, hooks: lines(e.target.value) } })}
+              />
             </label>
             <label>
               Fraze obligatorii, exacte (câte una pe rând)
-              <textarea rows={2} value={b.userVision.mandatoryPhrases.map((m) => m.text).join("\n")} onChange={(e) => up({ userVision: { ...b.userVision, mandatoryPhrases: lines(e.target.value).map((t, i) => ({ id: `fraza-${i + 1}`, text: t, channel: "any" as const })) } })} />
+              <textarea
+                rows={2}
+                value={b.userVision.mandatoryPhrases.map((m) => m.text).join("\n")}
+                onChange={(e) =>
+                  up({
+                    userVision: {
+                      ...b.userVision,
+                      mandatoryPhrases: lines(e.target.value).map((t, i) => ({ id: `fraza-${i + 1}`, text: t, channel: "any" as const })),
+                    },
+                  })
+                }
+              />
             </label>
             <div className="grid2">
               <label>
@@ -244,23 +316,53 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
               <label>
                 Ritm
                 <select value={b.pacing} onChange={(e) => up({ pacing: e.target.value as Brief["pacing"] })}>
-                  {["slow", "medium", "fast", "aggressive"].map((o) => <option key={o}>{o}</option>)}
+                  {["slow", "medium", "fast", "aggressive"].map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
                 </select>
               </label>
               <label>
                 Ton (cuvinte, separate prin virgulă)
-                <input value={b.tone.join(", ")} onChange={(e) => up({ tone: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+                <input
+                  value={b.tone.join(", ")}
+                  onChange={(e) =>
+                    up({
+                      tone: e.target.value
+                        .split(",")
+                        .map((x) => x.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                />
               </label>
               <label>
                 Nivel de efecte
-                <select value={b.visual.effectsLevel} onChange={(e) => up({ visual: { ...b.visual, effectsLevel: e.target.value as Brief["visual"]["effectsLevel"] } })}>
-                  {["subtle", "medium", "bold"].map((o) => <option key={o}>{o}</option>)}
+                <select
+                  value={b.visual.effectsLevel}
+                  onChange={(e) => up({ visual: { ...b.visual, effectsLevel: e.target.value as Brief["visual"]["effectsLevel"] } })}
+                >
+                  {["subtle", "medium", "bold"].map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
                 </select>
               </label>
             </div>
             {!b.direction ? (
               <div>
-                <button className="btn ghost" onClick={async () => setSuggest(await (await fetch("/api/suggest-directions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tone: b.tone, pacing: b.pacing, category: ctx.bundle.project.product.category, platforms: b.platforms }) })).json())}>
+                <button
+                  className="btn ghost"
+                  onClick={async () =>
+                    setSuggest(
+                      await (
+                        await fetch("/api/suggest-directions", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tone: b.tone, pacing: b.pacing, category: ctx.bundle.project.product.category, platforms: b.platforms }),
+                        })
+                      ).json(),
+                    )
+                  }
+                >
                   Propune 3 direcții
                 </button>
                 {suggest.map((s) => (
@@ -272,13 +374,29 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             ) : null}
             <label>
               Capabilități interzise (id-uri din registry, separate prin virgulă)
-              <input value={b.visual.forbiddenCapabilities.join(", ")} onChange={(e) => up({ visual: { ...b.visual, forbiddenCapabilities: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) } })} />
+              <input
+                value={b.visual.forbiddenCapabilities.join(", ")}
+                onChange={(e) =>
+                  up({
+                    visual: {
+                      ...b.visual,
+                      forbiddenCapabilities: e.target.value
+                        .split(",")
+                        .map((x) => x.trim())
+                        .filter(Boolean),
+                    },
+                  })
+                }
+              />
             </label>
             <h3>E/F. Limbă, subtitrări, audio</h3>
             <div className="grid2">
               <label>
                 Vocea
-                <select value={b.audio.voice.mode} onChange={(e) => up({ audio: { ...b.audio, voice: { ...b.audio.voice, mode: e.target.value as Brief["audio"]["voice"]["mode"] } } })}>
+                <select
+                  value={b.audio.voice.mode}
+                  onChange={(e) => up({ audio: { ...b.audio, voice: { ...b.audio.voice, mode: e.target.value as Brief["audio"]["voice"]["mode"] } } })}
+                >
                   <option value="tts">TTS</option>
                   <option value="user-file">vocea mea (fișier)</option>
                   <option value="none">fără voce</option>
@@ -287,7 +405,13 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
               {b.audio.voice.mode === "tts" ? (
                 <label>
                   Vocea TTS
-                  <select value={`${b.audio.voice.provider ?? ""}|${b.audio.voice.voiceId ?? ""}`} onChange={(e) => { const [provider, voiceId] = e.target.value.split("|"); up({ audio: { ...b.audio, voice: { ...b.audio.voice, provider, voiceId } } }); }}>
+                  <select
+                    value={`${b.audio.voice.provider ?? ""}|${b.audio.voice.voiceId ?? ""}`}
+                    onChange={(e) => {
+                      const [provider, voiceId] = e.target.value.split("|");
+                      up({ audio: { ...b.audio, voice: { ...b.audio.voice, provider, voiceId } } });
+                    }}
+                  >
                     <option value="|">— alege —</option>
                     {voices.map((v) => (
                       <option key={`${v.provider}|${v.name}`} value={`${v.provider}|${v.name}`}>
@@ -299,15 +423,29 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
               ) : b.audio.voice.mode === "user-file" ? (
                 <label>
                   Fișierul vocii (asset)
-                  <select value={b.audio.voice.assetId ?? ""} onChange={(e) => up({ audio: { ...b.audio, voice: { ...b.audio.voice, assetId: e.target.value || undefined } } })}>
+                  <select
+                    value={b.audio.voice.assetId ?? ""}
+                    onChange={(e) => up({ audio: { ...b.audio, voice: { ...b.audio.voice, assetId: e.target.value || undefined } } })}
+                  >
                     <option value="">— alege —</option>
-                    {ctx.bundle.assets.assets.filter((a) => a.type === "audio").map((a) => <option key={a.id} value={a.id}>{a.originalName}</option>)}
+                    {ctx.bundle.assets.assets
+                      .filter((a) => a.type === "audio")
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.originalName}
+                        </option>
+                      ))}
                   </select>
                 </label>
-              ) : <span />}
+              ) : (
+                <span />
+              )}
               <label>
                 Muzica
-                <select value={b.audio.music.mode} onChange={(e) => up({ audio: { ...b.audio, music: { ...b.audio.music, mode: e.target.value as Brief["audio"]["music"]["mode"] } } })}>
+                <select
+                  value={b.audio.music.mode}
+                  onChange={(e) => up({ audio: { ...b.audio, music: { ...b.audio.music, mode: e.target.value as Brief["audio"]["music"]["mode"] } } })}
+                >
                   <option value="synth">sintetizată de studio (originală)</option>
                   <option value="user-file">muzica mea (fișier)</option>
                   <option value="none">fără muzică</option>
@@ -316,43 +454,70 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
               {b.audio.music.mode === "synth" ? (
                 <label>
                   Dispoziția muzicii
-                  <select value={b.audio.music.mood} onChange={(e) => up({ audio: { ...b.audio, music: { ...b.audio.music, mood: e.target.value as Brief["audio"]["music"]["mood"] } } })}>
-                    {["driving", "uplifting", "dark", "calm", "playful"].map((o) => <option key={o}>{o}</option>)}
+                  <select
+                    value={b.audio.music.mood}
+                    onChange={(e) => up({ audio: { ...b.audio, music: { ...b.audio.music, mood: e.target.value as Brief["audio"]["music"]["mood"] } } })}
+                  >
+                    {["driving", "uplifting", "dark", "calm", "playful"].map((o) => (
+                      <option key={o}>{o}</option>
+                    ))}
                   </select>
                 </label>
               ) : b.audio.music.mode === "user-file" ? (
                 <label>
                   Fișierul muzicii (asset)
-                  <select value={b.audio.music.assetId ?? ""} onChange={(e) => up({ audio: { ...b.audio, music: { ...b.audio.music, assetId: e.target.value || undefined } } })}>
+                  <select
+                    value={b.audio.music.assetId ?? ""}
+                    onChange={(e) => up({ audio: { ...b.audio, music: { ...b.audio.music, assetId: e.target.value || undefined } } })}
+                  >
                     <option value="">— alege —</option>
-                    {ctx.bundle.assets.assets.filter((a) => a.type === "audio").map((a) => <option key={a.id} value={a.id}>{a.originalName}</option>)}
+                    {ctx.bundle.assets.assets
+                      .filter((a) => a.type === "audio")
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.originalName}
+                        </option>
+                      ))}
                   </select>
                 </label>
-              ) : <span />}
+              ) : (
+                <span />
+              )}
               <label>
                 Efecte sonore
                 <select value={b.audio.sfxDensity} onChange={(e) => up({ audio: { ...b.audio, sfxDensity: e.target.value as Brief["audio"]["sfxDensity"] } })}>
-                  {["none", "low", "medium", "high"].map((o) => <option key={o}>{o}</option>)}
+                  {["none", "low", "medium", "high"].map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
                 </select>
               </label>
               <label className="check">
-                <input type="checkbox" checked={b.captions.burnIn} onChange={(e) => up({ captions: { ...b.captions, burnIn: e.target.checked } })} /> subtitrări arse în video
+                <input type="checkbox" checked={b.captions.burnIn} onChange={(e) => up({ captions: { ...b.captions, burnIn: e.target.checked } })} /> subtitrări
+                arse în video
               </label>
               <label className="check">
                 <input type="checkbox" checked={b.captions.srt} onChange={(e) => up({ captions: { ...b.captions, srt: e.target.checked } })} /> fișier .srt
               </label>
               <label className="check">
-                <input type="checkbox" checked={b.delivery.postPack} onChange={(e) => up({ delivery: { ...b.delivery, postPack: e.target.checked } })} /> pachet de postare (copertă + text)
+                <input type="checkbox" checked={b.delivery.postPack} onChange={(e) => up({ delivery: { ...b.delivery, postPack: e.target.checked } })} /> pachet
+                de postare (copertă + text)
               </label>
               <label>
                 Variante de hook
                 <select value={b.delivery.hookVariants} onChange={(e) => up({ delivery: { ...b.delivery, hookVariants: Number(e.target.value) } })}>
-                  {[0, 2, 3].map((o) => <option key={o} value={o}>{o}</option>)}
+                  {[0, 2, 3].map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
                 Preview-uri
-                <select value={b.delivery.previews} onChange={(e) => up({ delivery: { ...b.delivery, previews: e.target.value as Brief["delivery"]["previews"] } })}>
+                <select
+                  value={b.delivery.previews}
+                  onChange={(e) => up({ delivery: { ...b.delivery, previews: e.target.value as Brief["delivery"]["previews"] } })}
+                >
                   <option value="one">1 preview</option>
                   <option value="two">2 preview-uri</option>
                   <option value="until-threshold">până trece pragul 8/10</option>
@@ -372,10 +537,24 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
           <p className="ok">Brief aprobat la {approvedAt.slice(0, 16).replace("T", " ")}.</p>
         ) : (
           <>
-            <p>Lucrul începe doar după ce scrii exact <b>aprob</b>.</p>
+            <p>
+              Lucrul începe doar după ce scrii exact <b>aprob</b>.
+            </p>
             <div className="row">
               <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="aprob" />
-              <button className="btn primary" disabled={!ctx.bundle.brief} onClick={async () => { try { await api.approve(ctx.bundle.project.id, "brief", phrase); ctx.notify("Brief aprobat."); await ctx.reload(); } catch (e) { ctx.notify((e as Error).message, "err"); } }}>
+              <button
+                className="btn primary"
+                disabled={!ctx.bundle.brief}
+                onClick={async () => {
+                  try {
+                    await api.approve(ctx.bundle.project.id, "brief", phrase);
+                    ctx.notify("Brief aprobat.");
+                    await ctx.reload();
+                  } catch (e) {
+                    ctx.notify((e as Error).message, "err");
+                  }
+                }}
+              >
                 Aprob
               </button>
             </div>
@@ -388,11 +567,13 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
               {g}. {label}
             </summary>
             <ul>
-              {ctx.meta.questions.filter((q) => q.group === g).map((q) => (
-                <li key={q.id}>
-                  {q.text} {q.options ? <span className="muted small">({q.options.join(" · ")})</span> : null}
-                </li>
-              ))}
+              {ctx.meta.questions
+                .filter((q) => q.group === g)
+                .map((q) => (
+                  <li key={q.id}>
+                    {q.text} {q.options ? <span className="muted small">({q.options.join(" · ")})</span> : null}
+                  </li>
+                ))}
             </ul>
           </details>
         ))}
@@ -416,16 +597,30 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
   const f = a.analysis.focalPoint;
   return (
     <div className="asset">
-      <div className="thumb" onClick={(e) => {
-        if (a.type !== "image" && a.type !== "svg") return;
-        const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-        void patch({ focalPoint: { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } });
-      }} title="Clic pe imagine = punct focal">
-        {a.type === "image" || a.type === "svg" ? <img src={src} alt="" /> : a.type === "video" ? <video src={src} muted controls /> : a.type === "audio" ? <audio src={src} controls /> : <div className="file-type">{a.type}</div>}
+      <div
+        className="thumb"
+        onClick={(e) => {
+          if (a.type !== "image" && a.type !== "svg") return;
+          const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+          void patch({ focalPoint: { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } });
+        }}
+        title="Clic pe imagine = punct focal"
+      >
+        {a.type === "image" || a.type === "svg" ? (
+          <img src={src} alt="" />
+        ) : a.type === "video" ? (
+          <video src={src} muted controls />
+        ) : a.type === "audio" ? (
+          <audio src={src} controls />
+        ) : (
+          <div className="file-type">{a.type}</div>
+        )}
         {f && (a.type === "image" || a.type === "svg") ? <span className="focal" style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%` }} /> : null}
       </div>
       <div className="asset-body">
-        <div className="asset-name" title={a.originalName}>{a.originalName}</div>
+        <div className="asset-name" title={a.originalName}>
+          {a.originalName}
+        </div>
         <div className="muted small">
           {a.id} · {a.origin} · {a.media.width ? `${a.media.width}×${a.media.height}` : ""} {a.media.durationSec ? `${a.media.durationSec.toFixed(1)} s` : ""}
           {a.capture ? ` · ${a.capture.regions.length} zone` : ""}
@@ -434,12 +629,33 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
         <label className="small">
           Rol
           <select value={a.role} onChange={(e) => patch({ role: e.target.value })}>
-            {["screenshot", "screen-recording", "logo", "product-image", "photo", "background", "icon", "music", "voiceover", "sfx", "font", "brand-guide", "reference-video", "reference-image", "document", "other"].map((r) => <option key={r}>{r}</option>)}
+            {[
+              "screenshot",
+              "screen-recording",
+              "logo",
+              "product-image",
+              "photo",
+              "background",
+              "icon",
+              "music",
+              "voiceover",
+              "sfx",
+              "font",
+              "brand-guide",
+              "reference-video",
+              "reference-image",
+              "document",
+              "other",
+            ].map((r) => (
+              <option key={r}>{r}</option>
+            ))}
           </select>
         </label>
         {a.analysis.palette.length ? (
           <div className="palette">
-            {a.analysis.palette.slice(0, 6).map((c) => <span key={c} style={{ background: c }} title={c} />)}
+            {a.analysis.palette.slice(0, 6).map((c) => (
+              <span key={c} style={{ background: c }} title={c} />
+            ))}
           </div>
         ) : null}
         {a.rights.thirdParty ? (
@@ -448,8 +664,12 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
             {a.rights.status !== "confirmed-by-user" ? (
               <div className="row">
                 <span className="small">Ai dreptul să-l folosești?</span>
-                <button className="btn tiny" onClick={() => patch({ rights: "confirmed-by-user" })}>Da</button>
-                <button className="btn tiny ghost" onClick={() => patch({ rights: "denied" })}>Nu</button>
+                <button className="btn tiny" onClick={() => patch({ rights: "confirmed-by-user" })}>
+                  Da
+                </button>
+                <button className="btn tiny ghost" onClick={() => patch({ rights: "denied" })}>
+                  Nu
+                </button>
               </div>
             ) : null}
           </div>
@@ -458,8 +678,16 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
           <div className="warn small">
             {a.pii.regions.length} zone cu date personale.{" "}
             {a.pii.blurApproved ? "Se estompează în video." : a.pii.keepApproved ? "Rămân vizibile (decizia ta)." : "Decide:"}{" "}
-            {!a.pii.blurApproved ? <button className="btn tiny" onClick={() => patch({ blurApproved: true })}>Estompează</button> : null}{" "}
-            {!a.pii.keepApproved ? <button className="btn tiny" onClick={() => patch({ keepApproved: true })}>Lasă-le vizibile</button> : null}
+            {!a.pii.blurApproved ? (
+              <button className="btn tiny" onClick={() => patch({ blurApproved: true })}>
+                Estompează
+              </button>
+            ) : null}{" "}
+            {!a.pii.keepApproved ? (
+              <button className="btn tiny" onClick={() => patch({ keepApproved: true })}>
+                Lasă-le vizibile
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -480,29 +708,53 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
     <div>
       <div className="cols">
         <Section title="Captură reală (Playwright)">
-          <p className="muted small">Un browser automat deschide pagina și face capturi 2× cu zonele din DOM (butoane, câmpuri, carduri). Interfața nu se redesenează niciodată.</p>
+          <p className="muted small">
+            Un browser automat deschide pagina și face capturi 2× cu zonele din DOM (butoane, câmpuri, carduri). Interfața nu se redesenează niciodată.
+          </p>
           <label>
             URL
             <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
           </label>
           <div className="row">
             <select value={viewport} onChange={(e) => setViewport(e.target.value)}>
-              {["desktop", "laptop", "tablet", "mobile"].map((v) => <option key={v}>{v}</option>)}
+              {["desktop", "laptop", "tablet", "mobile"].map((v) => (
+                <option key={v}>{v}</option>
+              ))}
             </select>
-            <label className="check"><input type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} /> pagină întreagă</label>
-            <label className="check"><input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} /> textul intră în research</label>
-            <label className="check"><input type="checkbox" checked={capThird} onChange={(e) => setCapThird(e.target.checked)} /> site-ul altcuiva (întreb de drepturi)</label>
+            <label className="check">
+              <input type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} /> pagină întreagă
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} /> textul intră în research
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={capThird} onChange={(e) => setCapThird(e.target.checked)} /> site-ul altcuiva (întreb de drepturi)
+            </label>
           </div>
-          {viewport !== "mobile" && ctx.bundle.project.formats.some((f) => f.height > f.width * 1.15) ? <p className="muted small">Proiectul are un format vertical: se face automat și varianta de telefon a paginii, folosită pe vertical.</p> : null}
+          {viewport !== "mobile" && ctx.bundle.project.formats.some((f) => f.height > f.width * 1.15) ? (
+            <p className="muted small">Proiectul are un format vertical: se face automat și varianta de telefon a paginii, folosită pe vertical.</p>
+          ) : null}
           <div className="actions">
-            <button className="btn ghost" onClick={() => ctx.runJob("capture", { demo: true })}>Capturează produsul demo</button>
-            <button className="btn primary" disabled={!url} onClick={() => ctx.runJob("capture", { url, viewport, fullPage: full, research, thirdParty: capThird, captureId: `cap-${Date.now() % 100000}` })}>Capturează</button>
+            <button className="btn ghost" onClick={() => ctx.runJob("capture", { demo: true })}>
+              Capturează produsul demo
+            </button>
+            <button
+              className="btn primary"
+              disabled={!url}
+              onClick={() => ctx.runJob("capture", { url, viewport, fullPage: full, research, thirdParty: capThird, captureId: `cap-${Date.now() % 100000}` })}
+            >
+              Capturează
+            </button>
           </div>
-          <p className="muted small">Pentru pagini cu autentificare: <code>npm run mms -- login --url … --profile nume</code>, apoi capturează cu <code>--profile nume</code>.</p>
+          <p className="muted small">
+            Pentru pagini cu autentificare: <code>npm run mms -- login --url … --profile nume</code>, apoi capturează cu <code>--profile nume</code>.
+          </p>
         </Section>
         <Section title="Încarcă fișiere">
           <p className="muted small">Logo, capturi, video, muzică, voce, fonturi, PDF-uri, referințe. Duplicatele exacte se recunosc după conținut.</p>
-          <label className="check"><input type="checkbox" checked={third} onChange={(e) => setThird(e.target.checked)} /> materialele sunt ale altcuiva (întreb de drepturi)</label>
+          <label className="check">
+            <input type="checkbox" checked={third} onChange={(e) => setThird(e.target.checked)} /> materialele sunt ale altcuiva (întreb de drepturi)
+          </label>
           <input
             type="file"
             multiple
@@ -527,7 +779,9 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
       </div>
       <Section title={`Materiale (${assets.length})`}>
         <div className="asset-grid">
-          {assets.map((a) => <AssetCard key={a.id} a={a} ctx={ctx} />)}
+          {assets.map((a) => (
+            <AssetCard key={a.id} a={a} ctx={ctx} />
+          ))}
         </div>
       </Section>
     </div>
@@ -550,7 +804,8 @@ export function ResearchPanel({ ctx }: { ctx: Ctx }) {
   const row = (c: Claim) => (
     <div key={c.id} className="claim">
       <div>
-        <span className={`chip ${c.status}`}>{c.status}</span> <span className="chip kind">{c.kind}</span> <span className="chip">{c.category}</span> <span className="muted small">încredere {c.confidence}</span>
+        <span className={`chip ${c.status}`}>{c.status}</span> <span className="chip kind">{c.kind}</span> <span className="chip">{c.category}</span>{" "}
+        <span className="muted small">încredere {c.confidence}</span>
       </div>
       <div className="claim-text">{c.text}</div>
       {c.quote && c.quote !== c.text ? <blockquote>{c.quote}</blockquote> : null}
@@ -558,8 +813,16 @@ export function ResearchPanel({ ctx }: { ctx: Ctx }) {
         {c.id} · surse: {c.sourceIds.join(", ")} · {c.checkedAt.slice(0, 10)} {c.notes ? `· ${c.notes}` : ""}
       </div>
       <div className="row">
-        {c.status !== "approved-by-user" ? <button className="btn tiny" onClick={() => set(c, "approved-by-user")}>Confirm (poate intra în video)</button> : null}
-        {c.status !== "rejected" ? <button className="btn tiny ghost" onClick={() => set(c, "rejected")}>Resping</button> : null}
+        {c.status !== "approved-by-user" ? (
+          <button className="btn tiny" onClick={() => set(c, "approved-by-user")}>
+            Confirm (poate intra în video)
+          </button>
+        ) : null}
+        {c.status !== "rejected" ? (
+          <button className="btn tiny ghost" onClick={() => set(c, "rejected")}>
+            Resping
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -574,7 +837,10 @@ export function ResearchPanel({ ctx }: { ctx: Ctx }) {
         <h3>Surse</h3>
         {r.sources.map((s) => (
           <div key={s.id} className="source">
-            <span className="chip">{s.kind}</span> <b>{s.title}</b> <span className="muted small">{s.url ?? s.assetId} · {s.fetchedAt.slice(0, 10)} · {s.reliability}</span>
+            <span className="chip">{s.kind}</span> <b>{s.title}</b>{" "}
+            <span className="muted small">
+              {s.url ?? s.assetId} · {s.fetchedAt.slice(0, 10)} · {s.reliability}
+            </span>
           </div>
         ))}
         <h3>Afirmații utilizabile</h3>
@@ -599,20 +865,33 @@ export function BrandPanel({ ctx }: { ctx: Ctx }) {
     return (
       <Section title="Brand kit">
         <p>Nu există încă. Se deduce din captura site-ului și din logo.</p>
-        <button className="btn primary" onClick={() => ctx.runJob("brand")}>Deduce brand kit-ul</button>
+        <button className="btn primary" onClick={() => ctx.runJob("brand")}>
+          Deduce brand kit-ul
+        </button>
       </Section>
     );
   const colorKeys = ["primary", "accent", "secondary", "background", "surface", "text", "textMuted"] as const;
   const logos = ctx.bundle.assets.assets.filter((a) => a.role === "logo");
   const fonts = ["Inter", "Archivo", "Space Grotesk", "Instrument Serif", "JetBrains Mono", "Manrope"];
-  const fontRef: Record<string, string> = { Inter: "inter", Archivo: "archivo", "Space Grotesk": "space-grotesk", "Instrument Serif": "instrument-serif", "JetBrains Mono": "jetbrains-mono", Manrope: "manrope" };
+  const fontRef: Record<string, string> = {
+    Inter: "inter",
+    Archivo: "archivo",
+    "Space Grotesk": "space-grotesk",
+    "Instrument Serif": "instrument-serif",
+    "JetBrains Mono": "jetbrains-mono",
+    Manrope: "manrope",
+  };
   return (
     <div className="cols">
       <Section title="Culori" aside={<span className="muted small">sursă: {b.colors.origin}</span>}>
         <div className="colors">
           {colorKeys.map((k) => (
             <label key={k} className="color">
-              <input type="color" value={(b.colors[k] as string | undefined) ?? "#000000"} onChange={(e) => setB({ ...b, colors: { ...b.colors, [k]: e.target.value, origin: "user" } })} />
+              <input
+                type="color"
+                value={(b.colors[k] as string | undefined) ?? "#000000"}
+                onChange={(e) => setB({ ...b, colors: { ...b.colors, [k]: e.target.value, origin: "user" } })}
+              />
               <span>{k}</span>
               <code>{b.colors[k]}</code>
             </label>
@@ -623,30 +902,66 @@ export function BrandPanel({ ctx }: { ctx: Ctx }) {
             Titlu cu <span style={{ color: b.colors.accent }}>accent</span>
           </div>
           <div style={{ fontFamily: b.typography.body.family, color: b.colors.textMuted }}>Text secundar în fontul de corp.</div>
-          <span className="pill" style={{ background: b.colors.primary }}>Buton principal</span>
+          <span className="pill" style={{ background: b.colors.primary }}>
+            Buton principal
+          </span>
         </div>
       </Section>
       <Section title="Tipografie, logo, reguli">
         {(["display", "body"] as const).map((role) => (
           <label key={role}>
             Font {role === "display" ? "titluri" : "corp"}
-            <select value={b.typography[role].family} onChange={(e) => setB({ ...b, typography: { ...b.typography, [role]: { ...b.typography[role], family: e.target.value, source: "library", ref: fontRef[e.target.value] }, origin: "user" } })}>
-              {fonts.map((f) => <option key={f}>{f}</option>)}
+            <select
+              value={b.typography[role].family}
+              onChange={(e) =>
+                setB({
+                  ...b,
+                  typography: {
+                    ...b.typography,
+                    [role]: { ...b.typography[role], family: e.target.value, source: "library", ref: fontRef[e.target.value] },
+                    origin: "user",
+                  },
+                })
+              }
+            >
+              {fonts.map((f) => (
+                <option key={f}>{f}</option>
+              ))}
             </select>
           </label>
         ))}
         <label className="check">
-          <input type="checkbox" checked={b.typography.display.uppercase} onChange={(e) => setB({ ...b, typography: { ...b.typography, display: { ...b.typography.display, uppercase: e.target.checked } } })} /> titluri cu majuscule
+          <input
+            type="checkbox"
+            checked={b.typography.display.uppercase}
+            onChange={(e) => setB({ ...b, typography: { ...b.typography, display: { ...b.typography.display, uppercase: e.target.checked } } })}
+          />{" "}
+          titluri cu majuscule
         </label>
         <label>
           Logo principal
           <select value={b.logo.primary ?? ""} onChange={(e) => setB({ ...b, logo: { ...b.logo, primary: e.target.value || undefined } })}>
             <option value="">—</option>
-            {logos.map((l) => <option key={l.id} value={l.id}>{l.originalName}</option>)}
+            {logos.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.originalName}
+              </option>
+            ))}
           </select>
         </label>
         <p className="muted small">Logo-ul se folosește la scară uniformă: fără recolorare, rotire sau deformare.</p>
-        <button className="btn primary" onClick={async () => { try { await api.saveBrand(ctx.bundle.project.id, b); ctx.notify("Brand salvat. Recompilează versiunea ca să se aplice."); await ctx.reload(); } catch (e) { ctx.notify((e as Error).message, "err"); } }}>
+        <button
+          className="btn primary"
+          onClick={async () => {
+            try {
+              await api.saveBrand(ctx.bundle.project.id, b);
+              ctx.notify("Brand salvat. Recompilează versiunea ca să se aplice.");
+              await ctx.reload();
+            } catch (e) {
+              ctx.notify((e as Error).message, "err");
+            }
+          }}
+        >
           Salvează brand kit-ul
         </button>
       </Section>
@@ -662,8 +977,12 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
   if (!s)
     return (
       <Section title="Script">
-        <p>Nu există încă. Schița se face din faptele verificate și din cuvintele tale (hook, fraze obligatorii, CTA); Claude o rescrie creativ în Claude Code.</p>
-        <button className="btn primary" onClick={() => ctx.runJob("script")}>Fă schița</button>
+        <p>
+          Nu există încă. Schița se face din faptele verificate și din cuvintele tale (hook, fraze obligatorii, CTA); Claude o rescrie creativ în Claude Code.
+        </p>
+        <button className="btn primary" onClick={() => ctx.runJob("script")}>
+          Fă schița
+        </button>
       </Section>
     );
   const upLine = (i: number, patch: Partial<Script["lines"][number]>) => setS({ ...s, lines: s.lines.map((l, k) => (k === i ? { ...l, ...patch } : l)) });
@@ -678,7 +997,14 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
           ))}
         </Section>
       ) : null}
-      <Section title={`Script (${s.lines.length} replici · text ${s.textLanguage} · voce ${s.voiceLanguage ?? "—"})`} aside={<button className="btn primary" onClick={() => saveVersioned(ctx, "script", s).catch((e) => ctx.notify((e as Error).message, "err"))}>Salvează</button>}>
+      <Section
+        title={`Script (${s.lines.length} replici · text ${s.textLanguage} · voce ${s.voiceLanguage ?? "—"})`}
+        aside={
+          <button className="btn primary" onClick={() => saveVersioned(ctx, "script", s).catch((e) => ctx.notify((e as Error).message, "err"))}>
+            Salvează
+          </button>
+        }
+      >
         <table className="table script">
           <thead>
             <tr>
@@ -695,16 +1021,36 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
               <tr key={l.id}>
                 <td>
                   <code>{l.id}</code>
-                  <div className="small muted">{l.isHook ? "hook" : l.isCta ? "CTA" : ""} {l.emotion}</div>
+                  <div className="small muted">
+                    {l.isHook ? "hook" : l.isCta ? "CTA" : ""} {l.emotion}
+                  </div>
                 </td>
                 <td>
-                  <textarea rows={2} value={l.onScreen} onChange={(e) => upLine(i, { onScreen: e.target.value, origin: l.origin === "user-verbatim" ? "user-polished" : l.origin })} />
+                  <textarea
+                    rows={2}
+                    value={l.onScreen}
+                    onChange={(e) => upLine(i, { onScreen: e.target.value, origin: l.origin === "user-verbatim" ? "user-polished" : l.origin })}
+                  />
                 </td>
                 <td>
-                  <textarea rows={2} value={l.voiceover} onChange={(e) => upLine(i, { voiceover: e.target.value, origin: l.origin === "user-verbatim" ? "user-polished" : l.origin })} />
+                  <textarea
+                    rows={2}
+                    value={l.voiceover}
+                    onChange={(e) => upLine(i, { voiceover: e.target.value, origin: l.origin === "user-verbatim" ? "user-polished" : l.origin })}
+                  />
                 </td>
                 <td>
-                  <input value={l.emphasis.join(", ")} onChange={(e) => upLine(i, { emphasis: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+                  <input
+                    value={l.emphasis.join(", ")}
+                    onChange={(e) =>
+                      upLine(i, {
+                        emphasis: e.target.value
+                          .split(",")
+                          .map((x) => x.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                  />
                 </td>
                 <td className="small">{l.claimIds.join(", ") || <span className="muted">—</span>}</td>
                 <td className="small">
@@ -726,21 +1072,50 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
   const [sb, setSb] = useState<Storyboard | null>(ctx.version?.storyboard ?? null);
   const [caps, setCaps] = useState<{ transitions: string[]; cameras: string[] }>({ transitions: [], cameras: [] });
   useEffect(() => setSb(ctx.version?.storyboard ?? null), [ctx.version?.storyboard]);
-  useEffect(() => void api.registry().then((r) => setCaps({ transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id), cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id) })), []);
+  useEffect(
+    () =>
+      void api
+        .registry()
+        .then((r) =>
+          setCaps({
+            transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id),
+            cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id),
+          }),
+        ),
+    [],
+  );
   const report = ctx.version?.compileReport?.[ctx.formatId];
   if (!sb)
     return (
       <Section title="Storyboard">
         <p>Nu există încă. Se construiește din șablon + script + materiale.</p>
-        <button className="btn primary" onClick={() => ctx.runJob("storyboard")}>Construiește storyboard-ul</button>
+        <button className="btn primary" onClick={() => ctx.runJob("storyboard")}>
+          Construiește storyboard-ul
+        </button>
       </Section>
     );
   const up = (i: number, patch: Partial<Storyboard["scenes"][number]>) => setSb({ ...sb, scenes: sb.scenes.map((s, k) => (k === i ? { ...s, ...patch } : s)) });
   const tl = ctx.version?.timelines[ctx.formatId];
   return (
     <div>
-      <Section title={`Storyboard (${sb.scenes.length} scene${sb.templateId ? ` · șablon ${sb.templateId}` : ""}${sb.direction ? ` · direcție ${sb.direction}` : ""})`} aside={<div className="row"><button className="btn" onClick={() => ctx.runJob("compile")}>Recompilează</button><button className="btn primary" onClick={() => saveVersioned(ctx, "storyboard", sb).catch((e) => ctx.notify((e as Error).message, "err"))}>Salvează</button></div>}>
-        {sb.rationale.map((r, i) => <div key={i} className="muted small">• {r}</div>)}
+      <Section
+        title={`Storyboard (${sb.scenes.length} scene${sb.templateId ? ` · șablon ${sb.templateId}` : ""}${sb.direction ? ` · direcție ${sb.direction}` : ""})`}
+        aside={
+          <div className="row">
+            <button className="btn" onClick={() => ctx.runJob("compile")}>
+              Recompilează
+            </button>
+            <button className="btn primary" onClick={() => saveVersioned(ctx, "storyboard", sb).catch((e) => ctx.notify((e as Error).message, "err"))}>
+              Salvează
+            </button>
+          </div>
+        }
+      >
+        {sb.rationale.map((r, i) => (
+          <div key={i} className="muted small">
+            • {r}
+          </div>
+        ))}
         <div className="scenes">
           {sb.scenes.map((s, i) => {
             const rep = report?.scenes.find((x) => x.id === s.id);
@@ -748,22 +1123,37 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
             return (
               <div key={s.id} className="scene">
                 <div className="scene-head">
-                  <b>{i + 1}. {s.id}</b>
+                  <b>
+                    {i + 1}. {s.id}
+                  </b>
                   <span className="chip">{s.narrativeRole}</span>
                   <span className="chip">{s.emotionalRole}</span>
-                  {ts ? <button className="btn tiny ghost" onClick={() => ctx.seek(ts.from + 1)}>{tc(ts.from, tl!.fps)} · {(ts.durationInFrames / tl!.fps).toFixed(2)} s</button> : null}
+                  {ts ? (
+                    <button className="btn tiny ghost" onClick={() => ctx.seek(ts.from + 1)}>
+                      {tc(ts.from, tl!.fps)} · {(ts.durationInFrames / tl!.fps).toFixed(2)} s
+                    </button>
+                  ) : null}
                 </div>
                 <div className="muted small">{s.purpose}</div>
                 <div className="grid2 tight">
                   <label>
                     Rețeta
                     <select value={s.recipe.id} onChange={(e) => up(i, { recipe: { id: e.target.value, params: {} } })}>
-                      {ctx.meta.recipes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
+                      {ctx.meta.recipes.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.title}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <label>
                     Durata (s, gol = automat)
-                    <input type="number" step={0.1} value={s.durationSec ?? ""} onChange={(e) => up(i, { durationSec: e.target.value ? Number(e.target.value) : null })} />
+                    <input
+                      type="number"
+                      step={0.1}
+                      value={s.durationSec ?? ""}
+                      onChange={(e) => up(i, { durationSec: e.target.value ? Number(e.target.value) : null })}
+                    />
                   </label>
                   <label>
                     Titlu pe ecran
@@ -775,16 +1165,26 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
                   </label>
                   <label>
                     Tranziția de intrare
-                    <select value={s.transitionIn?.capability ?? ""} onChange={(e) => up(i, { transitionIn: e.target.value ? { capability: e.target.value, durationFrames: null, params: {} } : null })}>
+                    <select
+                      value={s.transitionIn?.capability ?? ""}
+                      onChange={(e) => up(i, { transitionIn: e.target.value ? { capability: e.target.value, durationFrames: null, params: {} } : null })}
+                    >
                       <option value="">automat (gramatica de montaj)</option>
-                      {caps.transitions.map((t) => <option key={t}>{t}</option>)}
+                      {caps.transitions.map((t) => (
+                        <option key={t}>{t}</option>
+                      ))}
                     </select>
                   </label>
                   <label>
                     Camera
-                    <select value={s.camera?.capability ?? ""} onChange={(e) => up(i, { camera: e.target.value ? { capability: e.target.value, params: {} } : undefined })}>
+                    <select
+                      value={s.camera?.capability ?? ""}
+                      onChange={(e) => up(i, { camera: e.target.value ? { capability: e.target.value, params: {} } : undefined })}
+                    >
                       <option value="">din rețetă</option>
-                      {caps.cameras.map((t) => <option key={t}>{t}</option>)}
+                      {caps.cameras.map((t) => (
+                        <option key={t}>{t}</option>
+                      ))}
                     </select>
                   </label>
                   <label>
@@ -793,10 +1193,33 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
                   </label>
                   <label>
                     Materiale
-                    <input value={Object.entries(s.slots).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join("|") : v}`).join(", ")} onChange={(e) => up(i, { slots: Object.fromEntries(e.target.value.split(",").map((x) => x.trim()).filter(Boolean).map((x) => { const [k, v] = x.split("="); return [k, v?.includes("|") ? v.split("|") : (v ?? "")]; })) })} />
+                    <input
+                      value={Object.entries(s.slots)
+                        .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join("|") : v}`)
+                        .join(", ")}
+                      onChange={(e) =>
+                        up(i, {
+                          slots: Object.fromEntries(
+                            e.target.value
+                              .split(",")
+                              .map((x) => x.trim())
+                              .filter(Boolean)
+                              .map((x) => {
+                                const [k, v] = x.split("=");
+                                return [k, v?.includes("|") ? v.split("|") : (v ?? "")];
+                              }),
+                          ),
+                        })
+                      }
+                    />
                   </label>
                 </div>
-                {rep ? <div className="muted small">Durata: {rep.reasons.join("; ")} · tranziție {rep.transition ?? "—"}{rep.notes.length ? ` · ${rep.notes.join(" ")}` : ""}</div> : null}
+                {rep ? (
+                  <div className="muted small">
+                    Durata: {rep.reasons.join("; ")} · tranziție {rep.transition ?? "—"}
+                    {rep.notes.length ? ` · ${rep.notes.join(" ")}` : ""}
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -815,14 +1238,33 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
   const mixUrl = tl?.audio.src ? fileUrl(tl.audio.src) : null;
   return (
     <div className="cols">
-      <Section title="Mix" aside={<button className="btn" onClick={() => ctx.runJob("audio")}>Refă mixul</button>}>
+      <Section
+        title="Mix"
+        aside={
+          <button className="btn" onClick={() => ctx.runJob("audio")}>
+            Refă mixul
+          </button>
+        }
+      >
         {m ? (
           <>
             <div className="stats">
-              <div><b>{m.integratedLufs ?? "—"}</b><span>LUFS (țintă {m.targetLufs})</span></div>
-              <div><b>{m.truePeakDbtp}</b><span>dBTP (plafon {m.truePeakCeiling})</span></div>
-              <div><b>{m.clippedSamples}</b><span>eșantioane la limită</span></div>
-              <div><b>{m.silences.filter((s) => !s.intentional).length}</b><span>tăceri neintenționate</span></div>
+              <div>
+                <b>{m.integratedLufs ?? "—"}</b>
+                <span>LUFS (țintă {m.targetLufs})</span>
+              </div>
+              <div>
+                <b>{m.truePeakDbtp}</b>
+                <span>dBTP (plafon {m.truePeakCeiling})</span>
+              </div>
+              <div>
+                <b>{m.clippedSamples}</b>
+                <span>eșantioane la limită</span>
+              </div>
+              <div>
+                <b>{m.silences.filter((s) => !s.intentional).length}</b>
+                <span>tăceri neintenționate</span>
+              </div>
             </div>
             <p className={m.ok ? "ok" : "warn"}>{m.ok ? "Mixul trece verificările tehnice." : m.problems.join(" ")}</p>
             {mixUrl ? <audio controls src={mixUrl} className="wide" /> : null}
@@ -834,7 +1276,9 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
         <h3>Ajustări (versiune nouă, prin comenzi)</h3>
         <div className="steps">
           {["mai puțină muzică sub voce", "muzica mai tare", "muzica mai încet", "efectele sonore mai încet", "fără muzică"].map((c) => (
-            <button key={c} className="btn tiny" onClick={() => ctx.runJob("iterate", { command: c })}>{c}</button>
+            <button key={c} className="btn tiny" onClick={() => ctx.runJob("iterate", { command: c })}>
+              {c}
+            </button>
           ))}
         </div>
         <h3>Notele tale după ascultare</h3>
@@ -843,13 +1287,29 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
           className="btn primary"
           disabled={!notes.trim() || !ctx.versionId || !tl}
           onClick={async () => {
-            const findings = notes.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
-              const mm = l.match(/(\d{1,2}:\d{2}(?:[.,]\d+)?|\d+(?:[.,]\d+)?)\s*[:\-–]\s*(.+)/);
-              const sec = mm ? (mm[1].includes(":") ? Number(mm[1].split(":")[0]) * 60 + Number(mm[1].split(":")[1].replace(",", ".")) : Number(mm[1].replace(",", "."))) : null;
-              const frame = sec !== null ? Math.round(sec * tl!.fps) : null;
-              const scene = frame !== null ? tl!.scenes.filter((s) => s.from <= frame).slice(-1)[0]?.id ?? null : null;
-              return { frame, timecode: frame !== null ? tc(frame, tl!.fps) : null, sceneId: scene, dimension: "audio" as const, severity: "high" as const, problem: mm ? mm[2] : l, recommendation: "Corectează doar zona notată." };
-            });
+            const findings = notes
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean)
+              .map((l) => {
+                const mm = l.match(/(\d{1,2}:\d{2}(?:[.,]\d+)?|\d+(?:[.,]\d+)?)\s*[:\-–]\s*(.+)/);
+                const sec = mm
+                  ? mm[1].includes(":")
+                    ? Number(mm[1].split(":")[0]) * 60 + Number(mm[1].split(":")[1].replace(",", "."))
+                    : Number(mm[1].replace(",", "."))
+                  : null;
+                const frame = sec !== null ? Math.round(sec * tl!.fps) : null;
+                const scene = frame !== null ? (tl!.scenes.filter((s) => s.from <= frame).slice(-1)[0]?.id ?? null) : null;
+                return {
+                  frame,
+                  timecode: frame !== null ? tc(frame, tl!.fps) : null,
+                  sceneId: scene,
+                  dimension: "audio" as const,
+                  severity: "high" as const,
+                  problem: mm ? mm[2] : l,
+                  recommendation: "Corectează doar zona notată.",
+                };
+              });
             try {
               await api.review(ctx.bundle.project.id, ctx.versionId!, { reviewer: "user-notes", findings });
               ctx.notify(`${findings.length} note salvate în critica versiunii.`);
@@ -867,11 +1327,21 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
         <p className="muted small">Fiecare efect vizual își declară sunetul; vocea și efectele au momentul exact.</p>
         <div className="scroll">
           <table className="table">
-            <thead><tr><th>Timp</th><th>Tip</th><th>Sunet</th><th>dB</th><th>De ce</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Timp</th>
+                <th>Tip</th>
+                <th>Sunet</th>
+                <th>dB</th>
+                <th>De ce</th>
+              </tr>
+            </thead>
             <tbody>
               {(ctx.version?.cueSheet ?? []).map((c) => (
                 <tr key={c.id} onClick={() => ctx.seek(c.atFrame)} className="clickable">
-                  <td><code>{c.timecode}</code></td>
+                  <td>
+                    <code>{c.timecode}</code>
+                  </td>
                   <td>{c.kind}</td>
                   <td>{c.kind === "voice" ? c.sound.split("/").pop() : c.sound}</td>
                   <td>{c.gainDb}</td>
@@ -893,11 +1363,26 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
   const rounds = c?.rounds ?? [];
   const last = [...rounds].reverse().find((r) => r.reviewer === "mms-auto-critic-v1");
   const keys = ["hook", "clarity", "rhythm", "hierarchy", "variety", "brand", "cta"] as const;
-  const labels: Record<string, string> = { hook: "hook", clarity: "claritate", rhythm: "ritm", hierarchy: "ierarhie", variety: "varietate", brand: "brand", cta: "CTA" };
+  const labels: Record<string, string> = {
+    hook: "hook",
+    clarity: "claritate",
+    rhythm: "ritm",
+    hierarchy: "ierarhie",
+    variety: "varietate",
+    brand: "brand",
+    cta: "CTA",
+  };
   const tl = ctx.version?.timelines[ctx.formatId];
   return (
     <div>
-      <Section title="Critică (rubrica fixă, prag 8/10)" aside={<button className="btn primary" onClick={() => ctx.runJob("critique")}>Rundă nouă</button>}>
+      <Section
+        title="Critică (rubrica fixă, prag 8/10)"
+        aside={
+          <button className="btn primary" onClick={() => ctx.runJob("critique")}>
+            Rundă nouă
+          </button>
+        }
+      >
         {last ? (
           <>
             <p>
@@ -907,7 +1392,9 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
               <thead>
                 <tr>
                   <th>Scena</th>
-                  {keys.map((k) => <th key={k}>{labels[k]}</th>)}
+                  {keys.map((k) => (
+                    <th key={k}>{labels[k]}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -915,7 +1402,9 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
                   <tr key={s.sceneId}>
                     <td>{s.sceneId}</td>
                     {keys.map((k) => (
-                      <td key={k} className={`score s${Math.floor(s.scores[k] ?? 0)}`}>{s.scores[k]}</td>
+                      <td key={k} className={`score s${Math.floor(s.scores[k] ?? 0)}`}>
+                        {s.scores[k]}
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -925,14 +1414,24 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
         ) : (
           <p>Nicio rundă încă.</p>
         )}
-        <p className="muted small">Critica automată măsoară ce se poate măsura (timp până la primul text, timp de citire, ierarhie, varietate, hold pe CTA, ritm pe beat, audio, cadre negre). Revizuirea vizuală pe foaia de contact o face Claude și se adaugă ca rundă separată.</p>
+        <p className="muted small">
+          Critica automată măsoară ce se poate măsura (timp până la primul text, timp de citire, ierarhie, varietate, hold pe CTA, ritm pe beat, audio, cadre
+          negre). Revizuirea vizuală pe foaia de contact o face Claude și se adaugă ca rundă separată.
+        </p>
       </Section>
       <Section title="Observații deschise">
-        {rounds.flatMap((r) => r.findings.filter((f) => f.status === "open").map((f) => ({ ...f, reviewer: r.reviewer }))).map((f) => (
-          <div key={`${f.reviewer}-${f.id}`} className={`issue ${f.severity}`}>
-            {f.frame !== null && tl ? <button className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>{f.timecode}</button> : null} <b>{f.dimension}</b> · {f.problem} <span className="muted">→ {f.recommendation}</span> <span className="muted small">({f.reviewer})</span>
-          </div>
-        ))}
+        {rounds
+          .flatMap((r) => r.findings.filter((f) => f.status === "open").map((f) => ({ ...f, reviewer: r.reviewer })))
+          .map((f) => (
+            <div key={`${f.reviewer}-${f.id}`} className={`issue ${f.severity}`}>
+              {f.frame !== null && tl ? (
+                <button className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
+                  {f.timecode}
+                </button>
+              ) : null}{" "}
+              <b>{f.dimension}</b> · {f.problem} <span className="muted">→ {f.recommendation}</span> <span className="muted small">({f.reviewer})</span>
+            </div>
+          ))}
       </Section>
     </div>
   );
@@ -942,8 +1441,18 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
 
 export function VersionsPanel({ ctx, onSelect }: { ctx: Ctx; onSelect: (v: string) => void }) {
   return (
-    <Section title="Versiuni" aside={<button className="btn" onClick={() => ctx.runJob("new-version", { label: "manual" })}>Versiune nouă</button>}>
-      <p className="muted small">Nicio versiune nu se suprascrie: o versiune cu preview, aprobată sau finală e înghețată; modificările creează versiunea următoare, cu jurnalul schimbărilor.</p>
+    <Section
+      title="Versiuni"
+      aside={
+        <button className="btn" onClick={() => ctx.runJob("new-version", { label: "manual" })}>
+          Versiune nouă
+        </button>
+      }
+    >
+      <p className="muted small">
+        Nicio versiune nu se suprascrie: o versiune cu preview, aprobată sau finală e înghețată; modificările creează versiunea următoare, cu jurnalul
+        schimbărilor.
+      </p>
       {[...ctx.bundle.versions].reverse().map((v) => (
         <div key={v.id} className={`version ${v.id === ctx.versionId ? "current" : ""}`}>
           <div className="row">
@@ -952,7 +1461,9 @@ export function VersionsPanel({ ctx, onSelect }: { ctx: Ctx; onSelect: (v: strin
             {v.frozen ? <span className="chip">înghețată</span> : <span className="chip ok">editabilă</span>}
             {v.parent ? <span className="muted small">din {v.parent}</span> : null}
             <span className="muted small">{v.createdAt.slice(0, 16).replace("T", " ")}</span>
-            <button className="btn tiny" onClick={() => onSelect(v.id)}>Deschide</button>
+            <button className="btn tiny" onClick={() => onSelect(v.id)}>
+              Deschide
+            </button>
           </div>
           {v.label ? <div className="muted">{v.label}</div> : null}
           <ul>
@@ -984,7 +1495,9 @@ export function ExportPanel({ ctx }: { ctx: Ctx }) {
         <p className="muted small">Preview-ul e o randare completă (MP4) plus foaia de contact; versiunea se îngheață după preview.</p>
         <div className="row">
           {ctx.bundle.project.formats.map((f) => (
-            <button key={f.id} className="btn" disabled={!tl} onClick={() => ctx.runJob("preview", { format: f.id })}>Randează preview {f.id}</button>
+            <button key={f.id} className="btn" disabled={!tl} onClick={() => ctx.runJob("preview", { format: f.id })}>
+              Randează preview {f.id}
+            </button>
           ))}
         </div>
         {videos.map((v) => (
@@ -994,23 +1507,44 @@ export function ExportPanel({ ctx }: { ctx: Ctx }) {
           </div>
         ))}
         {sheets.map((s) => (
-          <a key={s} href={fileUrl(s)} target="_blank" rel="noreferrer" className="small">foaie de contact: {s.split("/").pop()}</a>
+          <a key={s} href={fileUrl(s)} target="_blank" rel="noreferrer" className="small">
+            foaie de contact: {s.split("/").pop()}
+          </a>
         ))}
       </Section>
       <Section title="Render final">
         {tl?.concept ? <p className="warn">Versiunea folosește materiale fără drepturi confirmate („concept”): exportul final e blocat.</p> : null}
-        <p>Exportul final se face doar după ce scrii exact <b>render final</b> pentru versiunea {ctx.versionId}.</p>
+        <p>
+          Exportul final se face doar după ce scrii exact <b>render final</b> pentru versiunea {ctx.versionId}.
+        </p>
         {finalApproved ? (
-          <button className="btn primary" onClick={() => ctx.runJob("final")}>Randează final {ctx.formatId}</button>
+          <button className="btn primary" onClick={() => ctx.runJob("final")}>
+            Randează final {ctx.formatId}
+          </button>
         ) : (
           <div className="row">
             <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="render final" />
-            <button className="btn primary" disabled={!ctx.versionId} onClick={async () => { try { await api.approve(ctx.bundle.project.id, "render-final", phrase, ctx.versionId!); ctx.notify("Aprobare înregistrată."); await ctx.reload(); } catch (e) { ctx.notify((e as Error).message, "err"); } }}>
+            <button
+              className="btn primary"
+              disabled={!ctx.versionId}
+              onClick={async () => {
+                try {
+                  await api.approve(ctx.bundle.project.id, "render-final", phrase, ctx.versionId!);
+                  ctx.notify("Aprobare înregistrată.");
+                  await ctx.reload();
+                } catch (e) {
+                  ctx.notify((e as Error).message, "err");
+                }
+              }}
+            >
               Confirm
             </button>
           </div>
         )}
-        <p className="muted small">Exporturile ajung în <code>projects/{ctx.bundle.project.id}/exports/</code> și nu se suprascriu. Versiuni finale: {exportsList.map((v) => v.id).join(", ") || "—"}.</p>
+        <p className="muted small">
+          Exporturile ajung în <code>projects/{ctx.bundle.project.id}/exports/</code> și nu se suprascriu. Versiuni finale:{" "}
+          {exportsList.map((v) => v.id).join(", ") || "—"}.
+        </p>
       </Section>
     </div>
   );

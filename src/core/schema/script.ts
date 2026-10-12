@@ -31,9 +31,7 @@ export const Script = z.object({
   schemaVersion: z.literal(1),
   textLanguage: z.string(),
   voiceLanguage: z.string().nullable(),
-  hooks: z
-    .array(z.object({ id: Slug, text: z.string(), origin: LineOrigin, selected: z.boolean().default(false) }))
-    .default([]),
+  hooks: z.array(z.object({ id: Slug, text: z.string(), origin: LineOrigin, selected: z.boolean().default(false) })).default([]),
   lines: z.array(ScriptLine).min(1),
 });
 export type Script = z.infer<typeof Script>;

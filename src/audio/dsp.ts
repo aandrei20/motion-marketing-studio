@@ -174,12 +174,26 @@ export class Biquad {
         break;
       case "lowshelf": {
         const s = 2 * Math.sqrt(A) * alpha;
-        [b0, b1, b2, a0, a1, a2] = [A * (A + 1 - (A - 1) * cos + s), 2 * A * (A - 1 - (A + 1) * cos), A * (A + 1 - (A - 1) * cos - s), A + 1 + (A - 1) * cos + s, -2 * (A - 1 + (A + 1) * cos), A + 1 + (A - 1) * cos - s];
+        [b0, b1, b2, a0, a1, a2] = [
+          A * (A + 1 - (A - 1) * cos + s),
+          2 * A * (A - 1 - (A + 1) * cos),
+          A * (A + 1 - (A - 1) * cos - s),
+          A + 1 + (A - 1) * cos + s,
+          -2 * (A - 1 + (A + 1) * cos),
+          A + 1 + (A - 1) * cos - s,
+        ];
         break;
       }
       case "highshelf": {
         const s = 2 * Math.sqrt(A) * alpha;
-        [b0, b1, b2, a0, a1, a2] = [A * (A + 1 + (A - 1) * cos + s), -2 * A * (A - 1 + (A + 1) * cos), A * (A + 1 + (A - 1) * cos - s), A + 1 - (A - 1) * cos + s, 2 * (A - 1 - (A + 1) * cos), A + 1 - (A - 1) * cos - s];
+        [b0, b1, b2, a0, a1, a2] = [
+          A * (A + 1 + (A - 1) * cos + s),
+          -2 * A * (A - 1 + (A + 1) * cos),
+          A * (A + 1 + (A - 1) * cos - s),
+          A + 1 - (A - 1) * cos + s,
+          2 * (A - 1 - (A + 1) * cos),
+          A + 1 - (A - 1) * cos - s,
+        ];
         break;
       }
     }
@@ -204,7 +218,7 @@ export class Biquad {
   }
 }
 
-const BUTTER4 = [0.5411961, 1.3065630];
+const BUTTER4 = [0.5411961, 1.306563];
 
 /** Filtru trece-bandă Butterworth (ordin 2 sau 4) între lo și hi; oricare poate lipsi. */
 export function band(x: Float32Array, lo: number | null, hi: number | null, order: 2 | 4 = 4, sr = SR): Float32Array {
@@ -246,7 +260,11 @@ class Comb {
   private buf: Float32Array;
   private i = 0;
   private store = 0;
-  constructor(size: number, private feedback: number, private damp: number) {
+  constructor(
+    size: number,
+    private feedback: number,
+    private damp: number,
+  ) {
     this.buf = new Float32Array(size);
   }
   tick(x: number): number {
@@ -286,7 +304,10 @@ export function reverb(x: Stereo | Float32Array, opts: { size?: number; mix?: nu
   const out = makeStereo(n);
   const k = SR / 44100;
   const fb = 0.7 + 0.28 * size;
-  const mk = (spread: number) => ({ combs: COMBS.map((c) => new Comb(Math.round((c + spread) * k), fb, damp)), aps: ALLPASS.map((a) => new Allpass(Math.round((a + spread) * k))) });
+  const mk = (spread: number) => ({
+    combs: COMBS.map((c) => new Comb(Math.round((c + spread) * k), fb, damp)),
+    aps: ALLPASS.map((a) => new Allpass(Math.round((a + spread) * k))),
+  });
   const cl = mk(0);
   const cr = mk(23);
   for (let i = 0; i < n; i++) {

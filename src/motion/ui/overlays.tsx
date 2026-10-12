@@ -20,7 +20,10 @@ const Pt = z.object({ x: z.number(), y: z.number() });
 const RectP = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() });
 
 /** Exemplele de interfață se randează ca copii ai unui media.screen cu captura de probă. */
-const childExample = (child: { capability: string; params: Record<string, unknown>; box: { x: number; y: number; w: number; h: number } }, durationInFrames = 60) => ({
+const childExample = (
+  child: { capability: string; params: Record<string, unknown>; box: { x: number; y: number; w: number; h: number } },
+  durationInFrames = 60,
+) => ({
   params: {},
   durationInFrames,
   box: "center" as const,
@@ -30,7 +33,12 @@ const childExample = (child: { capability: string; params: Record<string, unknow
 
 function Pointer({ size, color = "#ffffff", press = 0 }: { size: number; color?: string; press?: number }) {
   return (
-    <svg width={size} height={size * 1.4} viewBox="0 0 20 28" style={{ transform: `scale(${1 - 0.15 * press})`, transformOrigin: "2px 2px", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.45))", overflow: "visible" }}>
+    <svg
+      width={size}
+      height={size * 1.4}
+      viewBox="0 0 20 28"
+      style={{ transform: `scale(${1 - 0.15 * press})`, transformOrigin: "2px 2px", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.45))", overflow: "visible" }}
+    >
       <path d="M2 2 L2 22 L7.5 17 L11 25.5 L14.3 24 L10.8 15.8 L18 15.6 Z" fill={color} stroke="#111" strokeWidth={1.4} strokeLinejoin="round" />
     </svg>
   );
@@ -84,7 +92,22 @@ export const uiCursor = defineLayer({
           const rt = prog(frame, c.t, c.t + 16, EASE.out);
           if (frame < c.t || rt >= 1) return null;
           const r = (10 + 60 * rt) / k;
-          return <div key={i} style={{ position: "absolute", left: c.x - r, top: c.y - r, width: r * 2, height: r * 2, borderRadius: "50%", border: `${3 / k}px solid ${ripple}`, background: withAlpha(hex(ripple), 0.18 * (1 - rt)), opacity: 1 - rt }} />;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: c.x - r,
+                top: c.y - r,
+                width: r * 2,
+                height: r * 2,
+                borderRadius: "50%",
+                border: `${3 / k}px solid ${ripple}`,
+                background: withAlpha(hex(ripple), 0.18 * (1 - rt)),
+                opacity: 1 - rt,
+              }}
+            />
+          );
         })}
         <div style={{ position: "absolute", left: x - 2 / k, top: y - 2 / k, opacity: appear }}>
           <Pointer size={size} color={resolveColor(env.palette, p.color)} press={press} />
@@ -92,7 +115,17 @@ export const uiCursor = defineLayer({
       </div>
     );
   },
-  example: childExample({ capability: "ui.cursor", params: { path: [{ at: 0, x: 200, y: 600 }, { at: 25, x: 700, y: 300, click: true }, { at: 50, x: 1000, y: 500, click: true }] }, box: { x: 0, y: 0, w: "$screenshot.w" as unknown as number, h: "$screenshot.h" as unknown as number } }),
+  example: childExample({
+    capability: "ui.cursor",
+    params: {
+      path: [
+        { at: 0, x: 200, y: 600 },
+        { at: 25, x: 700, y: 300, click: true },
+        { at: 50, x: 1000, y: 500, click: true },
+      ],
+    },
+    box: { x: 0, y: 0, w: "$screenshot.w" as unknown as number, h: "$screenshot.h" as unknown as number },
+  }),
 });
 
 export const uiClick = defineLayer({
@@ -108,11 +141,32 @@ export const uiClick = defineLayer({
     const t = prog(frame, p.at, p.at + 18, EASE.out);
     if (frame < p.at || t >= 1) return null;
     const c = resolveColor(env.palette, p.color, "accent");
-    const r = ((p.size * 0.2 + p.size * t) / k);
+    const r = (p.size * 0.2 + p.size * t) / k;
     return (
       <>
-        <div style={{ position: "absolute", left: p.x - r, top: p.y - r, width: r * 2, height: r * 2, borderRadius: "50%", border: `${4 / k}px solid ${c}`, opacity: 1 - t }} />
-        <div style={{ position: "absolute", left: p.x - 14 / k, top: p.y - 14 / k, width: 28 / k, height: 28 / k, borderRadius: "50%", background: withAlpha(hex(c), 0.5 * (1 - t)) }} />
+        <div
+          style={{
+            position: "absolute",
+            left: p.x - r,
+            top: p.y - r,
+            width: r * 2,
+            height: r * 2,
+            borderRadius: "50%",
+            border: `${4 / k}px solid ${c}`,
+            opacity: 1 - t,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: p.x - 14 / k,
+            top: p.y - 14 / k,
+            width: 28 / k,
+            height: 28 / k,
+            borderRadius: "50%",
+            background: withAlpha(hex(c), 0.5 * (1 - t)),
+          }}
+        />
       </>
     );
   },
@@ -131,7 +185,17 @@ export const uiHover = defineLayer({
     const k = useOverlayScale();
     const t = prog(frame, 0, 8, EASE.out) * (1 - prog(frame, duration - 6, duration, EASE.in));
     const c = hex(resolveColor(env.palette, p.color, "accent"));
-    return <div style={{ position: "absolute", inset: 0, borderRadius: p.radius / k, background: withAlpha("#ffffff", 0.1 * t), boxShadow: `0 0 0 ${2 / k}px ${withAlpha(c, t)}, 0 0 ${30 / k}px ${withAlpha(c, p.intensity * t)}` }} />;
+    return (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: p.radius / k,
+          background: withAlpha("#ffffff", 0.1 * t),
+          boxShadow: `0 0 0 ${2 / k}px ${withAlpha(c, t)}, 0 0 ${30 / k}px ${withAlpha(c, p.intensity * t)}`,
+        }}
+      />
+    );
   },
   example: childExample({ capability: "ui.hover", params: {}, box: { x: 300, y: 250, w: 420, h: 120 } }),
 });
@@ -143,16 +207,52 @@ export const uiTyping = defineLayer({
   description: "Text scris literă cu literă peste câmpul (input) găsit în captură, cu cursor de text. Fiecare tastă are sunet.",
   tags: ["typing", "input", "search", "form", "keyboard", "prompt"],
   sfx: [{ sound: "key", at: "each", gainDb: -10 }],
-  params: z.object({ text: z.string().min(1), cps: z.number().min(2).max(60).default(14), at: z.number().int().min(0).default(4), color: z.string().default("#111111"), sizeRatio: z.number().min(0.2).max(0.9).default(0.45), paddingRatio: z.number().min(0).max(2).default(0.35), background: z.string().optional(), font: z.enum(["body", "mono", "display"]).default("body") }),
-  events: (p) => [...p.text].map((ch, i) => ({ at: Math.round(p.at + (i * 30) / p.cps), ch })).filter((e) => e.ch !== " ").map(({ at }) => ({ at })),
+  params: z.object({
+    text: z.string().min(1),
+    cps: z.number().min(2).max(60).default(14),
+    at: z.number().int().min(0).default(4),
+    color: z.string().default("#111111"),
+    sizeRatio: z.number().min(0.2).max(0.9).default(0.45),
+    paddingRatio: z.number().min(0).max(2).default(0.35),
+    background: z.string().optional(),
+    font: z.enum(["body", "mono", "display"]).default("body"),
+  }),
+  events: (p) =>
+    [...p.text]
+      .map((ch, i) => ({ at: Math.round(p.at + (i * 30) / p.cps), ch }))
+      .filter((e) => e.ch !== " ")
+      .map(({ at }) => ({ at })),
   Component: ({ params: p, frame, box, env }) => {
     const n = Math.floor(clamp(((frame - p.at) / env.fps) * p.cps, 0, [...p.text].length));
     const blink = Math.floor(frame / Math.round(env.fps * 0.5)) % 2 === 0 || n < [...p.text].length;
     const fs = box.h * p.sizeRatio;
     return (
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", paddingLeft: box.h * p.paddingRatio, background: p.background ? resolveColor(env.palette, p.background) : undefined, fontFamily: `"${env.typography[p.font].family}"`, fontSize: fs, color: resolveColor(env.palette, p.color), whiteSpace: "pre", overflow: "hidden" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: box.h * p.paddingRatio,
+          background: p.background ? resolveColor(env.palette, p.background) : undefined,
+          fontFamily: `"${env.typography[p.font].family}"`,
+          fontSize: fs,
+          color: resolveColor(env.palette, p.color),
+          whiteSpace: "pre",
+          overflow: "hidden",
+        }}
+      >
         {[...p.text].slice(0, n).join("")}
-        <span style={{ display: "inline-block", width: Math.max(1, fs * 0.06), height: fs * 1.1, marginLeft: fs * 0.04, background: resolveColor(env.palette, p.color), opacity: blink && frame >= p.at - 2 ? 1 : 0 }} />
+        <span
+          style={{
+            display: "inline-block",
+            width: Math.max(1, fs * 0.06),
+            height: fs * 1.1,
+            marginLeft: fs * 0.04,
+            background: resolveColor(env.palette, p.color),
+            opacity: blink && frame >= p.at - 2 ? 1 : 0,
+          }}
+        />
       </div>
     );
   },
@@ -166,7 +266,14 @@ export const uiSpotlight = defineLayer({
   description: "Restul ecranului se întunecă; zona aleasă rămâne luminată, cu margine moale.",
   tags: ["spotlight", "focus", "dim", "attention", "highlight"],
   sfx: [{ sound: "whoosh-soft", at: "start", gainDb: -14 }],
-  params: z.object({ region: RectP, dim: z.number().min(0).max(0.95).default(0.65), radius: z.number().default(16), feather: z.number().min(0).max(80).default(18), padding: z.number().default(10), frames: z.number().int().min(1).default(10) }),
+  params: z.object({
+    region: RectP,
+    dim: z.number().min(0).max(0.95).default(0.65),
+    radius: z.number().default(16),
+    feather: z.number().min(0).max(80).default(18),
+    padding: z.number().default(10),
+    frames: z.number().int().min(1).default(10),
+  }),
   Component: ({ params: p, frame, duration, box, layer }) => {
     const k = useOverlayScale();
     const t = prog(frame, 0, p.frames, EASE.out) * (1 - prog(frame, duration - 6, duration, EASE.in));
@@ -187,7 +294,11 @@ export const uiSpotlight = defineLayer({
       </svg>
     );
   },
-  example: childExample({ capability: "ui.spotlight", params: { region: { x: 300, y: 250, w: 520, h: 200 } }, box: { x: 0, y: 0, w: "$screenshot.w" as unknown as number, h: "$screenshot.h" as unknown as number } }),
+  example: childExample({
+    capability: "ui.spotlight",
+    params: { region: { x: 300, y: 250, w: 520, h: 200 } },
+    box: { x: 0, y: 0, w: "$screenshot.w" as unknown as number, h: "$screenshot.h" as unknown as number },
+  }),
 });
 
 export const uiHighlight = defineLayer({
@@ -197,7 +308,14 @@ export const uiHighlight = defineLayer({
   description: "Un dreptunghi, o elipsă sau o subliniere se desenează în jurul zonei (animație de trasare).",
   tags: ["highlight", "outline", "circle", "underline", "draw", "attention"],
   sfx: [{ sound: "marker", at: "start", gainDb: -8 }],
-  params: z.object({ shape: z.enum(["rect", "ellipse", "underline"]).default("rect"), color: z.string().default("accent"), stroke: z.number().default(5), padding: z.number().default(12), radius: z.number().default(14), drawFrames: z.number().int().min(2).default(14) }),
+  params: z.object({
+    shape: z.enum(["rect", "ellipse", "underline"]).default("rect"),
+    color: z.string().default("accent"),
+    stroke: z.number().default(5),
+    padding: z.number().default(12),
+    radius: z.number().default(14),
+    drawFrames: z.number().int().min(2).default(14),
+  }),
   Component: ({ params: p, frame, duration, box, env }) => {
     const k = useOverlayScale();
     const t = prog(frame, 0, p.drawFrames, EASE.inOut);
@@ -209,9 +327,40 @@ export const uiHighlight = defineLayer({
     const sw = p.stroke / k;
     return (
       <svg width={w} height={h} style={{ position: "absolute", left: -pad, top: -pad, overflow: "visible", opacity: fade }}>
-        {p.shape === "rect" ? <rect x={sw / 2} y={sw / 2} width={w - sw} height={h - sw} rx={p.radius / k} fill="none" stroke={c} strokeWidth={sw} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - t} strokeLinecap="round" /> : null}
-        {p.shape === "ellipse" ? <ellipse cx={w / 2} cy={h / 2} rx={w / 2 + sw} ry={h / 2 + sw} fill="none" stroke={c} strokeWidth={sw} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - t} strokeLinecap="round" /> : null}
-        {p.shape === "underline" ? <line x1={pad} y1={h - pad / 2} x2={pad + (w - 2 * pad) * t} y2={h - pad / 2} stroke={c} strokeWidth={sw} strokeLinecap="round" /> : null}
+        {p.shape === "rect" ? (
+          <rect
+            x={sw / 2}
+            y={sw / 2}
+            width={w - sw}
+            height={h - sw}
+            rx={p.radius / k}
+            fill="none"
+            stroke={c}
+            strokeWidth={sw}
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={1 - t}
+            strokeLinecap="round"
+          />
+        ) : null}
+        {p.shape === "ellipse" ? (
+          <ellipse
+            cx={w / 2}
+            cy={h / 2}
+            rx={w / 2 + sw}
+            ry={h / 2 + sw}
+            fill="none"
+            stroke={c}
+            strokeWidth={sw}
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={1 - t}
+            strokeLinecap="round"
+          />
+        ) : null}
+        {p.shape === "underline" ? (
+          <line x1={pad} y1={h - pad / 2} x2={pad + (w - 2 * pad) * t} y2={h - pad / 2} stroke={c} strokeWidth={sw} strokeLinecap="round" />
+        ) : null}
       </svg>
     );
   },
@@ -222,7 +371,8 @@ export const uiCallout = defineLayer({
   ...base,
   id: "ui.callout",
   title: "Callout cu linie spre element",
-  description: "O etichetă scurtă legată printr-o linie de o zonă din captură. Eticheta și linia păstrează aceeași mărime pe ecran la orice zoom (al capturii sau al camerei).",
+  description:
+    "O etichetă scurtă legată printr-o linie de o zonă din captură. Eticheta și linia păstrează aceeași mărime pe ecran la orice zoom (al capturii sau al camerei).",
   tags: ["callout", "label", "annotation", "pointer", "explain", "feature"],
   sfx: [{ sound: "pop", at: "start", gainDb: -8 }],
   params: z.object({
@@ -263,7 +413,14 @@ export const uiCallout = defineLayer({
     return (
       <div style={{ position: "absolute", inset: 0, opacity: fade, overflow: "visible" }}>
         <svg width={box.w} height={box.h} style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }}>
-          <line x1={anchor.x} y1={anchor.y} x2={anchor.x + (end.x - anchor.x) * line} y2={anchor.y + (end.y - anchor.y) * line} stroke={c} strokeWidth={3 / k} />
+          <line
+            x1={anchor.x}
+            y1={anchor.y}
+            x2={anchor.x + (end.x - anchor.x) * line}
+            y2={anchor.y + (end.y - anchor.y) * line}
+            stroke={c}
+            strokeWidth={3 / k}
+          />
           <circle cx={anchor.x} cy={anchor.y} r={7 / k} fill={c} />
         </svg>
         <div style={labelStyle}>{p.text}</div>
@@ -280,7 +437,12 @@ export const uiTooltip = defineLayer({
   description: "O bulă mică cu săgeată, deasupra unei zone, pentru o explicație de 2–4 cuvinte.",
   tags: ["tooltip", "hint", "bubble", "label", "explain"],
   sfx: [{ sound: "pop", at: "start", gainDb: -12 }],
-  params: z.object({ text: z.string().min(1), color: z.string().default("surface"), textColor: z.string().default("text"), size: z.number().min(12).max(100).default(30) }),
+  params: z.object({
+    text: z.string().min(1),
+    color: z.string().default("surface"),
+    textColor: z.string().default("text"),
+    size: z.number().min(12).max(100).default(30),
+  }),
   Component: ({ params: p, frame, duration, box, env }) => {
     const k = useOverlayScale();
     const s = sp(frame, env.fps, 0, SPRINGS.pop);
@@ -288,9 +450,44 @@ export const uiTooltip = defineLayer({
     const fs = p.size / k;
     const bg = resolveColor(env.palette, p.color, "surface");
     return (
-      <div style={{ position: "absolute", left: box.w / 2, top: -fs * 0.6, transform: `translate(-50%, -100%) scale(${s})`, transformOrigin: "50% 100%", opacity: fade }}>
-        <div style={{ background: bg, color: resolveColor(env.palette, p.textColor, "text"), fontFamily: `"${env.typography.body.family}"`, fontWeight: 600, fontSize: fs, padding: `${fs * 0.3}px ${fs * 0.55}px`, borderRadius: fs * 0.35, whiteSpace: "nowrap", boxShadow: `0 ${6 / k}px ${18 / k}px rgba(0,0,0,0.3)` }}>{p.text}</div>
-        <div style={{ position: "absolute", left: "50%", bottom: -fs * 0.28, width: fs * 0.56, height: fs * 0.56, marginLeft: -fs * 0.28, background: bg, transform: "rotate(45deg)", zIndex: -1 }} />
+      <div
+        style={{
+          position: "absolute",
+          left: box.w / 2,
+          top: -fs * 0.6,
+          transform: `translate(-50%, -100%) scale(${s})`,
+          transformOrigin: "50% 100%",
+          opacity: fade,
+        }}
+      >
+        <div
+          style={{
+            background: bg,
+            color: resolveColor(env.palette, p.textColor, "text"),
+            fontFamily: `"${env.typography.body.family}"`,
+            fontWeight: 600,
+            fontSize: fs,
+            padding: `${fs * 0.3}px ${fs * 0.55}px`,
+            borderRadius: fs * 0.35,
+            whiteSpace: "nowrap",
+            boxShadow: `0 ${6 / k}px ${18 / k}px rgba(0,0,0,0.3)`,
+          }}
+        >
+          {p.text}
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            bottom: -fs * 0.28,
+            width: fs * 0.56,
+            height: fs * 0.56,
+            marginLeft: -fs * 0.28,
+            background: bg,
+            transform: "rotate(45deg)",
+            zIndex: -1,
+          }}
+        />
       </div>
     );
   },
@@ -303,8 +500,20 @@ export const uiDrag = defineLayer({
   title: "Drag and drop",
   description: "O bucată din captură (zona sursă) este ridicată și mutată la o țintă, cu umbră; pixelii sunt cei reali.",
   tags: ["drag", "drop", "move", "kanban", "interaction"],
-  sfx: [{ sound: "tick-soft", at: "param:at" }, { sound: "drop", at: "param:dropAt" }],
-  params: z.object({ src: z.string(), imageWidth: z.number().positive(), imageHeight: z.number().positive(), from: RectP, to: Pt, at: z.number().int().min(0).default(6), dropAt: z.number().int().min(1).default(36), dimSource: z.boolean().default(true) }),
+  sfx: [
+    { sound: "tick-soft", at: "param:at" },
+    { sound: "drop", at: "param:dropAt" },
+  ],
+  params: z.object({
+    src: z.string(),
+    imageWidth: z.number().positive(),
+    imageHeight: z.number().positive(),
+    from: RectP,
+    to: Pt,
+    at: z.number().int().min(0).default(6),
+    dropAt: z.number().int().min(1).default(36),
+    dimSource: z.boolean().default(true),
+  }),
   Component: ({ params: p, frame }) => {
     const url = useAssetUrl();
     const k = useOverlayScale();
@@ -315,16 +524,47 @@ export const uiDrag = defineLayer({
     const started = frame >= p.at;
     return (
       <>
-        {p.dimSource && started && frame < p.dropAt + 6 ? <div style={{ position: "absolute", left: p.from.x, top: p.from.y, width: p.from.w, height: p.from.h, background: "rgba(0,0,0,0.35)", borderRadius: 8 / k }} /> : null}
+        {p.dimSource && started && frame < p.dropAt + 6 ? (
+          <div
+            style={{
+              position: "absolute",
+              left: p.from.x,
+              top: p.from.y,
+              width: p.from.w,
+              height: p.from.h,
+              background: "rgba(0,0,0,0.35)",
+              borderRadius: 8 / k,
+            }}
+          />
+        ) : null}
         {started ? (
-          <div style={{ position: "absolute", left: x, top: y, width: p.from.w, height: p.from.h, overflow: "hidden", borderRadius: 10 / k, transform: `scale(${1 + 0.05 * lift}) rotate(${2 * lift}deg)`, boxShadow: `0 ${20 * lift / k}px ${40 * lift / k}px rgba(0,0,0,${0.45 * lift})` }}>
-            <Img src={url(p.src)} style={{ position: "absolute", left: -p.from.x, top: -p.from.y, width: p.imageWidth, height: p.imageHeight, maxWidth: "none" }} />
+          <div
+            style={{
+              position: "absolute",
+              left: x,
+              top: y,
+              width: p.from.w,
+              height: p.from.h,
+              overflow: "hidden",
+              borderRadius: 10 / k,
+              transform: `scale(${1 + 0.05 * lift}) rotate(${2 * lift}deg)`,
+              boxShadow: `0 ${(20 * lift) / k}px ${(40 * lift) / k}px rgba(0,0,0,${0.45 * lift})`,
+            }}
+          >
+            <Img
+              src={url(p.src)}
+              style={{ position: "absolute", left: -p.from.x, top: -p.from.y, width: p.imageWidth, height: p.imageHeight, maxWidth: "none" }}
+            />
           </div>
         ) : null}
       </>
     );
   },
-  example: childExample({ capability: "ui.drag", params: { src: "$screenshot", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", from: { x: 100, y: 200, w: 360, h: 140 }, to: { x: 700, y: 420 } }, box: { x: 0, y: 0, w: 10, h: 10 } }),
+  example: childExample({
+    capability: "ui.drag",
+    params: { src: "$screenshot", imageWidth: "$screenshot.w", imageHeight: "$screenshot.h", from: { x: 100, y: 200, w: 360, h: 140 }, to: { x: 700, y: 420 } },
+    box: { x: 0, y: 0, w: 10, h: 10 },
+  }),
 });
 
 export const uiBlurRegion = defineLayer({
@@ -337,7 +577,17 @@ export const uiBlurRegion = defineLayer({
   params: z.object({ amount: z.number().min(2).max(60).default(16) }),
   Component: ({ params: p }) => {
     const k = useOverlayScale();
-    return <div style={{ position: "absolute", inset: 0, backdropFilter: `blur(${p.amount / k}px)`, WebkitBackdropFilter: `blur(${p.amount / k}px)`, borderRadius: 6 / k }} />;
+    return (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backdropFilter: `blur(${p.amount / k}px)`,
+          WebkitBackdropFilter: `blur(${p.amount / k}px)`,
+          borderRadius: 6 / k,
+        }}
+      />
+    );
   },
   example: childExample({ capability: "ui.blur-region", params: {}, box: { x: 300, y: 250, w: 420, h: 120 } }),
 });

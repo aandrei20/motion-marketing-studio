@@ -61,7 +61,8 @@ describe("lanțul de producție pe produsul demo", () => {
     const vertical = sceneScreens("9x16").filter((x) => x.shots.length);
     expect(vertical.some((x) => x.shots.every((a) => a.capture!.viewport.width < 600))).toBe(true);
     // o scenă rămasă pe desktop are motivul în raport (aici: zonele tablei kanban nu sunt pe ecranul de telefon)
-    for (const x of vertical.filter((v) => v.shots.some((a) => a.capture!.viewport.width >= 600))) expect(x.notes.join(" "), x.id).toMatch(/pe vertical rămâne captura desktop/);
+    for (const x of vertical.filter((v) => v.shots.some((a) => a.capture!.viewport.width >= 600)))
+      expect(x.notes.join(" "), x.id).toMatch(/pe vertical rămâne captura desktop/);
     expect(sceneScreens("16x9").every((x) => x.shots.every((a) => a.capture!.viewport.width >= 600))).toBe(true);
     // logo-ul din antetul paginii reale e găsit și e același fișier cu cel dat de utilizator (deduplicare pe conținut)
     const logos = assets.filter((a) => a.role === "logo");
@@ -84,8 +85,23 @@ describe("lanțul de producție pe produsul demo", () => {
     const id = "it-e2e";
     const v = store.loadProject(id).currentVersion!;
     const voice = JSON.parse(fs.readFileSync(path.join(tmp, id, "versions", v, "audio", "voice.json"), "utf8"));
-    const base = { project: store.loadProject(id), versionId: v, brief: store.loadBrief(id), brand: store.loadBrand(id), research: store.loadResearch(id), assets: store.loadAssets(id), script: store.loadScript(id, v), storyboard: store.loadStoryboard(id, v), voice, beatGrid: store.loadTimeline(id, v, "9x16").audio.beatGrid };
-    for (const format of [makeFormat("1x1", { platform: "feed", durationSec: 24, fps: 24 }), makeFormat("4x5", { platform: "feed", durationSec: 24, fps: 60 }), makeFormat({ width: 1280, height: 720, id: "custom-720p" }, { platform: "generic", durationSec: 24, fps: 25 })]) {
+    const base = {
+      project: store.loadProject(id),
+      versionId: v,
+      brief: store.loadBrief(id),
+      brand: store.loadBrand(id),
+      research: store.loadResearch(id),
+      assets: store.loadAssets(id),
+      script: store.loadScript(id, v),
+      storyboard: store.loadStoryboard(id, v),
+      voice,
+      beatGrid: store.loadTimeline(id, v, "9x16").audio.beatGrid,
+    };
+    for (const format of [
+      makeFormat("1x1", { platform: "feed", durationSec: 24, fps: 24 }),
+      makeFormat("4x5", { platform: "feed", durationSec: 24, fps: 60 }),
+      makeFormat({ width: 1280, height: 720, id: "custom-720p" }, { platform: "generic", durationSec: 24, fps: 25 }),
+    ]) {
       const r = compileTimeline({ ...base, format });
       // determinism strict: aceleași date de intrare → exact același timeline
       expect(JSON.stringify(compileTimeline({ ...base, format }).timeline)).toBe(JSON.stringify(r.timeline));
@@ -114,7 +130,17 @@ describe("lanțul de producție pe produsul demo", () => {
     const spot = sb.scenes.filter((s) => s.recipe.id === "ui-spotlight").map((s) => s.id);
     expect(spot.length).toBeGreaterThan(0);
     const format = makeFormat("16x9", { platform: "youtube", durationSec: 24, fps: 30 });
-    const base = { project: store.loadProject(id), versionId: v, brief: store.loadBrief(id), brand: store.loadBrand(id), research: store.loadResearch(id), assets: store.loadAssets(id), script: store.loadScript(id, v), voice, beatGrid: null };
+    const base = {
+      project: store.loadProject(id),
+      versionId: v,
+      brief: store.loadBrief(id),
+      brand: store.loadBrand(id),
+      research: store.loadResearch(id),
+      assets: store.loadAssets(id),
+      script: store.loadScript(id, v),
+      voice,
+      beatGrid: null,
+    };
     const check = CHECKS.find((c) => c.id === "ui.material-over-text")!;
     const run = (storyboard: typeof sb) => {
       const t = compileTimeline({ ...base, storyboard, format }).timeline;
@@ -129,7 +155,10 @@ describe("lanțul de producție pe produsul demo", () => {
     }
     expect(fixed.issues).toEqual([]);
     // un zoom forțat pe centru, peste limită, e prins de verificare
-    const forced = run({ ...sb, scenes: sb.scenes.map((s) => (s.id === spot[0] ? { ...s, camera: { capability: "camera.static", params: { zoom: 3 } } } : s)) });
+    const forced = run({
+      ...sb,
+      scenes: sb.scenes.map((s) => (s.id === spot[0] ? { ...s, camera: { capability: "camera.static", params: { zoom: 3 } } } : s)),
+    });
     expect(forced.issues.some((x) => x.sceneId === spot[0])).toBe(true);
   }, 120_000);
 
@@ -191,7 +220,10 @@ describe("lanțul de producție pe produsul demo", () => {
     const q = await runQuality(id, { versionId: v, depth: "fast" });
     expect(q.run.passes.map((p) => p.n)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(q.run.renders).toMatchObject({ stillsRendered: 0, motionFramesRendered: 0, fullRendered: 0 });
-    const skipped = q.run.passes.flatMap((p) => p.checks).filter((c) => c.status === "skipped").map((c) => c.method);
+    const skipped = q.run.passes
+      .flatMap((p) => p.checks)
+      .filter((c) => c.status === "skipped")
+      .map((c) => c.method);
     expect(skipped).toEqual(expect.arrayContaining(["stills", "scene-render", "full-render"]));
     expect(Object.keys(q.round.quality!.categories)).toHaveLength(11);
     // la „fast” nu se pretinde evaluarea vizuală pe pixeli
@@ -216,7 +248,10 @@ describe("lanțul de producție pe produsul demo", () => {
     store.freezeVersion(id, parent, "preview");
     const before = store.loadStoryboard(id, parent);
     const target = before.scenes[1].id;
-    const e = applyEdit(id, [{ op: "scene-extend", sceneId: target, deltaSec: 0.6 }, { op: "set-camera", sceneId: target, capability: "camera.static", params: {} }]);
+    const e = applyEdit(id, [
+      { op: "scene-extend", sceneId: target, deltaSec: 0.6 },
+      { op: "set-camera", sceneId: target, capability: "camera.static", params: {} },
+    ]);
     // versiunea înghețată nu se atinge; editarea merge în versiunea următoare
     expect(e.versionId).not.toBe(parent);
     expect(fingerprint(store.loadStoryboard(id, parent))).toBe(fingerprint(before));

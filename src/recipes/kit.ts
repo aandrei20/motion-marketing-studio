@@ -36,8 +36,19 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
   const full = r(0, 0, ctx.W, ctx.H);
   if (ctx.orientation === "portrait") {
     if (comp === "full-bleed") return { full, media: full, text: r(s.x, s.y + s.h * 0.62, s.w, s.h * 0.24), sub: r(s.x, s.y + s.h * 0.86, s.w, s.h * 0.12) };
-    if (comp === "center") return { full, media: r(s.x, s.y + s.h * 0.5, s.w, s.h * 0.5), text: r(s.x, s.y + s.h * 0.2, s.w, s.h * 0.28), sub: r(s.x, s.y + s.h * 0.5, s.w, s.h * 0.12) };
-    return { full, text: r(s.x, s.y, s.w, s.h * 0.2), sub: r(s.x, s.y + s.h * 0.2, s.w, s.h * 0.08), media: r(s.x * 0.5, s.y + s.h * 0.29, ctx.W - s.x, s.h * 0.71 + ctx.safe.bottom * 0.25) };
+    if (comp === "center")
+      return {
+        full,
+        media: r(s.x, s.y + s.h * 0.5, s.w, s.h * 0.5),
+        text: r(s.x, s.y + s.h * 0.2, s.w, s.h * 0.28),
+        sub: r(s.x, s.y + s.h * 0.5, s.w, s.h * 0.12),
+      };
+    return {
+      full,
+      text: r(s.x, s.y, s.w, s.h * 0.2),
+      sub: r(s.x, s.y + s.h * 0.2, s.w, s.h * 0.08),
+      media: r(s.x * 0.5, s.y + s.h * 0.29, ctx.W - s.x, s.h * 0.71 + ctx.safe.bottom * 0.25),
+    };
   }
   if (ctx.orientation === "square") {
     if (comp === "full-bleed") return { full, media: full, text: r(s.x, s.y + s.h * 0.66, s.w, s.h * 0.22), sub: r(s.x, s.y + s.h * 0.88, s.w, s.h * 0.1) };
@@ -45,13 +56,30 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
   }
   // orizontal
   const left = comp !== "thirds-right";
-  if (comp === "full-bleed") return { full, media: full, text: r(s.x, s.y + s.h * 0.6, s.w * 0.7, s.h * 0.26), sub: r(s.x, s.y + s.h * 0.86, s.w * 0.7, s.h * 0.12) };
-  if (comp === "center" || comp === "stacked") return { full, text: r(s.x + s.w * 0.1, s.y + s.h * 0.08, s.w * 0.8, s.h * 0.22), sub: r(s.x + s.w * 0.15, s.y + s.h * 0.3, s.w * 0.7, s.h * 0.08), media: r(s.x + s.w * 0.12, s.y + s.h * 0.4, s.w * 0.76, s.h * 0.6) };
+  if (comp === "full-bleed")
+    return { full, media: full, text: r(s.x, s.y + s.h * 0.6, s.w * 0.7, s.h * 0.26), sub: r(s.x, s.y + s.h * 0.86, s.w * 0.7, s.h * 0.12) };
+  if (comp === "center" || comp === "stacked")
+    return {
+      full,
+      text: r(s.x + s.w * 0.1, s.y + s.h * 0.08, s.w * 0.8, s.h * 0.22),
+      sub: r(s.x + s.w * 0.15, s.y + s.h * 0.3, s.w * 0.7, s.h * 0.08),
+      media: r(s.x + s.w * 0.12, s.y + s.h * 0.4, s.w * 0.76, s.h * 0.6),
+    };
   const textW = s.w * 0.4;
   const mediaW = s.w * 0.56;
   return left
-    ? { full, text: r(s.x, s.y + s.h * 0.2, textW, s.h * 0.38), sub: r(s.x, s.y + s.h * 0.6, textW, s.h * 0.18), media: r(s.x + s.w - mediaW, s.y + s.h * 0.06, mediaW + s.x * 0.5, s.h * 0.88) }
-    : { full, text: r(s.x + s.w - textW, s.y + s.h * 0.2, textW, s.h * 0.38), sub: r(s.x + s.w - textW, s.y + s.h * 0.6, textW, s.h * 0.18), media: r(s.x - s.x * 0.5, s.y + s.h * 0.06, mediaW + s.x * 0.5, s.h * 0.88) };
+    ? {
+        full,
+        text: r(s.x, s.y + s.h * 0.2, textW, s.h * 0.38),
+        sub: r(s.x, s.y + s.h * 0.6, textW, s.h * 0.18),
+        media: r(s.x + s.w - mediaW, s.y + s.h * 0.06, mediaW + s.x * 0.5, s.h * 0.88),
+      }
+    : {
+        full,
+        text: r(s.x + s.w - textW, s.y + s.h * 0.2, textW, s.h * 0.38),
+        sub: r(s.x + s.w - textW, s.y + s.h * 0.6, textW, s.h * 0.18),
+        media: r(s.x - s.x * 0.5, s.y + s.h * 0.06, mediaW + s.x * 0.5, s.h * 0.88),
+      };
 }
 
 function collectAssets(v: unknown, out: Set<string>): void {
@@ -126,7 +154,14 @@ export function screenRectInScene(params: Record<string, unknown>, box: Rect): R
  * Cel mai mare zoom (până la `max`) la care materialul mărit nu intră peste textul fix (titlu, subtitlu),
  * cu o toleranță mică. Fără soluție: zoom 1 (camera doar se apropie de țintă).
  */
-export function limitZoomForText(material: Rect, focus: { x: number; y: number }, target: { x: number; y: number }, max: number, text: Rect[], tol = 24): number {
+export function limitZoomForText(
+  material: Rect,
+  focus: { x: number; y: number },
+  target: { x: number; y: number },
+  max: number,
+  text: Rect[],
+  tol = 24,
+): number {
   const clash = (z: number) => {
     const m = afterPush(material, focus, target, z);
     return text.some((t) => m.x < t.x + t.w - tol && m.x + m.w > t.x + tol && m.y < t.y + t.h - tol && m.y + m.h > t.y + tol);
@@ -155,7 +190,12 @@ export function mediaBounds(ctx: RecipeContext, z: Zones): Rect {
  * `onScreen` = dreptunghiul zonei în pixeli de compoziție, `scale` = zoom-ul camerei atunci.
  * Prima parte din `prefer` care încape (pe lungime și pe lățime); altfel cea cu cel mai mult loc.
  */
-export function calloutSide(onScreen: Rect, scale: number, label: string, o: { distance: number; size: number; bounds: Rect; prefer?: CalloutSide[] }): CalloutSide {
+export function calloutSide(
+  onScreen: Rect,
+  scale: number,
+  label: string,
+  o: { distance: number; size: number; bounds: Rect; prefer?: CalloutSide[] },
+): CalloutSide {
   const prefer = o.prefer ?? ["right", "left", "top", "bottom"];
   const lw = (label.length * 0.56 + 1.2) * o.size * scale;
   const lh = 1.75 * o.size * scale;
@@ -163,7 +203,12 @@ export function calloutSide(onScreen: Rect, scale: number, label: string, o: { d
   const b = o.bounds;
   const cx = onScreen.x + onScreen.w / 2;
   const cy = onScreen.y + onScreen.h / 2;
-  const room: Record<CalloutSide, number> = { left: onScreen.x - b.x, right: b.x + b.w - (onScreen.x + onScreen.w), top: onScreen.y - b.y, bottom: b.y + b.h - (onScreen.y + onScreen.h) };
+  const room: Record<CalloutSide, number> = {
+    left: onScreen.x - b.x,
+    right: b.x + b.w - (onScreen.x + onScreen.w),
+    top: onScreen.y - b.y,
+    bottom: b.y + b.h - (onScreen.y + onScreen.h),
+  };
   const need: Record<CalloutSide, number> = { left: d + lw, right: d + lw, top: d + lh, bottom: d + lh };
   const across: Record<CalloutSide, boolean> = {
     top: cx - lw / 2 >= b.x && cx + lw / 2 <= b.x + b.w,
@@ -204,7 +249,16 @@ export function layer(ctx: RecipeContext, capability: string, box: Rect, params:
 export function directionBase(ctx: RecipeContext): TimelineLayer[] {
   const out: TimelineLayer[] = [];
   const bg = ctx.dir.background;
-  if (!ctx.forbidden.includes(bg.capability)) out.push(layer(ctx, bg.capability, { x: -ctx.W * 0.1, y: -ctx.H * 0.1, w: ctx.W * 1.2, h: ctx.H * 1.2 }, { ...bg.params }, { z: 0, depth: 0.5, role: "background" }));
+  if (!ctx.forbidden.includes(bg.capability))
+    out.push(
+      layer(
+        ctx,
+        bg.capability,
+        { x: -ctx.W * 0.1, y: -ctx.H * 0.1, w: ctx.W * 1.2, h: ctx.H * 1.2 },
+        { ...bg.params },
+        { z: 0, depth: 0.5, role: "background" },
+      ),
+    );
   const level = ctx.effectsLevel;
   for (const ov of ctx.dir.overlays) {
     if (ctx.forbidden.includes(ov.capability)) continue;
@@ -246,7 +300,11 @@ export function screenParams(a: ResolvedAsset, extra: Record<string, unknown> = 
  * Pe o captură mai înaltă decât ecranul (pagină întreagă), fără decupaj, ecranul arată implicit partea de sus.
  * Dacă zona țintită e mai jos, întoarce o derulare fixă care o aduce în mijlocul ecranului; altfel {}.
  */
-export function revealRegion(params: Record<string, unknown>, region: Region | null | undefined, box: Rect): { scroll?: { from: number; to: number; start: number; end: number; ease: "linear" } } {
+export function revealRegion(
+  params: Record<string, unknown>,
+  region: Region | null | undefined,
+  box: Rect,
+): { scroll?: { from: number; to: number; start: number; end: number; ease: "linear" } } {
   if (!region || params.crop || params.scroll) return {};
   const p = params as unknown as Parameters<typeof screenMapping>[0];
   const m = screenMapping(p, box);
@@ -260,7 +318,13 @@ export function revealRegion(params: Record<string, unknown>, region: Region | n
 }
 
 /** Centrul unei zone din captură, în pixeli de compoziție, plus zoom-ul care o încadrează. */
-export function regionFocus(ctx: RecipeContext, screenBox: Rect, params: Record<string, unknown>, region: Region, fill = 0.42): { x: number; y: number; zoom: number; target: { x: number; y: number } } {
+export function regionFocus(
+  ctx: RecipeContext,
+  screenBox: Rect,
+  params: Record<string, unknown>,
+  region: Region,
+  fill = 0.42,
+): { x: number; y: number; zoom: number; target: { x: number; y: number } } {
   const p = params as unknown as Parameters<typeof screenMapping>[0];
   const c = screenPointToBox(p, screenBox, { x: region.rect.x + region.rect.w / 2, y: region.rect.y + region.rect.h / 2 });
   const regionW = region.rect.w * c.k;
@@ -277,7 +341,11 @@ export const norm = (s: string) =>
 
 /** Zona din captură care se potrivește cel mai bine cu un text (cuvinte comune, ignorând diacriticele). */
 export function bestRegion(regions: Region[], text: string, kinds: Region["kind"][] = ["input", "button", "custom", "heading"]): Region | null {
-  const words = new Set(norm(text).split(/\s+/).filter((w) => w.length > 3));
+  const words = new Set(
+    norm(text)
+      .split(/\s+/)
+      .filter((w) => w.length > 3),
+  );
   let best: { r: Region; s: number } | null = null;
   for (const r of regions) {
     if (!kinds.includes(r.kind)) continue;

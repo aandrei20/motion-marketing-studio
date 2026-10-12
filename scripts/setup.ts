@@ -12,7 +12,8 @@ import { preparePublicDir } from "../src/studio/remotion-studio";
 fs.mkdirSync(PATHS.projects, { recursive: true });
 fs.mkdirSync(PATHS.cache, { recursive: true });
 const readme = path.join(PATHS.projects, "README.md");
-if (!fs.existsSync(readme)) fs.writeFileSync(readme, "# Proiecte\n\nAici stau reclamele tale. Folderul nu urcă pe Git (are materiale cu drepturi, capturi și randări).\n");
+if (!fs.existsSync(readme))
+  fs.writeFileSync(readme, "# Proiecte\n\nAici stau reclamele tale. Folderul nu urcă pe Git (are materiale cu drepturi, capturi și randări).\n");
 preparePublicDir();
 console.log("Foldere pregătite (projects/, .cache/, folderul public pentru Remotion Studio).");
 let n = 0;

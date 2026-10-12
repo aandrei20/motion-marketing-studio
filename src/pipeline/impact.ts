@@ -27,7 +27,19 @@ export function sceneContentKey(t: Timeline, s: TimelineScene): string {
   const { from: _from, ...rest } = s;
   const end = s.from + s.durationInFrames;
   const words = (t.captions?.words ?? []).filter((w) => w.from < end && w.to > s.from).map((w) => ({ text: w.text, from: w.from - s.from, to: w.to - s.from }));
-  return fingerprint({ scene: rest, w: t.width, h: t.height, fps: t.fps, palette: t.palette, fonts: t.fonts, typography: t.typography, overlays: t.overlays, captions: t.captions ? { box: t.captions.box, params: t.captions.params, words } : null, concept: t.concept, safe: t.safeZone });
+  return fingerprint({
+    scene: rest,
+    w: t.width,
+    h: t.height,
+    fps: t.fps,
+    palette: t.palette,
+    fonts: t.fonts,
+    typography: t.typography,
+    overlays: t.overlays,
+    captions: t.captions ? { box: t.captions.box, params: t.captions.params, words } : null,
+    concept: t.concept,
+    safe: t.safeZone,
+  });
 }
 
 /** Amprenta întregului timeline ca imagine + sunet (fără id-ul versiunii; sunetul prin conținutul mixului). */
@@ -43,7 +55,7 @@ export function audioKey(t: Timeline, sb: Storyboard, brief: Brief, voiceFiles: 
     v: 2,
     duration: t.durationInFrames,
     fps: t.fps,
-    cues: t.audio.cues.map((c) => [c.kind, c.atFrame, c.sound, c.gainDb, c.pan, c.kind === "voice" ? voiceFiles[c.sound] ?? null : null]),
+    cues: t.audio.cues.map((c) => [c.kind, c.atFrame, c.sound, c.gainDb, c.pan, c.kind === "voice" ? (voiceFiles[c.sound] ?? null) : null]),
     beat: t.audio.beatGrid,
     sections: t.scenes.map((s) => [s.from, s.durationInFrames, s.meta.energy, s.meta.narrativeRole]),
     silences,
@@ -95,8 +107,18 @@ export function versionFingerprint(projectId: string, versionId: string): Versio
   return {
     versionId,
     inputs,
-    script: script && brief ? { voice: voiceFingerprint(brief, script), text: fingerprint(script.lines.map((l) => [l.id, l.onScreen, l.emphasis, l.claimIds, l.isHook, l.isCta])) } : null,
-    storyboard: sb ? { global: fingerprint(sbRest), audio: fingerprint(sbAudio), scenes: Object.fromEntries(sbScenes.map((s) => [s.id, fingerprint(s)])), order: sbScenes.map((s) => s.id) } : null,
+    script:
+      script && brief
+        ? { voice: voiceFingerprint(brief, script), text: fingerprint(script.lines.map((l) => [l.id, l.onScreen, l.emphasis, l.claimIds, l.isHook, l.isCta])) }
+        : null,
+    storyboard: sb
+      ? {
+          global: fingerprint(sbRest),
+          audio: fingerprint(sbAudio),
+          scenes: Object.fromEntries(sbScenes.map((s) => [s.id, fingerprint(s)])),
+          order: sbScenes.map((s) => s.id),
+        }
+      : null,
     timelines,
     mix: fileFingerprint(versionFile(projectId, versionId, "audio/mix.wav")),
   };
@@ -111,7 +133,11 @@ export function currentInputs(projectId: string): Record<string, string> {
   }
   const refDir = projectFile(projectId, "references");
   if (fs.existsSync(refDir)) {
-    const profiles = fs.readdirSync(refDir).filter((x) => x.endsWith(".json")).sort().map((x) => readJsonLoose(path.join(refDir, x)));
+    const profiles = fs
+      .readdirSync(refDir)
+      .filter((x) => x.endsWith(".json"))
+      .sort()
+      .map((x) => readJsonLoose(path.join(refDir, x)));
     if (profiles.length) out.references = fingerprint(profiles);
   }
   return out;
@@ -137,7 +163,7 @@ function keysDiff(a: Record<string, string>, b: Record<string, string>) {
 export function diffFingerprints(a: VersionFingerprint, b: VersionFingerprint): ChangeSet {
   const artifacts = new Set<ArtifactId>();
   for (const k of ["brief", "research", "brand", "assets", "references"] as const) if (a.inputs[k] !== b.inputs[k]) artifacts.add(k);
-  if (a.script?.voice !== b.script?.voice) (artifacts.add("script"), artifacts.add("voice"));
+  if (a.script?.voice !== b.script?.voice) artifacts.add("script"), artifacts.add("voice");
   else if (a.script?.text !== b.script?.text) artifacts.add("script");
   const sbA = a.storyboard;
   const sbB = b.storyboard;
@@ -154,11 +180,22 @@ export function diffFingerprints(a: VersionFingerprint, b: VersionFingerprint): 
     }
     const d = keysDiff(ta.scenes, tb.scenes);
     const global = ta.global !== tb.global;
-    formats[fid] = { changedScenes: global ? Object.keys(tb.scenes) : [...d.changed, ...d.added], timing: ta.timing !== tb.timing, global, cues: ta.cues !== tb.cues };
+    formats[fid] = {
+      changedScenes: global ? Object.keys(tb.scenes) : [...d.changed, ...d.added],
+      timing: ta.timing !== tb.timing,
+      global,
+      cues: ta.cues !== tb.cues,
+    };
     if (global || d.changed.length || d.added.length || d.removed.length || ta.timing !== tb.timing) artifacts.add("timeline");
   }
   if (a.mix !== b.mix || audioSettings) artifacts.add("mix");
-  return { from: a.versionId, to: b.versionId, artifacts: [...artifacts], storyboardScenes: { changed: sbd.changed, added: sbd.added, removed: sbd.removed, reordered }, formats };
+  return {
+    from: a.versionId,
+    to: b.versionId,
+    artifacts: [...artifacts],
+    storyboardScenes: { changed: sbd.changed, added: sbd.added, removed: sbd.removed, reordered },
+    formats,
+  };
 }
 
 export interface ImpactPlan {
@@ -188,7 +225,8 @@ export function planImpact(cs: ChangeSet): ImpactPlan {
   const stills: Record<string, string[]> = {};
   for (const [fid, f] of Object.entries(cs.formats)) {
     stills[fid] = f.changedScenes;
-    if (f.changedScenes.length) reasons.push(`[${fid}] ${f.changedScenes.length} scene cu imagine schimbată: ${f.changedScenes.join(", ")}; celelalte se refolosesc din cache.`);
+    if (f.changedScenes.length)
+      reasons.push(`[${fid}] ${f.changedScenes.length} scene cu imagine schimbată: ${f.changedScenes.join(", ")}; celelalte se refolosesc din cache.`);
     else reasons.push(`[${fid}] Nicio scenă cu imagine schimbată: cadrele se refolosesc.`);
   }
   const fullRender = audio || Object.values(cs.formats).some((f) => f.changedScenes.length > 0 || f.timing);

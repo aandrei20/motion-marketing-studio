@@ -1,4 +1,20 @@
-import type { Approvals, AssetManifest, Brand, Brief, Concepts, Critique, EditLog, MixReport, Project, ProjectState, Research, Script, Storyboard, Timeline, VersionMeta } from "../../core/schema";
+import type {
+  Approvals,
+  AssetManifest,
+  Brand,
+  Brief,
+  Concepts,
+  Critique,
+  EditLog,
+  MixReport,
+  Project,
+  ProjectState,
+  Research,
+  Script,
+  Storyboard,
+  Timeline,
+  VersionMeta,
+} from "../../core/schema";
 import type { QualityRun } from "../../quality/run";
 import type { AutoFixReport } from "../../quality/autofix";
 import type { ImpactPlan } from "../../pipeline/impact";
@@ -23,7 +39,17 @@ export interface VersionBundle {
   timelines: Record<string, Timeline>;
   critique: Critique;
   mixReport: MixReport | null;
-  compileReport: Record<string, { scenes: Array<{ id: string; recipe: string; durationSec: number; minSec: number; reasons: string[]; transition: string | null; notes: string[] }>; warnings: string[]; validation: { ok: boolean; findings: Array<{ timecode: string | null; frame: number | null; severity: string; problem: string; recommendation: string; sceneId: string | null }> } }> | null;
+  compileReport: Record<
+    string,
+    {
+      scenes: Array<{ id: string; recipe: string; durationSec: number; minSec: number; reasons: string[]; transition: string | null; notes: string[] }>;
+      warnings: string[];
+      validation: {
+        ok: boolean;
+        findings: Array<{ timecode: string | null; frame: number | null; severity: string; problem: string; recommendation: string; sceneId: string | null }>;
+      };
+    }
+  > | null;
   cueSheet: Array<{ id: string; kind: string; atFrame: number; sound: string; gainDb: number; reason: string; timecode: string }> | null;
   renders: string[];
   scriptIssues: Array<{ severity: string; lineId: string | null; message: string }>;
@@ -51,7 +77,13 @@ export interface Meta {
   questions: Array<{ id: string; group: string; text: string; options?: string[]; multi?: boolean; required: boolean }>;
   groups: Record<string, string>;
   templates: Array<{ id: string; title: string; description: string }>;
-  recipes: Array<{ id: string; title: string; description: string; roles: string[]; slots: Array<{ name: string; kind: string; required: boolean; multiple?: boolean }> }>;
+  recipes: Array<{
+    id: string;
+    title: string;
+    description: string;
+    roles: string[];
+    slots: Array<{ name: string; kind: string; required: boolean; multiple?: boolean }>;
+  }>;
   formats: string[];
   capabilities: number;
 }
@@ -73,7 +105,8 @@ async function call<T>(method: string, url: string, body?: unknown, headers: Rec
   const res = await fetch(url, {
     method,
     // X-MMS: doar interfața Studio poate modifica date (serverul refuză cererile fără el)
-    headers: body instanceof Blob || body instanceof ArrayBuffer ? { "X-MMS": "1", ...headers } : { "Content-Type": "application/json", "X-MMS": "1", ...headers },
+    headers:
+      body instanceof Blob || body instanceof ArrayBuffer ? { "X-MMS": "1", ...headers } : { "Content-Type": "application/json", "X-MMS": "1", ...headers },
     body: body === undefined ? undefined : body instanceof Blob || body instanceof ArrayBuffer ? body : JSON.stringify(body),
   });
   const text = await res.text();
@@ -99,7 +132,11 @@ export const api = {
   claim: (id: string, claimId: string, status: string) => call<unknown>("POST", `/api/projects/${id}/claims/${claimId}`, { status }),
   patchAsset: (id: string, assetId: string, b: unknown) => call<unknown>("PATCH", `/api/projects/${id}/assets/${assetId}`, b),
   upload: (id: string, file: File, opts: { role?: string; thirdParty?: boolean }) =>
-    call<{ asset: { id: string }; duplicate: boolean }>("POST", `/api/projects/${id}/assets`, file, { "x-filename": file.name, ...(opts.role ? { "x-role": opts.role } : {}), ...(opts.thirdParty ? { "x-third-party": "1" } : {}) }),
+    call<{ asset: { id: string }; duplicate: boolean }>("POST", `/api/projects/${id}/assets`, file, {
+      "x-filename": file.name,
+      ...(opts.role ? { "x-role": opts.role } : {}),
+      ...(opts.thirdParty ? { "x-third-party": "1" } : {}),
+    }),
   job: (id: string, type: string, params: Record<string, unknown> = {}) => call<Job>("POST", `/api/projects/${id}/jobs`, { type, params }),
   cancelJob: (id: string, jobId: string) => call<Job>("POST", `/api/projects/${id}/jobs/${jobId}/cancel`),
   resumeJob: (id: string, jobId: string) => call<Job>("POST", `/api/projects/${id}/jobs/${jobId}/resume`),

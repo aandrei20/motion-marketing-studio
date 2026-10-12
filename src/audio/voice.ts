@@ -73,8 +73,25 @@ async function windowsTts(req: VoiceRequest, work: string): Promise<{ wav: strin
   const meta = path.join(work, "meta.json");
   fs.writeFileSync(textFile, req.text, "utf8");
   const script = path.join(PATHS.root, "scripts", "tts", "winrt-tts.ps1");
-  const r = await run("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-TextFile", textFile, "-Voice", req.voice, "-Out", wav, "-MetaOut", meta, "-Rate", String(req.rate ?? 1)]);
-  if (r.code !== 0 || !fs.existsSync(wav)) throw new MmsError("TTS_FAILED", `Sinteza Windows a eșuat: ${r.stderr.slice(-800)}`, "Verifică numele vocii cu: npm run mms -- voices");
+  const r = await run("powershell.exe", [
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    script,
+    "-TextFile",
+    textFile,
+    "-Voice",
+    req.voice,
+    "-Out",
+    wav,
+    "-MetaOut",
+    meta,
+    "-Rate",
+    String(req.rate ?? 1),
+  ]);
+  if (r.code !== 0 || !fs.existsSync(wav))
+    throw new MmsError("TTS_FAILED", `Sinteza Windows a eșuat: ${r.stderr.slice(-800)}`, "Verifică numele vocii cu: npm run mms -- voices");
   const m = JSON.parse(fs.readFileSync(meta, "utf8").replace(/^﻿/, "")) as { words: Array<{ text: string; start: number }> | { text: string; start: number } };
   const words = Array.isArray(m.words) ? m.words : m.words ? [m.words] : [];
   return { wav, words };
@@ -85,9 +102,19 @@ export async function listVoices(): Promise<Array<{ provider: VoiceProvider; nam
   if (process.platform === "win32") {
     const f = path.join(PATHS.cache, "voices.json");
     fs.mkdirSync(PATHS.cache, { recursive: true });
-    const r = await run("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(PATHS.root, "scripts", "tts", "winrt-voices.ps1"), "-Out", f]);
+    const r = await run("powershell.exe", [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      path.join(PATHS.root, "scripts", "tts", "winrt-voices.ps1"),
+      "-Out",
+      f,
+    ]);
     if (r.code === 0 && fs.existsSync(f)) {
-      const raw = JSON.parse(fs.readFileSync(f, "utf8").replace(/^﻿/, "")) as Array<{ name: string; language: string; gender: string }> | { name: string; language: string; gender: string };
+      const raw = JSON.parse(fs.readFileSync(f, "utf8").replace(/^﻿/, "")) as
+        | Array<{ name: string; language: string; gender: string }>
+        | { name: string; language: string; gender: string };
       for (const v of Array.isArray(raw) ? raw : [raw]) out.push({ provider: "windows", name: v.name, language: v.language, gender: v.gender });
     }
   }
@@ -105,7 +132,12 @@ export async function listVoices(): Promise<Array<{ provider: VoiceProvider; nam
 
 /** Lanț de procesare pentru voce: high-pass, căldură, prezență, nivelare lentă (clar pe difuzor de telefon). */
 export function polishVoice(s: Stereo): Stereo {
-  const chain = () => [new Biquad("highpass", 75, 0.707), new Biquad("peaking", 180, 0.9, 1.0), new Biquad("peaking", 3500, 0.8, 2.2), new Biquad("highshelf", 9000, 0.7, 1.2)];
+  const chain = () => [
+    new Biquad("highpass", 75, 0.707),
+    new Biquad("peaking", 180, 0.9, 1.0),
+    new Biquad("peaking", 3500, 0.8, 2.2),
+    new Biquad("highshelf", 9000, 0.7, 1.2),
+  ];
   const cl = chain();
   const cr = chain();
   const n = s.L.length;
@@ -168,10 +200,18 @@ const PAID_PROVIDERS = new Set(["elevenlabs", "openai"]);
 const TTS_TIMEOUT_MS = 90_000;
 
 /** Sintetizează o replică (cu cache). Apelurile și refolosirile intră în jurnalul de utilizare al proiectului. */
-export async function synthesize(req: VoiceRequest, cacheDir: string, meta: { projectId?: string; reason?: string } = {}): Promise<VoiceResult & { file: string }> {
+export async function synthesize(
+  req: VoiceRequest,
+  cacheDir: string,
+  meta: { projectId?: string; reason?: string } = {},
+): Promise<VoiceResult & { file: string }> {
   const model = ttsModel(req.provider);
   // modelul intră în cheie doar când există, ca vocile locale deja sintetizate să rămână valabile
-  const key = crypto.createHash("sha256").update(JSON.stringify([req.provider, req.voice, req.rate ?? 1, req.text, ...(model ? [model] : [])])).digest("hex").slice(0, 20);
+  const key = crypto
+    .createHash("sha256")
+    .update(JSON.stringify([req.provider, req.voice, req.rate ?? 1, req.text, ...(model ? [model] : [])]))
+    .digest("hex")
+    .slice(0, 20);
   const file = path.join(cacheDir, `${key}.wav`);
   const metaFile = path.join(cacheDir, `${key}.json`);
   const paid = PAID_PROVIDERS.has(req.provider);
@@ -192,9 +232,17 @@ export async function synthesize(req: VoiceRequest, cacheDir: string, meta: { pr
       e instanceof MmsError
         ? e
         : (e as Error).name === "TimeoutError"
-          ? new MmsError("TTS_TIMEOUT", `Vocea ${req.provider} nu a răspuns în ${TTS_TIMEOUT_MS / 1000} s.`, "Încearcă din nou; dacă se repetă, verifică starea serviciului sau alege o voce locală.")
+          ? new MmsError(
+              "TTS_TIMEOUT",
+              `Vocea ${req.provider} nu a răspuns în ${TTS_TIMEOUT_MS / 1000} s.`,
+              "Încearcă din nou; dacă se repetă, verifică starea serviciului sau alege o voce locală.",
+            )
           : paid
-            ? new MmsError("TTS_FAILED", `Apelul la vocea ${req.provider} a eșuat: ${(e as Error).message}`, "Verifică conexiunea la internet și cheia din .env.")
+            ? new MmsError(
+                "TTS_FAILED",
+                `Apelul la vocea ${req.provider} a eșuat: ${(e as Error).message}`,
+                "Verifică conexiunea la internet și cheia din .env.",
+              )
             : e;
     recordUsage({ ...usage, durationMs: Date.now() - t0, cached: false, ok: false, error: err instanceof MmsError ? err.code : "ERROR" });
     throw err;
@@ -217,7 +265,17 @@ async function synthesizeFresh(req: VoiceRequest, file: string, metaFile: string
     }
     case "say": {
       const out = path.join(work, "out.wav");
-      const r = await run("say", ["-v", req.voice, "-r", String(Math.round(180 * (req.rate ?? 1))), "-o", out, "--file-format=WAVE", "--data-format=LEI16@48000", req.text]);
+      const r = await run("say", [
+        "-v",
+        req.voice,
+        "-r",
+        String(Math.round(180 * (req.rate ?? 1))),
+        "-o",
+        out,
+        "--file-format=WAVE",
+        "--data-format=LEI16@48000",
+        req.text,
+      ]);
       if (r.code !== 0) throw new MmsError("TTS_FAILED", `macOS say a eșuat: ${r.stderr}`);
       raw = await decodeAudio(out);
       break;
@@ -234,7 +292,11 @@ async function synthesizeFresh(req: VoiceRequest, file: string, metaFile: string
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(req.voice)}/with-timestamps`, {
         method: "POST",
         headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ text: req.text, model_id: ttsModel("elevenlabs"), voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: req.rate ?? 1 } }),
+        body: JSON.stringify({
+          text: req.text,
+          model_id: ttsModel("elevenlabs"),
+          voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: req.rate ?? 1 },
+        }),
         signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
       });
       if (!res.ok) throw new MmsError("TTS_FAILED", `ElevenLabs a răspuns ${res.status}: ${(await res.text()).slice(0, 400)}`);
@@ -292,5 +354,11 @@ export async function voiceFromFile(file: string, transcript: string): Promise<V
   const { audio } = trimSilence(raw);
   const polished = polishVoice(audio);
   const duration = polished.L.length / polished.sr;
-  return { audio: polished, words: transcript ? estimateWordTimes(transcript, duration) : [], wordTiming: "estimated", provider: "user-file", voice: path.basename(file) };
+  return {
+    audio: polished,
+    words: transcript ? estimateWordTimes(transcript, duration) : [],
+    wordTiming: "estimated",
+    provider: "user-file",
+    voice: path.basename(file),
+  };
 }

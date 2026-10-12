@@ -26,13 +26,54 @@ const research = Research.parse({
   schemaVersion: 1,
   sources: [{ id: "s1", kind: "official-site", title: "x", fetchedAt: "2026-10-08T00:00:00Z", contentHash: "h", reliability: "official" }],
   claims: [
-    { id: "c-poz", text: "Planifică săptămâna în 5 minute", kind: "fact", category: "positioning", sourceIds: ["s1"], quote: "Planifică săptămâna în 5 minute", confidence: "high", status: "approved-by-user", checkedAt: "2026-10-08" },
-    { id: "c-f1", text: "Căutare instantă: găsești orice", kind: "fact", category: "feature", sourceIds: ["s1"], confidence: "medium", status: "verified", checkedAt: "2026-10-08" },
-    { id: "c-f2", text: "Kanban: muți sarcinile", kind: "fact", category: "feature", sourceIds: ["s1"], confidence: "medium", status: "verified", checkedAt: "2026-10-08" },
+    {
+      id: "c-poz",
+      text: "Planifică săptămâna în 5 minute",
+      kind: "fact",
+      category: "positioning",
+      sourceIds: ["s1"],
+      quote: "Planifică săptămâna în 5 minute",
+      confidence: "high",
+      status: "approved-by-user",
+      checkedAt: "2026-10-08",
+    },
+    {
+      id: "c-f1",
+      text: "Căutare instantă: găsești orice",
+      kind: "fact",
+      category: "feature",
+      sourceIds: ["s1"],
+      confidence: "medium",
+      status: "verified",
+      checkedAt: "2026-10-08",
+    },
+    {
+      id: "c-f2",
+      text: "Kanban: muți sarcinile",
+      kind: "fact",
+      category: "feature",
+      sourceIds: ["s1"],
+      confidence: "medium",
+      status: "verified",
+      checkedAt: "2026-10-08",
+    },
   ],
 });
-const assets = { schemaVersion: 1, assets: [{ id: "shot", role: "screenshot", showsProductUI: true }, { id: "logo", role: "logo" }, { id: "rec", role: "screen-recording" }] } as unknown as AssetManifest;
-const ctx = (b = brief()): ConceptContext => ({ project: { product: { name: "Produs", category: "saas" }, formats: [], platformOverrides: {} }, brief: b, research, assets, hasBrand: true });
+const assets = {
+  schemaVersion: 1,
+  assets: [
+    { id: "shot", role: "screenshot", showsProductUI: true },
+    { id: "logo", role: "logo" },
+    { id: "rec", role: "screen-recording" },
+  ],
+} as unknown as AssetManifest;
+const ctx = (b = brief()): ConceptContext => ({
+  project: { product: { name: "Produs", category: "saas" }, formats: [], platformOverrides: {} },
+  brief: b,
+  research,
+  assets,
+  hasBrand: true,
+});
 
 describe("directorul creativ", () => {
   it("propune teritorii doar cu dovezi", () => {
@@ -73,7 +114,11 @@ const page = {
   title: "Planner – Planifică săptămâna",
   description: "Planner adună sarcinile echipei într-un singur loc.",
   og: { "og:site_name": "Planner" },
-  headings: [{ level: 1, text: "Planifică săptămâna în 5 minute" }, { level: 2, text: "Căutare instantă" }, { level: 2, text: "Focusul zilei" }],
+  headings: [
+    { level: 1, text: "Planifică săptămâna în 5 minute" },
+    { level: 2, text: "Căutare instantă" },
+    { level: 2, text: "Focusul zilei" },
+  ],
   paragraphs: [],
   listItems: [],
   links: [],
@@ -87,7 +132,10 @@ const page = {
 
 describe("intake-ul inteligent", () => {
   it("deduce din site și din cerere, cu sursa și încrederea fiecărui răspuns", () => {
-    const r = inferIntake({ url: page.url, vision: "Vreau ceva energic, cu fraza „Planifică săptămâna în 5 minute”", formats: ["9x16"], textLanguage: "ro", durationSec: 30 }, page);
+    const r = inferIntake(
+      { url: page.url, vision: "Vreau ceva energic, cu fraza „Planifică săptămâna în 5 minute”", formats: ["9x16"], textLanguage: "ro", durationSec: 30 },
+      page,
+    );
     const a = Object.fromEntries(r.answers.map((x) => [x.id, x]));
     expect(r.project.name).toBe("Planner");
     // „ai” (verbul) nu înseamnă „AI”
@@ -111,7 +159,21 @@ describe("intake-ul inteligent", () => {
     expect(noLang.project.language.text).toBeNull();
   });
   it("categoria vine din semnalele importante, nu dintr-o mențiune izolată; CTA-ul poate fi un link", () => {
-    const p: PageData = { ...page, title: "Metrics – Simple web analytics", description: "Privacy-friendly analytics with a clean dashboard and simple plans.", headings: [{ level: 1, text: "Simple analytics dashboard" }, { level: 3, text: "Pricing plans" }], fullText: "Simple analytics dashboard. See traffic from AI tools. Pricing plans for every team.", buttons: [], links: [{ text: "Start free trial", href: "https://x.test/register" }, { text: "Blog", href: "https://x.test/blog" }] };
+    const p: PageData = {
+      ...page,
+      title: "Metrics – Simple web analytics",
+      description: "Privacy-friendly analytics with a clean dashboard and simple plans.",
+      headings: [
+        { level: 1, text: "Simple analytics dashboard" },
+        { level: 3, text: "Pricing plans" },
+      ],
+      fullText: "Simple analytics dashboard. See traffic from AI tools. Pricing plans for every team.",
+      buttons: [],
+      links: [
+        { text: "Start free trial", href: "https://x.test/register" },
+        { text: "Blog", href: "https://x.test/blog" },
+      ],
+    };
     const r = inferIntake({ url: "https://x.test/", formats: ["9x16"], textLanguage: "en" }, p);
     expect(r.project.category).toBe("saas");
     expect(r.brief.cta!.text).toBe("Start free trial");
@@ -120,10 +182,16 @@ describe("intake-ul inteligent", () => {
   it("proiectul din intake dă fiecărui format platforma lui (16:9 nu primește zonele unei platforme verticale)", () => {
     const r = inferIntake({ url: page.url, formats: ["9x16", "16x9"], textLanguage: "ro", voiceLanguage: "ro", durationSec: 20 }, page);
     const p = projectFromIntake("test", r);
-    expect(p.formats.map((x) => [x.id, x.platform])).toEqual([["9x16", "tiktok"], ["16x9", "youtube"]]);
+    expect(p.formats.map((x) => [x.id, x.platform])).toEqual([
+      ["9x16", "tiktok"],
+      ["16x9", "youtube"],
+    ]);
     expect(p.formats.every((x) => x.durationSec === 20 && x.fps === 30)).toBe(true);
     // platformele cerute explicit au prioritate, tot pe formatul potrivit
-    const reels = projectFromIntake("test", inferIntake({ url: page.url, formats: ["16x9", "9x16"], platforms: ["reels", "youtube"], textLanguage: "ro" }, page));
+    const reels = projectFromIntake(
+      "test",
+      inferIntake({ url: page.url, formats: ["16x9", "9x16"], platforms: ["reels", "youtube"], textLanguage: "ro" }, page),
+    );
     expect(reels.formats.map((x) => x.platform)).toEqual(["youtube", "reels"]);
   });
 });

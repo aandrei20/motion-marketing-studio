@@ -8,7 +8,12 @@ import type { Rect, Timeline, TimelineLayer, TimelineScene } from "../core/schem
 import { layerZoom, sampleCamera } from "../motion/camera/rig";
 import { screenPointToBox } from "../motion/media/media";
 
-export function screenRect(t: Pick<Timeline, "width" | "height" | "fps">, scene: TimelineScene, layer: Pick<TimelineLayer, "box" | "depth">, local: number): Rect {
+export function screenRect(
+  t: Pick<Timeline, "width" | "height" | "fps">,
+  scene: TimelineScene,
+  layer: Pick<TimelineLayer, "box" | "depth">,
+  local: number,
+): Rect {
   const d = layer.depth;
   if (d === 0) return layer.box;
   const W = t.width;
@@ -68,7 +73,12 @@ export function focusRects(t: Pick<Timeline, "width" | "height" | "fps">, scene:
       else if (full && cp.from && cp.to) {
         const x0 = Math.min(cp.from.x, cp.to.x - cp.from.w / 2);
         const y0 = Math.min(cp.from.y, cp.to.y - cp.from.h / 2);
-        target = { x: x0, y: y0, w: Math.max(cp.from.x + cp.from.w, cp.to.x + cp.from.w / 2) - x0, h: Math.max(cp.from.y + cp.from.h, cp.to.y + cp.from.h / 2) - y0 };
+        target = {
+          x: x0,
+          y: y0,
+          w: Math.max(cp.from.x + cp.from.w, cp.to.x + cp.from.w / 2) - x0,
+          h: Math.max(cp.from.y + cp.from.h, cp.to.y + cp.from.h / 2) - y0,
+        };
       } else if (full && cp.path?.length) {
         // cursorul: punctul în care se află la momentul de hold (o zonă mică în jurul lui)
         const pt = [...cp.path].reverse().find((q) => q.at <= local - l.from - c.from) ?? cp.path[0];

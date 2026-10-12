@@ -1,7 +1,22 @@
 import React, { useState } from "react";
 import { api, type Meta } from "./api";
 
-const CATEGORIES = ["saas", "mobile-app", "desktop-app", "website", "ai-product", "developer-tool", "fintech", "productivity", "creative-tool", "ecommerce", "startup", "enterprise", "digital-service", "other"];
+const CATEGORIES = [
+  "saas",
+  "mobile-app",
+  "desktop-app",
+  "website",
+  "ai-product",
+  "developer-tool",
+  "fintech",
+  "productivity",
+  "creative-tool",
+  "ecommerce",
+  "startup",
+  "enterprise",
+  "digital-service",
+  "other",
+];
 const PLATFORMS = ["tiktok", "reels", "shorts", "youtube", "feed", "linkedin", "x", "generic"];
 
 interface FormatRow {
@@ -13,7 +28,17 @@ interface FormatRow {
   durationSec: number;
 }
 
-export function NewProject({ meta, onCancel, onCreated, notify }: { meta: Meta; onCancel: () => void; onCreated: (id: string) => void; notify: (m: string, k?: "ok" | "err") => void }) {
+export function NewProject({
+  meta,
+  onCancel,
+  onCreated,
+  notify,
+}: {
+  meta: Meta;
+  onCancel: () => void;
+  onCreated: (id: string) => void;
+  notify: (m: string, k?: "ok" | "err") => void;
+}) {
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [product, setProduct] = useState("");
@@ -37,7 +62,14 @@ export function NewProject({ meta, onCancel, onCreated, notify }: { meta: Meta; 
       <div className="grid2">
         <label>
           Numele proiectului
-          <input value={name} onChange={(e) => { setName(e.target.value); if (!id) setId(slug(e.target.value)); }} placeholder="Reclamă lansare toamnă" />
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (!id) setId(slug(e.target.value));
+            }}
+            placeholder="Reclamă lansare toamnă"
+          />
         </label>
         <label>
           Id (folder)
@@ -119,12 +151,23 @@ export function NewProject({ meta, onCancel, onCreated, notify }: { meta: Meta; 
               <td>
                 <input type="number" min={3} max={600} value={f.durationSec} onChange={(e) => set(i, { durationSec: Number(e.target.value) })} />
               </td>
-              <td>{formats.length > 1 ? <button className="btn ghost" onClick={() => setFormats((x) => x.filter((_, k) => k !== i))}>×</button> : null}</td>
+              <td>
+                {formats.length > 1 ? (
+                  <button className="btn ghost" onClick={() => setFormats((x) => x.filter((_, k) => k !== i))}>
+                    ×
+                  </button>
+                ) : null}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <button className="btn ghost" onClick={() => setFormats((f) => [...f, { preset: "16x9", width: 1920, height: 1080, platform: "youtube", fps: 30, durationSec: f[0]?.durationSec ?? 30 }])}>
+      <button
+        className="btn ghost"
+        onClick={() =>
+          setFormats((f) => [...f, { preset: "16x9", width: 1920, height: 1080, platform: "youtube", fps: 30, durationSec: f[0]?.durationSec ?? 30 }])
+        }
+      >
         + format
       </button>
       <div className="actions">
@@ -140,7 +183,14 @@ export function NewProject({ meta, onCancel, onCreated, notify }: { meta: Meta; 
                 id,
                 name: name || id,
                 product: { name: product, url: url || undefined, category },
-                formats: formats.map((f) => ({ preset: f.preset === "custom" ? undefined : f.preset, width: f.width, height: f.height, fps: f.fps, durationSec: f.durationSec, platform: f.platform })),
+                formats: formats.map((f) => ({
+                  preset: f.preset === "custom" ? undefined : f.preset,
+                  width: f.width,
+                  height: f.height,
+                  fps: f.fps,
+                  durationSec: f.durationSec,
+                  platform: f.platform,
+                })),
                 textLang,
                 voiceLang: voiceLang || null,
               });

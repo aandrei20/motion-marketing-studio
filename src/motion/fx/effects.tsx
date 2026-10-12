@@ -16,7 +16,19 @@ const fxBase = {
 };
 
 /** Canvas desenat sincron la fiecare cadru (determinist: doar din cadru și sămânță). */
-function FrameCanvas({ w, h, scale = 1, draw, style }: { w: number; h: number; scale?: number; draw: (ctx: CanvasRenderingContext2D, cw: number, ch: number) => void; style?: React.CSSProperties }) {
+function FrameCanvas({
+  w,
+  h,
+  scale = 1,
+  draw,
+  style,
+}: {
+  w: number;
+  h: number;
+  scale?: number;
+  draw: (ctx: CanvasRenderingContext2D, cw: number, ch: number) => void;
+  style?: React.CSSProperties;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   const cw = Math.max(1, Math.round(w * scale));
   const ch = Math.max(1, Math.round(h * scale));
@@ -38,7 +50,11 @@ export const fxGrain = defineLayer({
   tags: ["grain", "film", "texture", "noise", "cinematic"],
   performance: "medium",
   sfx: [],
-  params: z.object({ opacity: z.number().min(0).max(0.5).default(0.06), refreshFps: z.number().min(1).max(60).default(12), resolution: z.number().min(0.1).max(1).default(0.35) }),
+  params: z.object({
+    opacity: z.number().min(0).max(0.5).default(0.06),
+    refreshFps: z.number().min(1).max(60).default(12),
+    resolution: z.number().min(0.1).max(1).default(0.35),
+  }),
   Component: ({ params: p, frame, box, env, layer }) => {
     const step = Math.floor((frame / env.fps) * p.refreshFps);
     return (
@@ -76,7 +92,13 @@ export const fxVignette = defineLayer({
   sfx: [],
   params: z.object({ strength: z.number().min(0).max(1).default(0.45), color: z.string().default("#000000") }),
   Component: ({ params: p, env }) => (
-    <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at center, transparent 45%, ${withAlpha(hex(resolveColor(env.palette, p.color)), p.strength)} 100%)` }} />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: `radial-gradient(ellipse at center, transparent 45%, ${withAlpha(hex(resolveColor(env.palette, p.color)), p.strength)} 100%)`,
+      }}
+    />
   ),
   example: { params: { strength: 0.7 }, durationInFrames: 30, box: "full" },
 });
@@ -90,7 +112,14 @@ export const fxLightSweep = defineLayer({
   tags: ["light", "sweep", "shine", "glint", "premium", "logo"],
   performance: "light",
   sfx: [{ sound: "shimmer", at: "start", gainDb: -10 }],
-  params: z.object({ angle: z.number().default(20), width: z.number().min(0.02).max(0.6).default(0.18), color: z.string().default("#ffffff"), intensity: z.number().min(0).max(1).default(0.55), start: z.number().min(0).max(1).default(0), end: z.number().min(0).max(1).default(0.6) }),
+  params: z.object({
+    angle: z.number().default(20),
+    width: z.number().min(0.02).max(0.6).default(0.18),
+    color: z.string().default("#ffffff"),
+    intensity: z.number().min(0).max(1).default(0.55),
+    start: z.number().min(0).max(1).default(0),
+    end: z.number().min(0).max(1).default(0.6),
+  }),
   Component: ({ params: p, frame, duration, env }) => {
     const t = prog(frame, p.start * duration, p.end * duration, EASE.inOut);
     const pos = -30 + t * 160;
@@ -119,7 +148,13 @@ export const fxGlowOrbs = defineLayer({
   tags: ["glow", "bloom", "light", "orbs", "ambient", "premium"],
   performance: "light",
   sfx: [],
-  params: z.object({ colors: z.array(z.string()).min(1).default(["primary", "accent"]), count: z.number().int().min(1).max(8).default(3), size: z.number().min(0.1).max(1.5).default(0.6), intensity: z.number().min(0).max(1).default(0.5), speed: z.number().min(0).max(3).default(0.5) }),
+  params: z.object({
+    colors: z.array(z.string()).min(1).default(["primary", "accent"]),
+    count: z.number().int().min(1).max(8).default(3),
+    size: z.number().min(0.1).max(1.5).default(0.6),
+    intensity: z.number().min(0).max(1).default(0.5),
+    speed: z.number().min(0).max(3).default(0.5),
+  }),
   Component: ({ params: p, frame, env, layer }) => (
     <div style={{ position: "absolute", inset: 0, mixBlendMode: "screen", overflow: "hidden" }}>
       {Array.from({ length: p.count }, (_, i) => {
@@ -129,7 +164,19 @@ export const fxGlowOrbs = defineLayer({
         const breathe = 0.75 + 0.25 * Math.sin(t * 1.3 + i);
         const c = hex(resolveColor(env.palette, p.colors[i % p.colors.length], "primary"));
         const s = p.size * 100;
-        return <div key={i} style={{ position: "absolute", left: `${x - s / 2}%`, top: `${y - s / 2}%`, width: `${s}%`, aspectRatio: "1", background: `radial-gradient(closest-side, ${withAlpha(c, p.intensity * breathe)}, transparent)` }} />;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: `${x - s / 2}%`,
+              top: `${y - s / 2}%`,
+              width: `${s}%`,
+              aspectRatio: "1",
+              background: `radial-gradient(closest-side, ${withAlpha(c, p.intensity * breathe)}, transparent)`,
+            }}
+          />
+        );
       })}
     </div>
   ),
@@ -145,7 +192,14 @@ export const fxGodRays = defineLayer({
   tags: ["rays", "god-rays", "reveal", "light", "epic", "launch"],
   performance: "light",
   sfx: [],
-  params: z.object({ color: z.string().default("#ffffff"), x: z.number().min(0).max(1).default(0.5), y: z.number().min(0).max(1).default(0.4), rays: z.number().int().min(4).max(64).default(18), intensity: z.number().min(0).max(1).default(0.22), degPerSec: z.number().default(6) }),
+  params: z.object({
+    color: z.string().default("#ffffff"),
+    x: z.number().min(0).max(1).default(0.5),
+    y: z.number().min(0).max(1).default(0.4),
+    rays: z.number().int().min(4).max(64).default(18),
+    intensity: z.number().min(0).max(1).default(0.22),
+    degPerSec: z.number().default(6),
+  }),
   Component: ({ params: p, frame, env }) => {
     const c = hex(resolveColor(env.palette, p.color));
     const a = (frame / env.fps) * p.degPerSec;
@@ -178,8 +232,26 @@ export const fxScanlines = defineLayer({
   params: z.object({ opacity: z.number().min(0).max(1).default(0.15), spacing: z.number().min(2).max(20).default(4), roll: z.boolean().default(true) }),
   Component: ({ params: p, frame, env }) => (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-      <div style={{ position: "absolute", inset: 0, opacity: p.opacity, backgroundImage: `repeating-linear-gradient(0deg, rgba(0,0,0,0.9) 0px, rgba(0,0,0,0.9) 1px, transparent 1px, transparent ${p.spacing}px)` }} />
-      {p.roll ? <div style={{ position: "absolute", left: 0, right: 0, height: "12%", top: `${((frame / env.fps) * 40) % 112 - 12}%`, background: "linear-gradient(transparent, rgba(255,255,255,0.06), transparent)" }} /> : null}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: p.opacity,
+          backgroundImage: `repeating-linear-gradient(0deg, rgba(0,0,0,0.9) 0px, rgba(0,0,0,0.9) 1px, transparent 1px, transparent ${p.spacing}px)`,
+        }}
+      />
+      {p.roll ? (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: "12%",
+            top: `${(((frame / env.fps) * 40) % 112) - 12}%`,
+            background: "linear-gradient(transparent, rgba(255,255,255,0.06), transparent)",
+          }}
+        />
+      ) : null}
     </div>
   ),
   example: { params: { opacity: 0.35 }, durationInFrames: 30, box: "full" },
@@ -269,7 +341,10 @@ export const fxBurst = defineLayer({
   tags: ["confetti", "burst", "explosion", "celebrate", "success", "launch"],
   performance: "medium",
   timing: { model: "duration", defaultFrames: 60, minFrames: 20 },
-  sfx: [{ sound: "pop", at: "param:at" }, { sound: "sparkle", at: "param:at", gainDb: -6 }],
+  sfx: [
+    { sound: "pop", at: "param:at" },
+    { sound: "sparkle", at: "param:at", gainDb: -6 },
+  ],
   params: z.object({
     at: z.number().int().min(0).default(0),
     count: z.number().int().min(4).max(400).default(90),
@@ -335,7 +410,13 @@ export const fxShapes = defineLayer({
   tags: ["shapes", "geometric", "floating", "decor", "playful"],
   performance: "light",
   sfx: [],
-  params: z.object({ count: z.number().int().min(1).max(40).default(10), colors: z.array(z.string()).min(1).default(["primary", "accent"]), size: z.number().min(10).max(400).default(60), opacity: z.number().min(0).max(1).default(0.5), stroke: z.number().min(1).max(12).default(3) }),
+  params: z.object({
+    count: z.number().int().min(1).max(40).default(10),
+    colors: z.array(z.string()).min(1).default(["primary", "accent"]),
+    size: z.number().min(10).max(400).default(60),
+    opacity: z.number().min(0).max(1).default(0.5),
+    stroke: z.number().min(1).max(12).default(3),
+  }),
   Component: ({ params: p, frame, env, layer }) => {
     const t = frame / env.fps;
     return (
@@ -348,8 +429,22 @@ export const fxShapes = defineLayer({
           const kind = i % 3;
           const c = resolveColor(env.palette, p.colors[i % p.colors.length], "primary");
           return (
-            <g key={i} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(2)})`} opacity={p.opacity} fill="none" stroke={c} strokeWidth={p.stroke} vectorEffect="non-scaling-stroke">
-              {kind === 0 ? <circle r={s} /> : kind === 1 ? <rect x={-s} y={-s} width={2 * s} height={2 * s} rx={s * 0.15} /> : <polygon points={`0,${-s} ${s},${s} ${-s},${s}`} />}
+            <g
+              key={i}
+              transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(2)})`}
+              opacity={p.opacity}
+              fill="none"
+              stroke={c}
+              strokeWidth={p.stroke}
+              vectorEffect="non-scaling-stroke"
+            >
+              {kind === 0 ? (
+                <circle r={s} />
+              ) : kind === 1 ? (
+                <rect x={-s} y={-s} width={2 * s} height={2 * s} rx={s * 0.15} />
+              ) : (
+                <polygon points={`0,${-s} ${s},${s} ${-s},${s}`} />
+              )}
             </g>
           );
         })}
@@ -368,7 +463,12 @@ export const fxFog = defineLayer({
   tags: ["fog", "smoke", "haze", "atmosphere", "cinematic", "moody"],
   performance: "medium",
   sfx: [],
-  params: z.object({ color: z.string().default("#ffffff"), opacity: z.number().min(0).max(1).default(0.18), layers: z.number().int().min(1).max(6).default(3), speed: z.number().min(0).max(3).default(0.5) }),
+  params: z.object({
+    color: z.string().default("#ffffff"),
+    opacity: z.number().min(0).max(1).default(0.18),
+    layers: z.number().int().min(1).max(6).default(3),
+    speed: z.number().min(0).max(3).default(0.5),
+  }),
   Component: ({ params: p, frame, env, layer }) => {
     const c = hex(resolveColor(env.palette, p.color));
     const t = (frame / env.fps) * p.speed;
@@ -405,7 +505,14 @@ export const fxGlass = defineLayer({
   performance: "medium",
   timing: { model: "duration", defaultFrames: 60, minFrames: 10 },
   sfx: [{ sound: "whoosh-soft", at: "start", gainDb: -12 }],
-  params: z.object({ blur: z.number().min(0).max(60).default(24), tint: z.string().default("#ffffff"), tintOpacity: z.number().min(0).max(1).default(0.08), radius: z.number().min(0).max(120).default(36), border: z.number().min(0).max(1).default(0.25), enter: z.boolean().default(true) }),
+  params: z.object({
+    blur: z.number().min(0).max(60).default(24),
+    tint: z.string().default("#ffffff"),
+    tintOpacity: z.number().min(0).max(1).default(0.08),
+    radius: z.number().min(0).max(120).default(36),
+    border: z.number().min(0).max(1).default(0.25),
+    enter: z.boolean().default(true),
+  }),
   Component: ({ params: p, frame, env }) => {
     const s = p.enter ? prog(frame, 0, 14, EASE.expoOut) : 1;
     const c = hex(resolveColor(env.palette, p.tint));
@@ -437,7 +544,13 @@ export const fxLensFlare = defineLayer({
   tags: ["flare", "lens", "light", "cinematic", "launch"],
   performance: "light",
   sfx: [],
-  params: z.object({ color: z.string().default("#ffd9a8"), intensity: z.number().min(0).max(1).default(0.6), fromX: z.number().default(0.15), toX: z.number().default(0.6), y: z.number().default(0.3) }),
+  params: z.object({
+    color: z.string().default("#ffd9a8"),
+    intensity: z.number().min(0).max(1).default(0.6),
+    fromX: z.number().default(0.15),
+    toX: z.number().default(0.6),
+    y: z.number().default(0.3),
+  }),
   Component: ({ params: p, frame, duration, env, box }) => {
     const t = prog(frame, 0, duration, EASE.inOut);
     const x = (p.fromX + (p.toX - p.fromX) * t) * box.w;
@@ -448,13 +561,47 @@ export const fxLensFlare = defineLayer({
     const ghosts = [0.4, 0.75, 1.2, 1.6];
     return (
       <div style={{ position: "absolute", inset: 0, mixBlendMode: "screen", opacity: p.intensity * Math.sin(Math.PI * clamp(t * 1.05, 0, 1)) }}>
-        <div style={{ position: "absolute", left: x - 160, top: y - 160, width: 320, height: 320, borderRadius: "50%", background: `radial-gradient(closest-side, ${withAlpha("#ffffff", 0.95)}, ${withAlpha(c, 0.5)} 30%, transparent)` }} />
-        <div style={{ position: "absolute", left: x - box.w * 0.45, top: y - 3, width: box.w * 0.9, height: 6, background: `linear-gradient(90deg, transparent, ${withAlpha(c, 0.8)}, transparent)`, filter: "blur(2px)" }} />
+        <div
+          style={{
+            position: "absolute",
+            left: x - 160,
+            top: y - 160,
+            width: 320,
+            height: 320,
+            borderRadius: "50%",
+            background: `radial-gradient(closest-side, ${withAlpha("#ffffff", 0.95)}, ${withAlpha(c, 0.5)} 30%, transparent)`,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: x - box.w * 0.45,
+            top: y - 3,
+            width: box.w * 0.9,
+            height: 6,
+            background: `linear-gradient(90deg, transparent, ${withAlpha(c, 0.8)}, transparent)`,
+            filter: "blur(2px)",
+          }}
+        />
         {ghosts.map((g, i) => {
           const gx = x + (cx - x) * g * 2;
           const gy = y + (cy - y) * g * 2;
           const r = 30 + i * 22;
-          return <div key={i} style={{ position: "absolute", left: gx - r, top: gy - r, width: r * 2, height: r * 2, borderRadius: "50%", background: withAlpha(c, 0.12), border: `1px solid ${withAlpha(c, 0.25)}` }} />;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: gx - r,
+                top: gy - r,
+                width: r * 2,
+                height: r * 2,
+                borderRadius: "50%",
+                background: withAlpha(c, 0.12),
+                border: `1px solid ${withAlpha(c, 0.25)}`,
+              }}
+            />
+          );
         })}
       </div>
     );
@@ -476,7 +623,17 @@ export const fxLightLeak = defineLayer({
     const t = (frame / env.fps) * p.speed;
     const x = 10 + 25 * fbm1(`${layer.id}:lx`, t);
     const c = hex(resolveColor(env.palette, p.color));
-    return <div style={{ position: "absolute", inset: 0, mixBlendMode: "screen", opacity: p.opacity * (0.7 + 0.3 * Math.sin(t * 2)), background: `radial-gradient(70% 90% at ${x}% 10%, ${withAlpha(c, 0.9)}, transparent 65%)` }} />;
+    return (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          mixBlendMode: "screen",
+          opacity: p.opacity * (0.7 + 0.3 * Math.sin(t * 2)),
+          background: `radial-gradient(70% 90% at ${x}% 10%, ${withAlpha(c, 0.9)}, transparent 65%)`,
+        }}
+      />
+    );
   },
   example: { params: { opacity: 0.6 }, durationInFrames: 60, box: "full" },
 });
@@ -490,7 +647,12 @@ export const fxTrails = defineLayer({
   tags: ["trails", "dots", "motion", "data", "flow", "connections"],
   performance: "medium",
   sfx: [],
-  params: z.object({ count: z.number().int().min(1).max(60).default(12), color: z.string().default("accent"), trail: z.number().int().min(2).max(40).default(14), speed: z.number().min(0).max(4).default(1) }),
+  params: z.object({
+    count: z.number().int().min(1).max(60).default(12),
+    color: z.string().default("accent"),
+    trail: z.number().int().min(2).max(40).default(14),
+    speed: z.number().min(0).max(4).default(1),
+  }),
   Component: ({ params: p, frame, box, env, layer }) => {
     const c = hexToRgb(hex(resolveColor(env.palette, p.color, "accent")));
     return (
@@ -518,4 +680,19 @@ export const fxTrails = defineLayer({
   example: { params: {}, durationInFrames: 60, box: "full" },
 });
 
-export const FX_LAYERS = [fxGrain, fxVignette, fxLightSweep, fxGlowOrbs, fxGodRays, fxScanlines, fxParticles, fxBurst, fxShapes, fxFog, fxGlass, fxLensFlare, fxLightLeak, fxTrails];
+export const FX_LAYERS = [
+  fxGrain,
+  fxVignette,
+  fxLightSweep,
+  fxGlowOrbs,
+  fxGodRays,
+  fxScanlines,
+  fxParticles,
+  fxBurst,
+  fxShapes,
+  fxFog,
+  fxGlass,
+  fxLensFlare,
+  fxLightLeak,
+  fxTrails,
+];

@@ -72,7 +72,14 @@ export const textCharReveal = defineLayer({
               const i = charIndex++;
               const s = sp(frame, env.fps, i * p.stagger, SPRINGS.ui);
               return (
-                <span key={k} style={{ display: "inline-block", opacity: clamp(s * 2, 0, 1), transform: `translateY(${((1 - s) * 0.5).toFixed(3)}em) rotate(${((1 - s) * 8).toFixed(2)}deg)` }}>
+                <span
+                  key={k}
+                  style={{
+                    display: "inline-block",
+                    opacity: clamp(s * 2, 0, 1),
+                    transform: `translateY(${((1 - s) * 0.5).toFixed(3)}em) rotate(${((1 - s) * 8).toFixed(2)}deg)`,
+                  }}
+                >
                   {ch}
                 </span>
               );
@@ -105,9 +112,7 @@ export const textMaskReveal = defineLayer({
         renderWord={(w, _total, color) => {
           const s = prog(frame, w.line * p.stagger, w.line * p.stagger + 14, EASE.expoOut);
           const out = ex;
-          return (
-            <span style={{ display: "inline-block", color, transform: `translateY(${((1 - s) * 105 - out * 105).toFixed(2)}%)` }}>{w.text}</span>
-          );
+          return <span style={{ display: "inline-block", color, transform: `translateY(${((1 - s) * 105 - out * 105).toFixed(2)}%)` }}>{w.text}</span>;
         }}
       />
     );
@@ -261,7 +266,17 @@ export const textTypewriter = defineLayer({
               <span>{chars.slice(0, visible).join("")}</span>
               <span style={{ opacity: 0 }}>{chars.slice(visible).join("")}</span>
               {showCaret ? (
-                <span style={{ position: "absolute", left: `${(visible / Math.max(1, chars.length)) * 100}%`, top: "0.08em", bottom: "0.08em", width: "0.07em", background: caretColor, opacity: caretOn ? 1 : 0 }} />
+                <span
+                  style={{
+                    position: "absolute",
+                    left: `${(visible / Math.max(1, chars.length)) * 100}%`,
+                    top: "0.08em",
+                    bottom: "0.08em",
+                    width: "0.07em",
+                    background: caretColor,
+                    opacity: caretOn ? 1 : 0,
+                  }}
+                />
               ) : null}
             </span>
           );
@@ -330,19 +345,78 @@ export const textHighlight = defineLayer({
         env={env}
         containerStyle={{ opacity: clamp(appear * 1.5, 0, 1) * (1 - ex), transform: `translateY(${((1 - appear) * 0.3).toFixed(3)}em)` }}
         renderWord={(w, _total, color) => (
-          <span style={{ position: "relative", display: "inline-block", color: w.emphasized && p.style === "marker" && onMark !== textColor && hex(color) ? mixColor(color, onMark, mark) : color }}>
+          <span
+            style={{
+              position: "relative",
+              display: "inline-block",
+              color: w.emphasized && p.style === "marker" && onMark !== textColor && hex(color) ? mixColor(color, onMark, mark) : color,
+            }}
+          >
             {w.emphasized && p.style === "marker" ? (
-              <span style={{ position: "absolute", left: "-0.08em", right: "-0.08em", top: "0.12em", bottom: "0.02em", background: markColor, opacity: 0.85, transform: `scaleX(${mark})`, transformOrigin: "left", zIndex: -1, borderRadius: "0.08em" }} />
+              <span
+                style={{
+                  position: "absolute",
+                  left: "-0.08em",
+                  right: "-0.08em",
+                  top: "0.12em",
+                  bottom: "0.02em",
+                  background: markColor,
+                  opacity: 0.85,
+                  transform: `scaleX(${mark})`,
+                  transformOrigin: "left",
+                  zIndex: -1,
+                  borderRadius: "0.08em",
+                }}
+              />
             ) : null}
             {w.emphasized && p.style === "underline" ? (
-              <span style={{ position: "absolute", left: 0, right: 0, bottom: "-0.02em", height: "0.08em", background: markColor, transform: `scaleX(${mark})`, transformOrigin: "left" }} />
+              <span
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: "-0.02em",
+                  height: "0.08em",
+                  background: markColor,
+                  transform: `scaleX(${mark})`,
+                  transformOrigin: "left",
+                }}
+              />
             ) : null}
             {w.emphasized && p.style === "strike" ? (
-              <span style={{ position: "absolute", left: "-0.05em", right: "-0.05em", top: "52%", height: "0.08em", background: markColor, transform: `scaleX(${mark})`, transformOrigin: "left" }} />
+              <span
+                style={{
+                  position: "absolute",
+                  left: "-0.05em",
+                  right: "-0.05em",
+                  top: "52%",
+                  height: "0.08em",
+                  background: markColor,
+                  transform: `scaleX(${mark})`,
+                  transformOrigin: "left",
+                }}
+              />
             ) : null}
             {w.emphasized && p.style === "circle" ? (
-              <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ position: "absolute", left: "-12%", top: "-18%", width: "124%", height: "136%", overflow: "visible" }}>
-                <ellipse cx={50} cy={20} rx={48} ry={18} fill="none" stroke={markColor} strokeWidth={2.4} vectorEffect="non-scaling-stroke" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - mark} style={{ strokeWidth: "0.07em" }} />
+              <svg
+                viewBox="0 0 100 40"
+                preserveAspectRatio="none"
+                style={{ position: "absolute", left: "-12%", top: "-18%", width: "124%", height: "136%", overflow: "visible" }}
+              >
+                <ellipse
+                  cx={50}
+                  cy={20}
+                  rx={48}
+                  ry={18}
+                  fill="none"
+                  stroke={markColor}
+                  strokeWidth={2.4}
+                  vectorEffect="non-scaling-stroke"
+                  pathLength={1}
+                  strokeDasharray={1}
+                  strokeDashoffset={1 - mark}
+                  style={{ strokeWidth: "0.07em" }}
+                />
               </svg>
             ) : null}
             <span style={{ position: "relative" }}>{w.text}</span>
@@ -370,7 +444,13 @@ export const textOutlineFill = defineLayer({
     const color = resolveColor(env.palette, p.color, "text");
     return (
       <div style={{ position: "absolute", inset: 0, opacity: appear * (1 - ex) }}>
-        <TextFrame p={p} t={t} env={env} containerStyle={{ color: "transparent", WebkitTextStroke: `${p.strokeWidth}px ${color}` }} renderWord={(w) => <span>{w.text}</span>} />
+        <TextFrame
+          p={p}
+          t={t}
+          env={env}
+          containerStyle={{ color: "transparent", WebkitTextStroke: `${p.strokeWidth}px ${color}` }}
+          renderWord={(w) => <span>{w.text}</span>}
+        />
         <TextFrame p={p} t={t} env={env} containerStyle={{ clipPath: `inset(0 ${(100 - fill * 100).toFixed(2)}% 0 0)` }} />
       </div>
     );
@@ -416,7 +496,9 @@ export const textBigWord = defineLayer({
     const t = useTextLayout(p, box, env);
     const s = sp(frame, env.fps, 0, SPRINGS.slam);
     const ex = exitState(p, frame, duration);
-    return <TextFrame p={p} t={t} env={env} containerStyle={{ transform: `scale(${(1.25 - 0.25 * s) * (1 + 0.1 * ex)})`, opacity: clamp(s * 3, 0, 1) * (1 - ex) }} />;
+    return (
+      <TextFrame p={p} t={t} env={env} containerStyle={{ transform: `scale(${(1.25 - 0.25 * s) * (1 + 0.1 * ex)})`, opacity: clamp(s * 3, 0, 1) * (1 - ex) }} />
+    );
   },
   example: { ...textExample("ACUM", { uppercase: true, align: "center" }), box: { x: 80, y: 140, w: 1760, h: 800 } },
 });
@@ -428,12 +510,24 @@ export const textBody = defineLayer({
   description: "Text de susținere (subtitlu, detaliu), care apare discret, fără să concureze cu mesajul principal.",
   tags: ["body", "subtitle", "support", "secondary", "caption"],
   sfx: [],
-  params: TextBase.extend({ font: z.enum(["display", "body", "mono"]).default("body"), maxSize: z.number().default(56), minSize: z.number().default(24), delay: z.number().int().min(0).default(0) }),
+  params: TextBase.extend({
+    font: z.enum(["display", "body", "mono"]).default("body"),
+    maxSize: z.number().default(56),
+    minSize: z.number().default(24),
+    delay: z.number().int().min(0).default(0),
+  }),
   Component: ({ params: p, frame, duration, box, env }) => {
     const t = useTextLayout(p, box, env);
     const s = sp(frame, env.fps, p.delay, SPRINGS.body);
     const ex = exitState(p, frame, duration);
-    return <TextFrame p={p} t={t} env={env} containerStyle={{ opacity: clamp(s * 1.4, 0, 1) * (1 - ex), transform: `translateY(${((1 - s) * 0.6).toFixed(3)}em)` }} />;
+    return (
+      <TextFrame
+        p={p}
+        t={t}
+        env={env}
+        containerStyle={{ opacity: clamp(s * 1.4, 0, 1) * (1 - ex), transform: `translateY(${((1 - s) * 0.6).toFixed(3)}em)` }}
+      />
+    );
   },
   example: textExample("Un detaliu care susține mesajul principal, fără să concureze cu el.", { font: "body", maxSize: 56 }),
 });

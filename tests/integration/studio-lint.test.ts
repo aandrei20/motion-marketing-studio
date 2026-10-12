@@ -18,7 +18,11 @@ beforeAll(async () => {
 afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 const call = async (method: string, url: string, body?: unknown) => {
-  const res = await fetch(`${base}${url}`, { method, headers: { "Content-Type": "application/json", "X-MMS": "1" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(`${base}${url}`, {
+    method,
+    headers: { "Content-Type": "application/json", "X-MMS": "1" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   return { status: res.status, data: await res.json().catch(() => null) };
 };
 
@@ -33,9 +37,28 @@ describe("Studio (server + interfață)", () => {
   it("creează un proiect, salvează brief-ul și cere fraza exactă de aprobare", async () => {
     const meta = await call("GET", "/api/meta");
     expect(meta.data.questions.length).toBeGreaterThan(25);
-    const created = await call("POST", "/api/projects", { id: "ui-test", name: "Test UI", product: { name: "Produs Test", category: "saas" }, formats: [{ preset: "9x16", fps: 30, durationSec: 15, platform: "tiktok" }], textLang: "ro", voiceLang: null });
+    const created = await call("POST", "/api/projects", {
+      id: "ui-test",
+      name: "Test UI",
+      product: { name: "Produs Test", category: "saas" },
+      formats: [{ preset: "9x16", fps: 30, durationSec: 15, platform: "tiktok" }],
+      textLang: "ro",
+      voiceLang: null,
+    });
     expect(created.status).toBe(201);
-    const brief = { schemaVersion: 1, objective: "signups", audience: { description: "x" }, userVision: {}, pacing: "fast", direction: "energetic", visual: {}, cta: { text: "Încearcă" }, platforms: ["tiktok"], durationSec: 15, audio: { voice: { mode: "none" }, music: { mode: "none" } } };
+    const brief = {
+      schemaVersion: 1,
+      objective: "signups",
+      audience: { description: "x" },
+      userVision: {},
+      pacing: "fast",
+      direction: "energetic",
+      visual: {},
+      cta: { text: "Încearcă" },
+      platforms: ["tiktok"],
+      durationSec: 15,
+      audio: { voice: { mode: "none" }, music: { mode: "none" } },
+    };
     expect((await call("PUT", "/api/projects/ui-test/brief", brief)).status).toBe(200);
     expect((await call("POST", "/api/projects/ui-test/approve", { kind: "brief", phrase: "da" })).status).toBe(400);
     expect((await call("POST", "/api/projects/ui-test/approve", { kind: "brief", phrase: "aprob" })).status).toBe(200);
@@ -62,7 +85,11 @@ describe("Studio: protecții și joburi", () => {
     expect(noHeader.status).toBe(403);
   });
   it("refuză tipurile de fișier nepermise la încărcare", async () => {
-    const res = await fetch(`${base}/api/projects/ui-test/assets`, { method: "POST", headers: { "X-MMS": "1", "x-filename": "script.exe" }, body: new Uint8Array([1, 2, 3]) });
+    const res = await fetch(`${base}/api/projects/ui-test/assets`, {
+      method: "POST",
+      headers: { "X-MMS": "1", "x-filename": "script.exe" },
+      body: new Uint8Array([1, 2, 3]),
+    });
     expect(res.status).toBe(415);
   });
   it("un job se oprește, are manifest pe disc și se poate relua", async () => {

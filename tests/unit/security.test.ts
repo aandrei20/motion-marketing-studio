@@ -20,7 +20,26 @@ const code = async (p: Promise<unknown> | (() => unknown)): Promise<string | nul
 
 describe("tipul gazdei", () => {
   it("rețeaua locală", () => {
-    for (const h of ["127.0.0.1", "10.2.3.4", "172.16.0.1", "172.31.255.255", "192.168.1.10", "169.254.1.1", "100.64.0.1", "0.0.0.0", "::1", "[::1]", "fd12::1", "fe80::1", "::ffff:127.0.0.1", "localhost", "app.localhost", "nas.local", "router", "printer.lan"])
+    for (const h of [
+      "127.0.0.1",
+      "10.2.3.4",
+      "172.16.0.1",
+      "172.31.255.255",
+      "192.168.1.10",
+      "169.254.1.1",
+      "100.64.0.1",
+      "0.0.0.0",
+      "::1",
+      "[::1]",
+      "fd12::1",
+      "fe80::1",
+      "::ffff:127.0.0.1",
+      "localhost",
+      "app.localhost",
+      "nas.local",
+      "router",
+      "printer.lan",
+    ])
       expect(hostKind(h), h).toBe("local");
   });
   it("serviciile de metadate ale norilor", () => {
@@ -60,10 +79,12 @@ describe("adresa de start a capturii", () => {
 describe("id-urile care devin căi pe disc", () => {
   it("proiectul: doar slug, fără ieșire din projects/", async () => {
     expect(projectDir("reclama-mea")).toBe(path.join(PATHS.projects, "reclama-mea"));
-    for (const id of ["..", "../alt-proiect", "..\\..\\windows", "a/b", "Majuscule", "", "x".repeat(81), "C:\\temp"]) expect(await code(() => projectDir(id)), id).toBe("PROJECT_ID");
+    for (const id of ["..", "../alt-proiect", "..\\..\\windows", "a/b", "Majuscule", "", "x".repeat(81), "C:\\temp"])
+      expect(await code(() => projectDir(id)), id).toBe("PROJECT_ID");
   });
   it("versiunea: doar v1, v2…, fără ieșire din versions/", async () => {
     expect(versionDir("reclama-mea", "v12")).toBe(path.join(PATHS.projects, "reclama-mea", "versions", "v12"));
-    for (const v of ["..", "../../alt-proiect/versions/v1", "v1/../..", "final", "v", ""]) expect(await code(() => versionDir("reclama-mea", v)), v).toBe("VERSION_ID");
+    for (const v of ["..", "../../alt-proiect/versions/v1", "v1/../..", "final", "v", ""])
+      expect(await code(() => versionDir("reclama-mea", v)), v).toBe("VERSION_ID");
   });
 });

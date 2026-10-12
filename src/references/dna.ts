@@ -27,7 +27,14 @@ export interface CameraMotion {
 export interface ReferenceDNA {
   assetId: string;
   durationSec: number;
-  pacing: { avgShotSec: number; medianShotSec: number; cutsPerSec: number; shotCount: number; rhythm: "steady" | "accelerating" | "decelerating" | "varied"; pacing: Pacing };
+  pacing: {
+    avgShotSec: number;
+    medianShotSec: number;
+    cutsPerSec: number;
+    shotCount: number;
+    rhythm: "steady" | "accelerating" | "decelerating" | "varied";
+    pacing: Pacing;
+  };
   /** ponderea tăieturilor simple între schimbările de cadru (restul: tranziții animate/dizolvări) */
   hardCutShare: number | null;
   motion: { intensity: number; label: ReferenceProfile["motion"]["label"] };
@@ -96,14 +103,25 @@ export function cameraMotion(frames: Uint8Array[], w: number, h: number, fps: nu
   const secs = n / fps;
   const panPerSec = pan / secs;
   const zoomPerSec = (zoomIn + zoomOut) / secs;
-  const dominant: CameraMotion["dominant"] = panPerSec < 0.01 && zoomPerSec < 0.01 ? "static" : zoomPerSec > panPerSec * 1.5 ? (zoomIn >= zoomOut ? "push" : "pull") : panPerSec > zoomPerSec * 1.5 ? "pan" : "mixed";
+  const dominant: CameraMotion["dominant"] =
+    panPerSec < 0.01 && zoomPerSec < 0.01
+      ? "static"
+      : zoomPerSec > panPerSec * 1.5
+        ? zoomIn >= zoomOut
+          ? "push"
+          : "pull"
+        : panPerSec > zoomPerSec * 1.5
+          ? "pan"
+          : "mixed";
   return { panPerSec: Math.round(panPerSec * 1000) / 1000, zoomPerSec: Math.round(zoomPerSec * 1000) / 1000, dominant };
 }
 
 const pacingOf = (cutsPerSec: number): Pacing => (cutsPerSec >= 0.9 ? "aggressive" : cutsPerSec >= 0.55 ? "fast" : cutsPerSec >= 0.3 ? "medium" : "slow");
 
 export function referenceDna(p: ReferenceProfile, extra: { camera?: CameraMotion | null; hardCutShare?: number | null } = {}): ReferenceDNA {
-  const shots = p.pacing.cuts.length ? [p.pacing.cuts[0], ...p.pacing.cuts.slice(1).map((c, i) => c - p.pacing.cuts[i]), p.durationSec - p.pacing.cuts[p.pacing.cuts.length - 1]] : [p.durationSec];
+  const shots = p.pacing.cuts.length
+    ? [p.pacing.cuts[0], ...p.pacing.cuts.slice(1).map((c, i) => c - p.pacing.cuts[i]), p.durationSec - p.pacing.cuts[p.pacing.cuts.length - 1]]
+    : [p.durationSec];
   // ritmul corpului reclamei: cardul final (hold-ul CTA) nu intră în calcul
   const body = shots.length >= 4 ? shots.slice(0, -1) : shots;
   const half = Math.floor(body.length / 2);
@@ -111,19 +129,46 @@ export function referenceDna(p: ReferenceProfile, extra: { camera?: CameraMotion
   const second = body.slice(Math.max(1, half));
   const mean = (x: number[]) => x.reduce((a, b) => a + b, 0) / Math.max(1, x.length);
   const std = Math.sqrt(mean(body.map((s) => (s - mean(body)) ** 2)));
-  const rhythm: ReferenceDNA["pacing"]["rhythm"] = body.length < 3 ? "steady" : mean(second) < mean(first) * 0.75 ? "accelerating" : mean(second) > mean(first) * 1.33 ? "decelerating" : std / Math.max(0.01, mean(body)) > 0.6 ? "varied" : "steady";
+  const rhythm: ReferenceDNA["pacing"]["rhythm"] =
+    body.length < 3
+      ? "steady"
+      : mean(second) < mean(first) * 0.75
+        ? "accelerating"
+        : mean(second) > mean(first) * 1.33
+          ? "decelerating"
+          : std / Math.max(0.01, mean(body)) > 0.6
+            ? "varied"
+            : "steady";
   const curve = p.energyCurve;
   const maxI = curve.reduce((m, v, i) => (v > curve[m] ? i : m), 0);
   const climaxAt = curve.length > 1 ? maxI / (curve.length - 1) : 0.5;
   const thirds = [0, 1, 2].map((k) => mean(curve.slice(Math.floor((k * curve.length) / 3), Math.floor(((k + 1) * curve.length) / 3))));
-  const arc: ReferenceDNA["energy"]["arc"] = Math.max(...thirds) - Math.min(...thirds) < 0.08 ? "flat" : thirds[2] >= thirds[1] && thirds[1] >= thirds[0] ? "rising" : thirds[1] > thirds[0] && thirds[1] > thirds[2] ? "peak-middle" : thirds[0] > thirds[2] ? (climaxAt < 0.3 ? "front-loaded" : "falling") : "rising";
+  const arc: ReferenceDNA["energy"]["arc"] =
+    Math.max(...thirds) - Math.min(...thirds) < 0.08
+      ? "flat"
+      : thirds[2] >= thirds[1] && thirds[1] >= thirds[0]
+        ? "rising"
+        : thirds[1] > thirds[0] && thirds[1] > thirds[2]
+          ? "peak-middle"
+          : thirds[0] > thirds[2]
+            ? climaxAt < 0.3
+              ? "front-loaded"
+              : "falling"
+            : "rising";
   let endHoldSec = 0;
   for (let i = p.motion.curve.length - 1; i >= 0 && p.motion.curve[i] < 0.01; i--) endHoldSec++;
   const usable = !!p.audio.bpm && (p.audio.bpmConfidence ?? 0) >= 0.35;
   return {
     assetId: p.assetId,
     durationSec: p.durationSec,
-    pacing: { avgShotSec: p.pacing.avgShotSec, medianShotSec: p.pacing.medianShotSec, cutsPerSec: p.pacing.cutsPerSec, shotCount: p.pacing.shotCount, rhythm, pacing: pacingOf(p.pacing.cutsPerSec) },
+    pacing: {
+      avgShotSec: p.pacing.avgShotSec,
+      medianShotSec: p.pacing.medianShotSec,
+      cutsPerSec: p.pacing.cutsPerSec,
+      shotCount: p.pacing.shotCount,
+      rhythm,
+      pacing: pacingOf(p.pacing.cutsPerSec),
+    },
     hardCutShare: extra.hardCutShare ?? null,
     motion: { intensity: p.motion.intensity, label: p.motion.label },
     camera: extra.camera ?? null,
@@ -155,7 +200,10 @@ export function aspectsOf(raw: string[]): Set<DnaAspect> {
  * Ajustările direcției după referințe: durata cadrelor spre cea a referinței, ritmul, tăieturi simple
  * dacă referința taie sec, camera calmă/activă după mișcarea dominantă, tempo-ul (doar sigur).
  */
-export function applyDna(dir: DirectionProfile, refs: Array<{ dna: ReferenceDNA; aspects: Set<DnaAspect> }>): { dir: DirectionProfile; notes: string[]; pacing: Pacing | null } {
+export function applyDna(
+  dir: DirectionProfile,
+  refs: Array<{ dna: ReferenceDNA; aspects: Set<DnaAspect> }>,
+): { dir: DirectionProfile; notes: string[]; pacing: Pacing | null } {
   if (!refs.length) return { dir, notes: [], pacing: null };
   const out: DirectionProfile = structuredClone(dir);
   const notes: string[] = [];
@@ -203,7 +251,10 @@ export function referenceProfilePath(projectDir: string, assetId: string): strin
 }
 
 /** DNA-urile referințelor cerute în brief (doar cele analizate; celelalte se raportează). */
-export function loadReferenceDnas(projectDir: string, refs: Array<{ assetId: string; aspects: string[] }>): { refs: Array<{ dna: ReferenceDNA; aspects: Set<DnaAspect> }>; missing: string[] } {
+export function loadReferenceDnas(
+  projectDir: string,
+  refs: Array<{ assetId: string; aspects: string[] }>,
+): { refs: Array<{ dna: ReferenceDNA; aspects: Set<DnaAspect> }>; missing: string[] } {
   const out: Array<{ dna: ReferenceDNA; aspects: Set<DnaAspect> }> = [];
   const missing: string[] = [];
   for (const r of refs) {

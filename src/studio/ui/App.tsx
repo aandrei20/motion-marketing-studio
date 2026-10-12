@@ -1,7 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/schema";
 import { api, type Job, type Meta, type ProjectBundle, type VersionBundle } from "./api";
-import { AssetsPanel, AudioPanel, BrandPanel, BriefPanel, CritiquePanel, ExportPanel, OverviewPanel, ResearchPanel, ScriptPanel, StoryboardPanel, VersionsPanel } from "./panels";
+import {
+  AssetsPanel,
+  AudioPanel,
+  BrandPanel,
+  BriefPanel,
+  CritiquePanel,
+  ExportPanel,
+  OverviewPanel,
+  ResearchPanel,
+  ScriptPanel,
+  StoryboardPanel,
+  VersionsPanel,
+} from "./panels";
 import { PreviewPanel } from "./preview";
 import { ConceptsPanel, QualityPanel } from "./quality";
 import { NewProject } from "./new-project";
@@ -101,7 +113,10 @@ export function App() {
   }, [current, tab]);
 
   // la terminarea unui job al proiectului curent, reîncărcăm datele
-  const finishedKey = jobs.filter((j) => j.projectId === current && (j.state === "done" || j.state === "failed")).map((j) => j.id + j.state).join(",");
+  const finishedKey = jobs
+    .filter((j) => j.projectId === current && (j.state === "done" || j.state === "failed"))
+    .map((j) => j.id + j.state)
+    .join(",");
   // joburile terminate înainte de deschiderea paginii (manifestele de pe disc) nu mai dau notificări
   const seenFinished = useRef<{ project: string | null; key: string } | null>(null);
   useEffect(() => {
@@ -134,7 +149,23 @@ export function App() {
   const ctx: Ctx | null = useMemo(
     () =>
       bundle && meta
-        ? { bundle, version, versionId, formatId, meta, jobs: jobs.filter((j) => j.projectId === current), reload, runJob, setTab, seek: (frame) => { setTab("preview"); setSeekRequest((s) => ({ frame, n: (s?.n ?? 0) + 1 })); }, seekRequest, notify }
+        ? {
+            bundle,
+            version,
+            versionId,
+            formatId,
+            meta,
+            jobs: jobs.filter((j) => j.projectId === current),
+            reload,
+            runJob,
+            setTab,
+            seek: (frame) => {
+              setTab("preview");
+              setSeekRequest((s) => ({ frame, n: (s?.n ?? 0) + 1 }));
+            },
+            seekRequest,
+            notify,
+          }
         : null,
     [bundle, version, versionId, formatId, meta, jobs, current, reload, runJob, seekRequest, notify],
   );
@@ -157,7 +188,15 @@ export function App() {
         </button>
         <nav className="project-list">
           {projects.map((p) => (
-            <button key={p.id} className={`project-item ${p.id === current ? "active" : ""}`} onClick={() => { setCurrent(p.id); setVersionId(null); setCreating(false); }}>
+            <button
+              key={p.id}
+              className={`project-item ${p.id === current ? "active" : ""}`}
+              onClick={() => {
+                setCurrent(p.id);
+                setVersionId(null);
+                setCreating(false);
+              }}
+            >
               <span className="project-name">{p.name}</span>
               <span className="project-meta">
                 {p.status} · {p.currentVersion ?? "fără versiune"}
@@ -175,28 +214,56 @@ export function App() {
                 <span>{j.label}</span>
                 <span className="muted">{j.state === "queued" ? "în așteptare" : j.progress !== null ? `${Math.round(j.progress * 100)}%` : "…"}</span>
               </div>
-              {j.stage ? <div className="small">etapa: <b>{j.stage}</b></div> : null}
-              <button className="btn tiny ghost" onClick={() => api.cancelJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>oprește</button>
-              {j.progress !== null ? <div className="bar"><span style={{ width: `${Math.round(j.progress * 100)}%` }} /></div> : null}
+              {j.stage ? (
+                <div className="small">
+                  etapa: <b>{j.stage}</b>
+                </div>
+              ) : null}
+              <button className="btn tiny ghost" onClick={() => api.cancelJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>
+                oprește
+              </button>
+              {j.progress !== null ? (
+                <div className="bar">
+                  <span style={{ width: `${Math.round(j.progress * 100)}%` }} />
+                </div>
+              ) : null}
               <div className="job-log">{j.log.slice(-2).join("\n")}</div>
             </div>
           ))}
           {interrupted.map((j) => (
             <div key={j.id} className="job">
-              <div className="job-head"><span>{j.label}</span><span className="warn">întrerupt</span></div>
+              <div className="job-head">
+                <span>{j.label}</span>
+                <span className="warn">întrerupt</span>
+              </div>
               <div className="small muted">{j.error}</div>
-              <button className="btn tiny" onClick={() => api.resumeJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>reia</button>
+              <button className="btn tiny" onClick={() => api.resumeJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>
+                reia
+              </button>
             </div>
           ))}
         </div>
       </aside>
       <main className="main">
         {creating && meta ? (
-          <NewProject meta={meta} onCancel={() => setCreating(false)} onCreated={async (id) => { await loadProjects(); setCurrent(id); setCreating(false); setTab("brief"); }} notify={notify} />
+          <NewProject
+            meta={meta}
+            onCancel={() => setCreating(false)}
+            onCreated={async (id) => {
+              await loadProjects();
+              setCurrent(id);
+              setCreating(false);
+              setTab("brief");
+            }}
+            notify={notify}
+          />
         ) : !ctx ? (
           <div className="empty">
             <h1>Alege sau creează un proiect</h1>
-            <p className="muted">Fiecare proiect are brief, materiale reale, research cu surse, script, storyboard, timeline, audio, versiuni și export. Lucrul începe după ce aprobi brief-ul cu „aprob”.</p>
+            <p className="muted">
+              Fiecare proiect are brief, materiale reale, research cu surse, script, storyboard, timeline, audio, versiuni și export. Lucrul începe după ce
+              aprobi brief-ul cu „aprob”.
+            </p>
           </div>
         ) : (
           <>
@@ -266,7 +333,15 @@ export function App() {
 
 function CommandBar({ ctx }: { ctx: Ctx }) {
   const [cmd, setCmd] = useState("");
-  const examples = ["la 00:14 zoom pe câmpul de căutare", "CTA-ul să stea 3 secunde", "tranziții mai rapide", "mai puțină muzică sub voce", "folosește fraza mea exactă", "fă hook-ul mai agresiv", "fă-l mai premium"];
+  const examples = [
+    "la 00:14 zoom pe câmpul de căutare",
+    "CTA-ul să stea 3 secunde",
+    "tranziții mai rapide",
+    "mai puțină muzică sub voce",
+    "folosește fraza mea exactă",
+    "fă hook-ul mai agresiv",
+    "fă-l mai premium",
+  ];
   return (
     <form
       className="command"
@@ -280,7 +355,13 @@ function CommandBar({ ctx }: { ctx: Ctx }) {
         }
       }}
     >
-      <input value={cmd} onChange={(e) => setCmd(e.target.value)} placeholder={`Spune ce vrei schimbat… de ex. „${examples[0]}”`} list="cmd-examples" disabled={!ctx.bundle.project.currentVersion} />
+      <input
+        value={cmd}
+        onChange={(e) => setCmd(e.target.value)}
+        placeholder={`Spune ce vrei schimbat… de ex. „${examples[0]}”`}
+        list="cmd-examples"
+        disabled={!ctx.bundle.project.currentVersion}
+      />
       <datalist id="cmd-examples">
         {examples.map((x) => (
           <option key={x} value={x} />

@@ -17,7 +17,17 @@ import type { EditOp, Finding, QualityScore } from "../core/schema";
 import { applyEditOps, mergeOps } from "../editing/ops";
 import { impactBetween, type ImpactPlan } from "../pipeline/impact";
 import { stepAudio, stepCompile } from "../pipeline/steps";
-import { createVersion, loadAssets, loadProject, loadStoryboard, loadTimeline, rejectVersion, saveStoryboard, updateState, versionFile } from "../projects/store";
+import {
+  createVersion,
+  loadAssets,
+  loadProject,
+  loadStoryboard,
+  loadTimeline,
+  rejectVersion,
+  saveStoryboard,
+  updateState,
+  versionFile,
+} from "../projects/store";
 import { saveSnapshot } from "../projects/snapshots";
 import type { Depth } from "./checks";
 import { issueKey, prioritize } from "./issues";
@@ -99,12 +109,25 @@ export async function autoFixLoop(projectId: string, o: AutoFixOptions = {}): Pr
     const at = new Date().toISOString();
     const timeline = loadTimeline(projectId, cur, project.formats[0].id);
     const res = applyEditOps(sb, ops, { timeline, assets: loadAssets(projectId), respectLocks: true });
-    const v2 = createVersion(projectId, { from: cur, label: `auto-fix ${i}`, changes: res.applied.filter((x) => !x.skipped).map((x) => ({ at, op: `auto-fix:${x.op.op}`, description: x.description, params: x.op as unknown as Record<string, unknown> })) }).id;
+    const v2 = createVersion(projectId, {
+      from: cur,
+      label: `auto-fix ${i}`,
+      changes: res.applied
+        .filter((x) => !x.skipped)
+        .map((x) => ({ at, op: `auto-fix:${x.op.op}`, description: x.description, params: x.op as unknown as Record<string, unknown> })),
+    }).id;
     saveStoryboard(projectId, v2, res.storyboard);
     // jurnalul de editare al versiunii noi (undo/redo pe corecturile automate)
     const before = saveSnapshot(projectId, "storyboard", sb);
     const after = saveSnapshot(projectId, "storyboard", res.storyboard);
-    fs.writeFileSync(versionFile(projectId, v2, "edits.json"), JSON.stringify({ schemaVersion: 1, entries: [{ n: 1, at, ops, description: `Corecturi automate (iterația ${i})`, before, after, source: "auto-fix", undone: false }] }, null, 2));
+    fs.writeFileSync(
+      versionFile(projectId, v2, "edits.json"),
+      JSON.stringify(
+        { schemaVersion: 1, entries: [{ n: 1, at, ops, description: `Corecturi automate (iterația ${i})`, before, after, source: "auto-fix", undone: false }] },
+        null,
+        2,
+      ),
+    );
     // vocea nu depinde de corecturile de montaj: se refolosește (amprenta o confirmă la compilare)
     for (const f of ["audio/voice.json", "audio/voice-key.json"]) {
       const src = versionFile(projectId, cur, f);
@@ -123,14 +146,40 @@ export async function autoFixLoop(projectId: string, o: AutoFixOptions = {}): Pr
     const d = scoreDelta(q.score, q2.score);
     const worse = q2.score.overall < q.score.overall - 0.05 || q2.score.counts.critical > q.score.counts.critical;
     if (worse || introduced.length) {
-      const reason = introduced.length ? `a introdus ${introduced.length} probleme mari noi (${introduced[0].problem})` : `scorul a scăzut (${q.score.overall} → ${q2.score.overall})`;
+      const reason = introduced.length
+        ? `a introdus ${introduced.length} probleme mari noi (${introduced[0].problem})`
+        : `scorul a scăzut (${q.score.overall} → ${q2.score.overall})`;
       rejectVersion(projectId, compiled.versionId, reason, cur);
       for (const f of pick) banned.add(issueKey(f));
       log(`  ↩ rollback: ${compiled.versionId} ${reason}; rămân pe ${cur}`);
-      iterations.push({ n: i, from: cur, to: compiled.versionId, fixes: pick.map((f) => ({ issueId: f.id, severity: f.severity, problem: f.problem, ops: f.suggestedFix })), before: q.score, after: q2.score, delta: d.overall, decision: "rolled-back", reason, impact: plan, renders: q2.renders });
+      iterations.push({
+        n: i,
+        from: cur,
+        to: compiled.versionId,
+        fixes: pick.map((f) => ({ issueId: f.id, severity: f.severity, problem: f.problem, ops: f.suggestedFix })),
+        before: q.score,
+        after: q2.score,
+        delta: d.overall,
+        decision: "rolled-back",
+        reason,
+        impact: plan,
+        renders: q2.renders,
+      });
       continue;
     }
-    iterations.push({ n: i, from: cur, to: compiled.versionId, fixes: pick.map((f) => ({ issueId: f.id, severity: f.severity, problem: f.problem, ops: f.suggestedFix })), before: q.score, after: q2.score, delta: d.overall, decision: "kept", reason: `scor ${q.score.overall} → ${q2.score.overall}`, impact: plan, renders: q2.renders });
+    iterations.push({
+      n: i,
+      from: cur,
+      to: compiled.versionId,
+      fixes: pick.map((f) => ({ issueId: f.id, severity: f.severity, problem: f.problem, ops: f.suggestedFix })),
+      before: q.score,
+      after: q2.score,
+      delta: d.overall,
+      decision: "kept",
+      reason: `scor ${q.score.overall} → ${q2.score.overall}`,
+      impact: plan,
+      renders: q2.renders,
+    });
     log(`  ✓ ${compiled.versionId}: ${q.score.overall} → ${q2.score.overall} (${q2.score.verdict})`);
     const progressed = d.overall >= cfg.minScoreImprovement || q2.score.counts.high < q.score.counts.high || q2.score.counts.critical < q.score.counts.critical;
     cur = compiled.versionId;
@@ -140,12 +189,30 @@ export async function autoFixLoop(projectId: string, o: AutoFixOptions = {}): Pr
       break;
     }
   }
-  const needsHuman = prioritize(q.issues.filter((f) => f.status === "open" && (!f.autoFixable || f.confidence < cfg.autoFixMinConfidence || banned.has(issueKey(f))) && f.severity !== "low")).map((f) => ({ ...f, status: "needs-human" as const }));
-  const report: AutoFixReport = { startVersion: start, finalVersion: cur, depth, iterations, stopReason, needsHuman, finalScore: q.score, checkpoint: iterations.length >= 3 };
+  const needsHuman = prioritize(
+    q.issues.filter(
+      (f) => f.status === "open" && (!f.autoFixable || f.confidence < cfg.autoFixMinConfidence || banned.has(issueKey(f))) && f.severity !== "low",
+    ),
+  ).map((f) => ({ ...f, status: "needs-human" as const }));
+  const report: AutoFixReport = {
+    startVersion: start,
+    finalVersion: cur,
+    depth,
+    iterations,
+    stopReason,
+    needsHuman,
+    finalScore: q.score,
+    checkpoint: iterations.length >= 3,
+  };
   fs.writeFileSync(versionFile(projectId, cur, "autofix.json"), JSON.stringify(report, null, 2));
   updateState(projectId, {
     decision: `Corectură automată ${start} → ${cur}: ${iterations.filter((x) => x.decision === "kept").length} iterații păstrate, ${iterations.filter((x) => x.decision === "rolled-back").length} respinse; ${q.score.overall}/100 ${q.score.verdict}.`,
-    next: needsHuman.length ? [`${needsHuman.length} probleme cer decizie creativă (vezi versions/${cur}/autofix.json).`, "Randează preview-ul pentru utilizator (mms quality --depth final)."] : ["Randează preview-ul pentru utilizator (mms quality --depth final)."],
+    next: needsHuman.length
+      ? [
+          `${needsHuman.length} probleme cer decizie creativă (vezi versions/${cur}/autofix.json).`,
+          "Randează preview-ul pentru utilizator (mms quality --depth final).",
+        ]
+      : ["Randează preview-ul pentru utilizator (mms quality --depth final)."],
   });
   return report;
 }

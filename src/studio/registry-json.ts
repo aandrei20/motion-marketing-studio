@@ -37,7 +37,16 @@ export function registryJson() {
         example: c.example,
       };
     }),
-    recipes: RECIPES.map((r) => ({ id: r.id, title: r.title, description: r.description, tags: r.tags, roles: r.roles, slots: r.slots, minSec: r.minSec, capabilities: r.capabilities })),
+    recipes: RECIPES.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      tags: r.tags,
+      roles: r.roles,
+      slots: r.slots,
+      minSec: r.minSec,
+      capabilities: r.capabilities,
+    })),
   };
 }
 
@@ -52,7 +61,9 @@ function implementationPath(id: string, kind: string): string {
     shape: "src/motion/fx/shapes.tsx",
     media: "src/motion/media/media.tsx",
     frame: "src/motion/media/frames.tsx",
-    ui: ["ui.zoom-lens", "ui.notification", "ui.progress", "ui.toggle", "ui.code", "ui.terminal"].includes(id) ? "src/motion/ui/widgets.tsx" : "src/motion/ui/overlays.tsx",
+    ui: ["ui.zoom-lens", "ui.notification", "ui.progress", "ui.toggle", "ui.code", "ui.terminal"].includes(id)
+      ? "src/motion/ui/widgets.tsx"
+      : "src/motion/ui/overlays.tsx",
     logo: "src/motion/logo/logo.tsx",
     data: "src/motion/data/charts.tsx",
     mod: "src/motion/modifiers/modifiers.tsx",

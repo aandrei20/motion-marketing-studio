@@ -24,7 +24,15 @@ const brief = Brief.parse({
   audio: { voice: { mode: "none" }, music: { mode: "synth" } },
 });
 
-const claim = (p: Partial<Claim> & Pick<Claim, "id" | "text" | "status">): Claim => ({ kind: "fact", category: "feature", sourceIds: ["s1"], confidence: "medium", checkedAt: "2026-10-08", notes: "", ...p });
+const claim = (p: Partial<Claim> & Pick<Claim, "id" | "text" | "status">): Claim => ({
+  kind: "fact",
+  category: "feature",
+  sourceIds: ["s1"],
+  confidence: "medium",
+  checkedAt: "2026-10-08",
+  notes: "",
+  ...p,
+});
 
 describe("research", () => {
   const page: PageData = {
@@ -45,7 +53,8 @@ describe("research", () => {
     fonts: [],
     cssVars: {},
     times: [],
-    fullText: "Planifică în 5 minute\nCăutare instantă\nGăsești orice sarcină tastând câteva litere.\nEchipă\n8 €\nper utilizator pe lună, facturat anual\nFolosit de 10.000 de echipe din toată lumea în fiecare zi.",
+    fullText:
+      "Planifică în 5 minute\nCăutare instantă\nGăsești orice sarcină tastând câteva litere.\nEchipă\n8 €\nper utilizator pe lună, facturat anual\nFolosit de 10.000 de echipe din toată lumea în fiecare zi.",
   };
   const r = extractFromPage(page, { capturedAt: "2026-10-08T00:00:00Z" });
   it("citează sursa și separă cifrele în „de confirmat”", () => {
@@ -63,7 +72,13 @@ describe("research", () => {
 });
 
 describe("script", () => {
-  const research = Research.parse({ schemaVersion: 1, claims: [claim({ id: "c-ok", text: "Căutare instantă: găsești orice", status: "verified" }), claim({ id: "c-cifra", text: "10.000 de echipe", category: "metric", status: "needs-confirmation" })] });
+  const research = Research.parse({
+    schemaVersion: 1,
+    claims: [
+      claim({ id: "c-ok", text: "Căutare instantă: găsești orice", status: "verified" }),
+      claim({ id: "c-cifra", text: "10.000 de echipe", category: "metric", status: "needs-confirmation" }),
+    ],
+  });
   it("schița păstrează hook-ul și CTA-ul utilizatorului și adaugă fraza obligatorie", () => {
     const s = draftScript(brief, research, { textLanguage: "ro", voiceLanguage: null, productName: "Produs" });
     expect(s.lines[0].voiceover).toBe("Încă o ședință?");
@@ -73,8 +88,19 @@ describe("script", () => {
     expect(validateScript(s, brief, research).filter((i) => i.severity === "critical")).toHaveLength(0);
   });
   it("blochează fraza obligatorie lipsă, cifrele fără sursă și afirmațiile neconfirmate", () => {
-    const s = Script.parse({ schemaVersion: 1, textLanguage: "ro", voiceLanguage: null, lines: [{ id: "a", origin: "ai", voiceover: "Folosit de 10.000 de echipe", claimIds: [] }, { id: "b", origin: "ai", voiceover: "x", claimIds: ["c-cifra"] }, { id: "cta", origin: "user-verbatim", onScreen: "Încearcă gratuit", isCta: true }] });
-    const issues = validateScript(s, brief, research).filter((i) => i.severity === "critical").map((i) => i.message);
+    const s = Script.parse({
+      schemaVersion: 1,
+      textLanguage: "ro",
+      voiceLanguage: null,
+      lines: [
+        { id: "a", origin: "ai", voiceover: "Folosit de 10.000 de echipe", claimIds: [] },
+        { id: "b", origin: "ai", voiceover: "x", claimIds: ["c-cifra"] },
+        { id: "cta", origin: "user-verbatim", onScreen: "Încearcă gratuit", isCta: true },
+      ],
+    });
+    const issues = validateScript(s, brief, research)
+      .filter((i) => i.severity === "critical")
+      .map((i) => i.message);
     expect(issues.some((m) => m.includes("în 5 minute"))).toBe(true);
     expect(issues.some((m) => m.includes("fără afirmație-sursă"))).toBe(true);
     expect(issues.some((m) => m.includes("c-cifra"))).toBe(true);
@@ -87,7 +113,17 @@ describe("script", () => {
     expect(cta?.message).toMatch(/A5/);
   });
   it("un citat în altă limbă decât reclama se semnalează (traducerea o aprobă utilizatorul); cuvintele utilizatorului nu", () => {
-    const en = Research.parse({ schemaVersion: 1, claims: [claim({ id: "c-en", text: "Simple analytics at a glance: It is easy to understand and cuts through the noise.", quote: "Simple analytics at a glance\nIt is easy to understand and cuts through the noise.", status: "verified" })] });
+    const en = Research.parse({
+      schemaVersion: 1,
+      claims: [
+        claim({
+          id: "c-en",
+          text: "Simple analytics at a glance: It is easy to understand and cuts through the noise.",
+          quote: "Simple analytics at a glance\nIt is easy to understand and cuts through the noise.",
+          status: "verified",
+        }),
+      ],
+    });
     const s = draftScript(brief, en, { textLanguage: "ro", voiceLanguage: "ro", productName: "Produs" });
     const lang = validateScript(s, brief, en).filter((i) => /tradus/.test(i.message));
     expect(lang.length).toBeGreaterThan(0);
@@ -107,13 +143,27 @@ describe("script", () => {
     expect(featureTitle("Căutare instantă\nGăsești orice.").rest).toBe("Găsești orice.");
   });
   it("schița ia funcțiile din pagina principală și paginile oficiale; noutățile datate la urmă; documentația deloc", () => {
-    const src = (id: string, kind: "official-site" | "docs" | "changelog" | "competitor") => ({ id, kind, url: `https://exemplu.ro/${id}`, title: id, fetchedAt: "2026-10-08", contentHash: id, reliability: "official" as const });
+    const src = (id: string, kind: "official-site" | "docs" | "changelog" | "competitor") => ({
+      id,
+      kind,
+      url: `https://exemplu.ro/${id}`,
+      title: id,
+      fetchedAt: "2026-10-08",
+      contentHash: id,
+      reliability: "official" as const,
+    });
     const r = Research.parse({
       schemaVersion: 1,
       sources: [src("home", "official-site"), src("docs", "docs"), src("noutati", "changelog"), src("rival", "competitor")],
       claims: [
         claim({ id: "c-doc", text: "Facturare: setări", quote: "Facturare\nSetările contului de facturare.", sourceIds: ["docs"], status: "verified" }),
-        claim({ id: "c-nou", text: "Export rapid", quote: "SEP 23, 2026: Export rapid – Exporți totul dintr-un clic.", sourceIds: ["noutati"], status: "verified" }),
+        claim({
+          id: "c-nou",
+          text: "Export rapid",
+          quote: "SEP 23, 2026: Export rapid – Exporți totul dintr-un clic.",
+          sourceIds: ["noutati"],
+          status: "verified",
+        }),
         claim({ id: "c-rival", text: "Rapoarte", quote: "Rapoarte\nRapoartele altui produs.", sourceIds: ["rival"], status: "verified" }),
         claim({ id: "c-home", text: "Căutare instantă", quote: "Căutare instantă\nGăsești orice în două secunde.", sourceIds: ["home"], status: "verified" }),
       ],
@@ -132,11 +182,31 @@ describe("gramatica de montaj", () => {
     expect(readingSec("unu doi trei patru cinci șase")).toBe(2);
   });
   it("CTA-ul primește hold de minimum 2,5 s", () => {
-    const d = sceneDuration({ voSec: 0, onScreen: "Încearcă gratuit", shot: "title", energy: 0.5, role: "cta", recipeMinSec: 1, explicitSec: null, dir: DIRECTIONS.energetic, pacing: "fast" });
+    const d = sceneDuration({
+      voSec: 0,
+      onScreen: "Încearcă gratuit",
+      shot: "title",
+      energy: 0.5,
+      role: "cta",
+      recipeMinSec: 1,
+      explicitSec: null,
+      dir: DIRECTIONS.energetic,
+      pacing: "fast",
+    });
     expect(d.sec).toBeGreaterThanOrEqual(0.8 + 0.45 + 2.5);
   });
   it("vocea lungă prelungește scena; durata cerută sub minim nu se acceptă", () => {
-    const d = sceneDuration({ voSec: 5, onScreen: "Text", shot: "hero", energy: 0.5, role: "feature", recipeMinSec: 1, explicitSec: 2, dir: DIRECTIONS.technical, pacing: "medium" });
+    const d = sceneDuration({
+      voSec: 5,
+      onScreen: "Text",
+      shot: "hero",
+      energy: 0.5,
+      role: "feature",
+      recipeMinSec: 1,
+      explicitSec: 2,
+      dir: DIRECTIONS.technical,
+      pacing: "medium",
+    });
     expect(d.sec).toBeGreaterThanOrEqual(5.5);
   });
   it("nu repetă tranziția anterioară când există alternativă", () => {
@@ -177,7 +247,11 @@ describe("comenzi în limbaj natural", () => {
     expect(parseCommand("Make the hook more aggressive")[0]).toMatchObject({ op: "hook-energy", style: "aggressive" });
     expect(parseCommand("Make this feel more premium")[0]).toMatchObject({ op: "direction", direction: "premium" });
     expect(parseCommand("scena 2 mai lungă cu 1 secundă")[0]).toMatchObject({ op: "scene-length", sceneIndex: 1, deltaSec: 1 });
-    expect(parseCommand("Replace the screenshot at 5 with screenshot-abc123")[0]).toMatchObject({ op: "replace-asset-at", sec: 5, assetId: "screenshot-abc123" });
+    expect(parseCommand("Replace the screenshot at 5 with screenshot-abc123")[0]).toMatchObject({
+      op: "replace-asset-at",
+      sec: 5,
+      assetId: "screenshot-abc123",
+    });
   });
   it("refuză clar ce nu înțelege", () => {
     expect(() => parseCommand("bla bla")).toThrow(/Nu recunosc/);
@@ -191,9 +265,18 @@ describe("așezarea elementelor peste capturi", () => {
     // zona lângă marginea din dreapta: nu încape la dreapta, încape la stânga
     expect(calloutSide({ x: 850, y: 450, w: 100, h: 40 }, 1, "Ce contează azi", { distance: 100, size: 38, bounds })).toBe("left");
     // zona lată, sus-jos e loc: deasupra, dacă e preferat
-    expect(calloutSide({ x: 100, y: 500, w: 800, h: 60 }, 1, "Ce contează azi", { distance: 70, size: 38, bounds, prefer: ["top", "bottom", "right", "left"] })).toBe("top");
+    expect(
+      calloutSide({ x: 100, y: 500, w: 800, h: 60 }, 1, "Ce contează azi", { distance: 70, size: 38, bounds, prefer: ["top", "bottom", "right", "left"] }),
+    ).toBe("top");
     // eticheta centrată deasupra ar ieși pe lățime: nu alege sus/jos
-    expect(calloutSide({ x: 940, y: 500, w: 50, h: 40 }, 1, "O etichetă destul de lungă", { distance: 70, size: 38, bounds, prefer: ["top", "bottom", "left", "right"] })).toBe("left");
+    expect(
+      calloutSide({ x: 940, y: 500, w: 50, h: 40 }, 1, "O etichetă destul de lungă", {
+        distance: 70,
+        size: 38,
+        bounds,
+        prefer: ["top", "bottom", "left", "right"],
+      }),
+    ).toBe("left");
   });
   it("zoom-ul camerei se limitează ca materialul să nu intre peste titlu", async () => {
     const { afterPush, limitZoomForText } = await import("../../src/recipes/kit");

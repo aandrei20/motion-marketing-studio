@@ -17,26 +17,65 @@ import { analyzeSample, detailOccupancy, lumaMap, measuredContrast, pickSamples,
 import { CHECKS, PASSES, checksForDepth } from "../../src/quality/checks";
 import { PATHS } from "../../src/core/paths";
 
-const issue = (o: Partial<Parameters<typeof makeIssue>[0]> = {}) => makeIssue({ frame: 10, sceneId: "s1", dimension: "readability", severity: "high", problem: "Text prea mic: 8 px", recommendation: "Mărește", ...o }, `x${Math.round(Math.random() * 1e6)}`, 1, 30);
+const issue = (o: Partial<Parameters<typeof makeIssue>[0]> = {}) =>
+  makeIssue(
+    { frame: 10, sceneId: "s1", dimension: "readability", severity: "high", problem: "Text prea mic: 8 px", recommendation: "Mărește", ...o },
+    `x${Math.round(Math.random() * 1e6)}`,
+    1,
+    30,
+  );
 
 describe("sistemul de probleme", () => {
   it("are toate câmpurile cerute și categoria verificării", () => {
     const f = issue({ suggestedFix: [{ op: "scene-extend", sceneId: "s1", deltaSec: 0.5 }] });
-    for (const k of ["id", "severity", "category", "timecode", "durationSec", "sceneId", "layerId", "problem", "whyItMatters", "recommendation", "confidence", "autoFixable", "suggestedFix"]) expect(f).toHaveProperty(k);
+    for (const k of [
+      "id",
+      "severity",
+      "category",
+      "timecode",
+      "durationSec",
+      "sceneId",
+      "layerId",
+      "problem",
+      "whyItMatters",
+      "recommendation",
+      "confidence",
+      "autoFixable",
+      "suggestedFix",
+    ])
+      expect(f).toHaveProperty(k);
     expect(f.category).toBe("typography");
     expect(f.autoFixable).toBe(true);
     expect(f.whyItMatters.length).toBeGreaterThan(10);
     expect(f.timecode).toBe("00:00.33"); // cadrul 10 la 30 fps
   });
   it("citește problemele vechi (blocker/major/minor/nit, fără categorie)", () => {
-    const old = { id: "v1", round: 0, frame: 0, timecode: null, sceneId: null, dimension: "claims", severity: "blocker", problem: "x", recommendation: "y", source: "auto-check", status: "open" };
+    const old = {
+      id: "v1",
+      round: 0,
+      frame: 0,
+      timecode: null,
+      sceneId: null,
+      dimension: "claims",
+      severity: "blocker",
+      problem: "x",
+      recommendation: "y",
+      source: "auto-check",
+      status: "open",
+    };
     const f = Finding.parse(old);
     expect(f.severity).toBe("critical");
     expect(f.category).toBe("claims");
     expect(Finding.parse({ ...old, severity: "nit", dimension: "variety" }).severity).toBe("low");
   });
   it("aceeași problemă, cu același text, pe toate formatele devine una singură; diferențele de format rămân", () => {
-    const mk = (formatId: string, problem: string) => makeIssue({ frame: 10, sceneId: "s1", dimension: "rights", severity: "high", problem, recommendation: "r", formatId }, `i-${formatId}-${problem.length}`, 1, 30);
+    const mk = (formatId: string, problem: string) =>
+      makeIssue(
+        { frame: 10, sceneId: "s1", dimension: "rights", severity: "high", problem, recommendation: "r", formatId },
+        `i-${formatId}-${problem.length}`,
+        1,
+        30,
+      );
     const same = dedupe([mk("9x16", "„a.png” aparține unui terț."), mk("16x9", "„a.png” aparține unui terț.")], ["9x16", "16x9"]);
     expect(same).toHaveLength(1);
     expect(same[0].formatId).toBeNull();
@@ -159,8 +198,27 @@ describe("amprente și motorul de impact", () => {
     expect(fingerprint({ a: 1, b: 2 })).toBe(fingerprint({ b: 2, a: 1 }));
   });
   it("o scenă mutată în timp păstrează aceeași amprentă de conținut", () => {
-    const t = { width: 1080, height: 1920, fps: 30, palette: {}, fonts: [], typography: {}, overlays: [], captions: null, concept: false, safeZone: {} } as unknown as Timeline;
-    const s = { id: "a", from: 0, durationInFrames: 60, transitionIn: null, camera: { keys: [] }, layers: [], meta: {} } as unknown as Timeline["scenes"][number];
+    const t = {
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      palette: {},
+      fonts: [],
+      typography: {},
+      overlays: [],
+      captions: null,
+      concept: false,
+      safeZone: {},
+    } as unknown as Timeline;
+    const s = {
+      id: "a",
+      from: 0,
+      durationInFrames: 60,
+      transitionIn: null,
+      camera: { keys: [] },
+      layers: [],
+      meta: {},
+    } as unknown as Timeline["scenes"][number];
     expect(sceneContentKey(t, s)).toBe(sceneContentKey(t, { ...s, from: 120 }));
     expect(sceneContentKey(t, s)).not.toBe(sceneContentKey(t, { ...s, durationInFrames: 61 }));
   });
@@ -212,7 +270,8 @@ describe("registrul capabilităților de sistem", () => {
       const [file, fn] = c.implementation.split("#");
       const abs = path.join(PATHS.root, file);
       expect(fs.existsSync(abs), `${c.id}: ${file}`).toBe(true);
-      if (c.status !== "planned") expect(new RegExp(`export (async )?(function|const) ${fn}\\b`).test(fs.readFileSync(abs, "utf8")), `${c.id}: ${fn}`).toBe(true);
+      if (c.status !== "planned")
+        expect(new RegExp(`export (async )?(function|const) ${fn}\\b`).test(fs.readFileSync(abs, "utf8")), `${c.id}: ${fn}`).toBe(true);
       for (const t of c.tests) expect(fs.existsSync(path.join(PATHS.root, t)), `${c.id}: ${t}`).toBe(true);
       if (c.status === "implemented") expect(c.tests.length + (c.cost === 0 ? 1 : 0), `${c.id} fără teste`).toBeGreaterThan(0);
     }
@@ -222,7 +281,11 @@ describe("registrul capabilităților de sistem", () => {
 describe("bucla adaptivă: pase și adâncimi", () => {
   it("are cele 10 pase, iar fiecare verificare aparține uneia", () => {
     expect(PASSES.map((p) => p.n)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    for (const c of CHECKS) expect(PASSES.some((p) => p.id === c.pass), c.id).toBe(true);
+    for (const c of CHECKS)
+      expect(
+        PASSES.some((p) => p.id === c.pass),
+        c.id,
+      ).toBe(true);
   });
   it("adâncimea fast nu randează nimic; final include video-ul", () => {
     const fast = checksForDepth("fast");
@@ -235,7 +298,8 @@ describe("bucla adaptivă: pase și adâncimi", () => {
 
 describe("profilurile de platformă", () => {
   it("există pentru toate platformele și se pot ajusta per proiect", () => {
-    for (const p of ["tiktok", "reels", "shorts", "youtube", "linkedin", "x", "feed", "generic"] as const) expect(PLATFORM_PROFILES[p].durationSec.max).toBeGreaterThan(0);
+    for (const p of ["tiktok", "reels", "shorts", "youtube", "linkedin", "x", "feed", "generic"] as const)
+      expect(PLATFORM_PROFILES[p].durationSec.max).toBeGreaterThan(0);
     const p = platformProfile("tiktok", { platformOverrides: { tiktok: { hookBySec: 0.5, durationSec: { idealMax: 20 } } } });
     expect(p.hookBySec).toBe(0.5);
     expect(p.durationSec.idealMax).toBe(20);
@@ -257,7 +321,14 @@ describe("subtitrările în compilator", () => {
         from,
         durationInFrames: 90,
         transitionIn: null,
-        camera: { keys: [{ at: 0, x: 540, y: 960, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" }], handheld: 0, shake: [], punches: [], perspective: 1600, motionBlur: true },
+        camera: {
+          keys: [{ at: 0, x: 540, y: 960, zoom: 1, rotate: 0, rotateX: 0, rotateY: 0, ease: "inOut" }],
+          handheld: 0,
+          shake: [],
+          punches: [],
+          perspective: 1600,
+          motionBlur: true,
+        },
         meta: {},
         layers: [
           {
@@ -268,7 +339,24 @@ describe("subtitrările în compilator", () => {
             box: { x: 60, y: 800, w: 960, h: 600 },
             depth: 1,
             params: { src: "x.png", kind: "image", imageWidth: 960, imageHeight: 600, frame: "none" },
-            children: focus ? [{ id: `${id}-f`, capability: "ui.spotlight", from: 0, durationInFrames: 90, box: { x: 100, y: 300, w: 400, h: 80 }, depth: 1, params: {}, children: [], modifiers: [], assets: [], role: "overlay", z: 1 }] : [],
+            children: focus
+              ? [
+                  {
+                    id: `${id}-f`,
+                    capability: "ui.spotlight",
+                    from: 0,
+                    durationInFrames: 90,
+                    box: { x: 100, y: 300, w: 400, h: 80 },
+                    depth: 1,
+                    params: {},
+                    children: [],
+                    modifiers: [],
+                    assets: [],
+                    role: "overlay",
+                    z: 1,
+                  },
+                ]
+              : [],
             modifiers: [],
             assets: [],
             role: "hero",
@@ -290,7 +378,12 @@ describe("subtitrările în compilator", () => {
 });
 
 /** O imagine sintetică: fundal plin + un dreptunghi de „text”. */
-function raster(w: number, h: number, bg: [number, number, number], fill?: { x: number; y: number; w: number; h: number; c: [number, number, number] }): Raster {
+function raster(
+  w: number,
+  h: number,
+  bg: [number, number, number],
+  fill?: { x: number; y: number; w: number; h: number; c: [number, number, number] },
+): Raster {
   const rgb = new Uint8Array(w * h * 3);
   for (let i = 0; i < w * h; i++) rgb.set(bg, i * 3);
   if (fill) for (let y = fill.y; y < fill.y + fill.h; y++) for (let x = fill.x; x < fill.x + fill.w; x++) rgb.set(fill.c, (y * w + x) * 3);
@@ -319,7 +412,15 @@ describe("criticul pe pixeli", () => {
     expect(detailOccupancy(lumaMap(busy), 64, 36).uniform).toBe(false);
   });
   it("alege cadrul de hold fără tranziții și propune culoarea lizibilă din paletă", () => {
-    const palette = { primary: "#6c5cff", secondary: "#222233", accent: "#2dd4bf", background: "#0f1020", surface: "#1a1b2e", text: "#f5f5f7", textMuted: "#5a5c70" };
+    const palette = {
+      primary: "#6c5cff",
+      secondary: "#222233",
+      accent: "#2dd4bf",
+      background: "#0f1020",
+      surface: "#1a1b2e",
+      text: "#f5f5f7",
+      textMuted: "#5a5c70",
+    };
     const t = {
       formatId: "16x9",
       width: 1920,
@@ -327,8 +428,38 @@ describe("criticul pe pixeli", () => {
       fps: 30,
       palette,
       scenes: [
-        { id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: { keys: [{ at: 0, x: 960, y: 540, zoom: 1 }] }, meta: { narrativeRole: "feature", shot: "close-up", energy: 0.5 }, layers: [{ id: "t1", capability: "text.body", from: 0, durationInFrames: 90, box: { x: 100, y: 100, w: 600, h: 100 }, params: { text: "Adresa site-ului", color: "textMuted", fontSize: 40 }, depth: 0, role: "support", children: [], modifiers: [], assets: [] }] },
-        { id: "b", from: 80, durationInFrames: 60, transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} }, camera: { keys: [{ at: 0, x: 960, y: 540, zoom: 1 }] }, meta: { narrativeRole: "cta", shot: "title", energy: 0.5 }, layers: [] },
+        {
+          id: "a",
+          from: 0,
+          durationInFrames: 90,
+          transitionIn: null,
+          camera: { keys: [{ at: 0, x: 960, y: 540, zoom: 1 }] },
+          meta: { narrativeRole: "feature", shot: "close-up", energy: 0.5 },
+          layers: [
+            {
+              id: "t1",
+              capability: "text.body",
+              from: 0,
+              durationInFrames: 90,
+              box: { x: 100, y: 100, w: 600, h: 100 },
+              params: { text: "Adresa site-ului", color: "textMuted", fontSize: 40 },
+              depth: 0,
+              role: "support",
+              children: [],
+              modifiers: [],
+              assets: [],
+            },
+          ],
+        },
+        {
+          id: "b",
+          from: 80,
+          durationInFrames: 60,
+          transitionIn: { capability: "tr.dissolve", durationInFrames: 10, params: {} },
+          camera: { keys: [{ at: 0, x: 960, y: 540, zoom: 1 }] },
+          meta: { narrativeRole: "cta", shot: "title", energy: 0.5 },
+          layers: [],
+        },
       ],
     } as unknown as Timeline;
     const [sa] = pickSamples(t);

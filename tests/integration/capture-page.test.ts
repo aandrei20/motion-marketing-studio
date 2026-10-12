@@ -49,14 +49,26 @@ describe("datele paginii din captură", () => {
 
   it("recunoaște o pagină neadaptată pentru telefon (iese din ecran pe orizontală)", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mms-capture-"));
-    const page = (body: string) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">${body}</body></html>`;
+    const page = (body: string) =>
+      `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">${body}</body></html>`;
     fs.writeFileSync(path.join(dir, "fix.html"), page(`<div style="width:1200px;font:16px sans-serif">Un layout de desktop cu lățime fixă</div>`));
     fs.writeFileSync(path.join(dir, "fluid.html"), page(`<div style="max-width:1200px;font:16px sans-serif">Un layout fluid</div>`));
     // depășirea ascunsă cu overflow: hidden: documentul nu iese din ecran, dar textul e tăiat
-    fs.writeFileSync(path.join(dir, "clip.html"), page(`<div style="overflow:hidden"><div style="width:1200px;font:16px sans-serif"><h1>Bună dimineața, ai șase sarcini</h1><p>Un paragraf de desktop pe toată lățimea de 1200 de pixeli.</p><button>Sarcină nouă</button></div></div>`));
+    fs.writeFileSync(
+      path.join(dir, "clip.html"),
+      page(
+        `<div style="overflow:hidden"><div style="width:1200px;font:16px sans-serif"><h1>Bună dimineața, ai șase sarcini</h1><p>Un paragraf de desktop pe toată lățimea de 1200 de pixeli.</p><button>Sarcină nouă</button></div></div>`,
+      ),
+    );
     const fixed = await capture({ id: "fix", url: pathToFileURL(path.join(dir, "fix.html")).href, viewport: "mobile", research: false }, path.join(dir, "out"));
-    const fluid = await capture({ id: "fluid", url: pathToFileURL(path.join(dir, "fluid.html")).href, viewport: "mobile", research: false }, path.join(dir, "out"));
-    const clip = await capture({ id: "clip", url: pathToFileURL(path.join(dir, "clip.html")).href, viewport: "mobile", research: false }, path.join(dir, "out"));
+    const fluid = await capture(
+      { id: "fluid", url: pathToFileURL(path.join(dir, "fluid.html")).href, viewport: "mobile", research: false },
+      path.join(dir, "out"),
+    );
+    const clip = await capture(
+      { id: "clip", url: pathToFileURL(path.join(dir, "clip.html")).href, viewport: "mobile", research: false },
+      path.join(dir, "out"),
+    );
     expect(fixed.overflowX).toBe(true);
     expect(clip.overflowX).toBe(true);
     expect(fluid.overflowX).toBe(false);

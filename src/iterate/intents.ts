@@ -25,12 +25,7 @@ export type Op =
   | { op: "replace-asset-at"; sec: number; assetId: string }
   | { op: "sfx-level"; deltaDb: number };
 
-const N = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[„”"]/g, '"');
+const N = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[„”"]/g, '"');
 
 const num = (s: string | undefined, d: number) => (s ? Number(s.replace(",", ".")) : d);
 
@@ -43,14 +38,25 @@ export function parseCommand(input: string): Op[] {
   const sec = timeMatch ? parseTimeToSec(timeMatch[1]) : null;
 
   if (/(zoom|mareste|mărește|apropie|push)/.test(t) && sec !== null) {
-    const target = raw.replace(/.*?(?:zoom|push)(?:-in)?\s*(?:pe|in|into|on|la|spre|to)?\s*/i, "").replace(/^(the|pe|la)\s+/i, "").trim() || "zona principală";
+    const target =
+      raw
+        .replace(/.*?(?:zoom|push)(?:-in)?\s*(?:pe|in|into|on|la|spre|to)?\s*/i, "")
+        .replace(/^(the|pe|la)\s+/i, "")
+        .trim() || "zona principală";
     ops.push({ op: "zoom-at", sec, target });
   }
-  const hold = t.match(/(?:cta|card(?:ul)? final|final card|end card)[^\d]*(?:hold|sa stea|stea|ramana|tine|holds?)?[^\d]*(\d+(?:[.,]\d+)?)\s*(?:s|sec|secunde|seconds?)/);
+  const hold = t.match(
+    /(?:cta|card(?:ul)? final|final card|end card)[^\d]*(?:hold|sa stea|stea|ramana|tine|holds?)?[^\d]*(\d+(?:[.,]\d+)?)\s*(?:s|sec|secunde|seconds?)/,
+  );
   if (hold) ops.push({ op: "cta-hold", sec: num(hold[1], 2.5) });
-  if (/(tranziti\w*|transitions?)[^.]*?(mai rapid\w*|faster|quicker|mai scurt\w*)/.test(t) || /(faster|mai rapide?) (tranziti\w*|transitions?)/.test(t)) ops.push({ op: "transitions-speed", factor: 0.6 });
+  if (/(tranziti\w*|transitions?)[^.]*?(mai rapid\w*|faster|quicker|mai scurt\w*)/.test(t) || /(faster|mai rapide?) (tranziti\w*|transitions?)/.test(t))
+    ops.push({ op: "transitions-speed", factor: 0.6 });
   if (/(tranziti\w*|transitions?)[^.]*?(mai lent\w*|slower|mai lung\w*)/.test(t)) ops.push({ op: "transitions-speed", factor: 1.4 });
-  if (/(mai putina muzica|less music|lower the music|muzica mai incet)[^.]*(sub voce|under the voice|under voice)/.test(t) || /(sub voce|under the voice)[^.]*(mai putina|less|mai incet)/.test(t)) ops.push({ op: "music-under-voice", deltaDb: -5 });
+  if (
+    /(mai putina muzica|less music|lower the music|muzica mai incet)[^.]*(sub voce|under the voice|under voice)/.test(t) ||
+    /(sub voce|under the voice)[^.]*(mai putina|less|mai incet)/.test(t)
+  )
+    ops.push({ op: "music-under-voice", deltaDb: -5 });
   else if (/(muzica mai tare|more music|louder music)/.test(t)) ops.push({ op: "music-level", deltaDb: 3 });
   else if (/(muzica mai incet|less music|quieter music|lower the music)/.test(t)) ops.push({ op: "music-level", deltaDb: -3 });
   if (/(fara muzica|no music|scoate muzica|remove the music)/.test(t)) ops.push({ op: "music-off" });
@@ -69,11 +75,15 @@ export function parseCommand(input: string): Op[] {
     [/mai minimal|more minimal|mai simplu|simpler/, "minimal"],
     [/mai energic|more energetic|mai social/, "energetic"],
   ];
-  if (/(fa|make|sa para|feel|mai|more)/.test(t) && !/hook/.test(t)) for (const [re, d] of dirMap) if (re.test(t)) {
-    ops.push({ op: "direction", direction: d });
-    break;
-  }
-  const len = t.match(/scena\s*(\d+)[^\d]*(mai (lunga|scurta)|longer|shorter)[^\d]*(?:cu|by)?\s*(\d+(?:[.,]\d+)?)?/) ?? t.match(/scene\s*(\d+)[^\d]*(longer|shorter)[^\d]*(?:by)?\s*(\d+(?:[.,]\d+)?)?/);
+  if (/(fa|make|sa para|feel|mai|more)/.test(t) && !/hook/.test(t))
+    for (const [re, d] of dirMap)
+      if (re.test(t)) {
+        ops.push({ op: "direction", direction: d });
+        break;
+      }
+  const len =
+    t.match(/scena\s*(\d+)[^\d]*(mai (lunga|scurta)|longer|shorter)[^\d]*(?:cu|by)?\s*(\d+(?:[.,]\d+)?)?/) ??
+    t.match(/scene\s*(\d+)[^\d]*(longer|shorter)[^\d]*(?:by)?\s*(\d+(?:[.,]\d+)?)?/);
   if (len) {
     const longer = /lunga|longer/.test(len[0]);
     const amount = num(len[len.length - 1], 1);
@@ -93,7 +103,7 @@ export function parseCommand(input: string): Op[] {
     throw new MmsError(
       "COMMAND_UNKNOWN",
       `Nu recunosc comanda „${raw}”.`,
-      'Exemple: „la 00:14 zoom pe câmpul de căutare”, „CTA-ul să stea 3 secunde”, „tranziții mai rapide”, „mai puțină muzică sub voce”, „folosește fraza mea exactă”, „fă hook-ul mai agresiv”, „fă-l mai premium”, „scena 2 mai lungă cu 1 secundă”, „schimbă textul la 5 în „…””. Pentru altceva, cere-i lui Claude în Claude Code.',
+      "Exemple: „la 00:14 zoom pe câmpul de căutare”, „CTA-ul să stea 3 secunde”, „tranziții mai rapide”, „mai puțină muzică sub voce”, „folosește fraza mea exactă”, „fă hook-ul mai agresiv”, „fă-l mai premium”, „scena 2 mai lungă cu 1 secundă”, „schimbă textul la 5 în „…””. Pentru altceva, cere-i lui Claude în Claude Code.",
     );
   return ops;
 }
@@ -108,14 +118,18 @@ export interface ApplyContext {
 
 function sceneAt(ctx: ApplyContext, sec: number): { sb: StoryboardScene; idx: number } {
   const f = Math.round(sec * ctx.timeline.fps);
-  const tl = [...ctx.timeline.scenes].reverse().find((s) => f >= s.from && f < s.from + s.durationInFrames) ?? ctx.timeline.scenes[ctx.timeline.scenes.length - 1];
+  const tl =
+    [...ctx.timeline.scenes].reverse().find((s) => f >= s.from && f < s.from + s.durationInFrames) ?? ctx.timeline.scenes[ctx.timeline.scenes.length - 1];
   const idx = ctx.storyboard.scenes.findIndex((s) => s.id === tl.id);
   if (idx < 0) throw new MmsError("SCENE_MISSING", `Scena de la ${sec}s nu mai există în storyboard.`);
   return { sb: ctx.storyboard.scenes[idx], idx };
 }
 
 /** Aplică operațiile pe copii ale storyboard-ului și scriptului. Întoarce descrierea fiecărei schimbări. */
-export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard; script: Script; changes: Array<{ op: string; description: string; params: Record<string, unknown> }> } {
+export function applyOps(
+  ctx: ApplyContext,
+  ops: Op[],
+): { storyboard: Storyboard; script: Script; changes: Array<{ op: string; description: string; params: Record<string, unknown> }> } {
   const sb: Storyboard = structuredClone(ctx.storyboard);
   const script: Script = structuredClone(ctx.script);
   const changes: Array<{ op: string; description: string; params: Record<string, unknown> }> = [];
@@ -143,7 +157,11 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
         const tl = ctx.timeline.scenes.find((x) => x.id === s.id);
         const current = tl ? tl.durationInFrames / fps : 3;
         s.durationSec = Math.max(current, current - 2.5 + o.sec);
-        changes.push({ op: o.op, description: `CTA-ul ține ${o.sec}s nemișcat (scena ${s.id}: ${s.durationSec.toFixed(2)}s).`, params: { sceneId: s.id, holdSec: o.sec } });
+        changes.push({
+          op: o.op,
+          description: `CTA-ul ține ${o.sec}s nemișcat (scena ${s.id}: ${s.durationSec.toFixed(2)}s).`,
+          params: { sceneId: s.id, holdSec: o.sec },
+        });
         break;
       }
       case "transitions-speed": {
@@ -152,7 +170,11 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
           const cur = tl?.transitionIn;
           if (!cur || cur.durationInFrames === 0) continue;
           // storyboard-ul ține durata în cadre la 30 fps (referința compilatorului)
-          s.transitionIn = { capability: cur.capability, durationFrames: Math.min(60, Math.max(2, Math.round(((cur.durationInFrames * 30) / fps) * o.factor))), params: cur.params };
+          s.transitionIn = {
+            capability: cur.capability,
+            durationFrames: Math.min(60, Math.max(2, Math.round(((cur.durationInFrames * 30) / fps) * o.factor))),
+            params: cur.params,
+          };
         }
         changes.push({ op: o.op, description: o.factor < 1 ? "Tranziții mai rapide (×0,6)." : "Tranziții mai lente (×1,4).", params: { factor: o.factor } });
         break;
@@ -163,11 +185,19 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
         break;
       case "music-level":
         sb.audio.musicGainDb += o.deltaDb;
-        changes.push({ op: o.op, description: `Muzica ${o.deltaDb > 0 ? "mai tare" : "mai încet"} (${sb.audio.musicGainDb > 0 ? "+" : ""}${sb.audio.musicGainDb} dB).`, params: { musicGainDb: sb.audio.musicGainDb } });
+        changes.push({
+          op: o.op,
+          description: `Muzica ${o.deltaDb > 0 ? "mai tare" : "mai încet"} (${sb.audio.musicGainDb > 0 ? "+" : ""}${sb.audio.musicGainDb} dB).`,
+          params: { musicGainDb: sb.audio.musicGainDb },
+        });
         break;
       case "sfx-level":
         sb.audio.sfxGainDb += o.deltaDb;
-        changes.push({ op: o.op, description: `Efecte sonore ${o.deltaDb > 0 ? "mai tare" : "mai încet"} (${sb.audio.sfxGainDb} dB).`, params: { sfxGainDb: sb.audio.sfxGainDb } });
+        changes.push({
+          op: o.op,
+          description: `Efecte sonore ${o.deltaDb > 0 ? "mai tare" : "mai încet"} (${sb.audio.sfxGainDb} dB).`,
+          params: { sfxGainDb: sb.audio.sfxGainDb },
+        });
         break;
       case "music-off":
         sb.audio.music = false;
@@ -189,7 +219,12 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
       }
       case "use-hook": {
         const variant = script.hooks.find((h) => h.id === o.hookId);
-        if (!variant) throw new MmsError("HOOK_MISSING", `Scriptul nu are varianta de hook „${o.hookId}”.`, `Variante: ${script.hooks.map((h) => h.id).join(", ") || "niciuna"} (câmpul hooks din script.json).`);
+        if (!variant)
+          throw new MmsError(
+            "HOOK_MISSING",
+            `Scriptul nu are varianta de hook „${o.hookId}”.`,
+            `Variante: ${script.hooks.map((h) => h.id).join(", ") || "niciuna"} (câmpul hooks din script.json).`,
+          );
         const hook = script.lines.find((l) => l.isHook);
         if (!hook) throw new MmsError("NO_HOOK", "Scriptul nu are replică de hook.");
         hook.voiceover = variant.text;
@@ -199,7 +234,11 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
         script.hooks = script.hooks.map((h) => ({ ...h, selected: h.id === variant.id }));
         const scene = sb.scenes.find((s) => s.lineIds.includes(hook.id));
         if (scene) scene.text = { ...scene.text, headline: variant.text };
-        changes.push({ op: o.op, description: `Hook-ul devine varianta ${variant.id}${variant.origin === "ai" ? " (sugestie)" : ""}: „${variant.text}”.`, params: { lineId: hook.id, hookId: variant.id } });
+        changes.push({
+          op: o.op,
+          description: `Hook-ul devine varianta ${variant.id}${variant.origin === "ai" ? " (sugestie)" : ""}: „${variant.text}”.`,
+          params: { lineId: hook.id, hookId: variant.id },
+        });
         break;
       }
       case "hook-energy": {
@@ -215,13 +254,24 @@ export function applyOps(ctx: ApplyContext, ops: Op[]): { storyboard: Storyboard
           s.overrides.push({ slot: "text-", capability: "text.blur-reveal", params: {} });
           s.camera = { capability: "camera.push", params: { from: 1, to: 1.08, ease: "out" } };
         }
-        changes.push({ op: o.op, description: o.style === "aggressive" ? "Hook mai agresiv: slam, tremur pe impact, energie mai mare, puțin mai scurt." : "Hook mai calm: apariție din blur, push lent.", params: { sceneId: s.id } });
+        changes.push({
+          op: o.op,
+          description:
+            o.style === "aggressive"
+              ? "Hook mai agresiv: slam, tremur pe impact, energie mai mare, puțin mai scurt."
+              : "Hook mai calm: apariție din blur, push lent.",
+          params: { sceneId: s.id },
+        });
         break;
       }
       case "direction":
         sb.direction = o.direction;
         for (const s of sb.scenes) s.transitionIn = null;
-        changes.push({ op: o.op, description: `Direcția acestei versiuni devine „${o.direction}” (tranzițiile se aleg din nou).`, params: { direction: o.direction } });
+        changes.push({
+          op: o.op,
+          description: `Direcția acestei versiuni devine „${o.direction}” (tranzițiile se aleg din nou).`,
+          params: { direction: o.direction },
+        });
         break;
       case "scene-length": {
         const s = o.sceneIndex !== null ? sb.scenes[o.sceneIndex] : sceneAt(work, o.sec ?? 0).sb;

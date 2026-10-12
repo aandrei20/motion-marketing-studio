@@ -25,7 +25,12 @@ export function saveSnapshot(projectId: string, kind: SnapshotKind, data: unknow
 
 export function loadSnapshot<T = unknown>(projectId: string, kind: SnapshotKind, hash: string): T {
   const f = snapshotPath(projectId, kind, hash);
-  if (!fs.existsSync(f)) throw new MmsError("SNAPSHOT_MISSING", `Lipsește snapshot-ul ${kind}-${hash}.`, "Snapshot-urile sunt în projects/<id>/snapshots/; nu le șterge cât timp versiunile le folosesc.");
+  if (!fs.existsSync(f))
+    throw new MmsError(
+      "SNAPSHOT_MISSING",
+      `Lipsește snapshot-ul ${kind}-${hash}.`,
+      "Snapshot-urile sunt în projects/<id>/snapshots/; nu le șterge cât timp versiunile le folosesc.",
+    );
   return readJsonLoose(f) as T;
 }
 
@@ -43,7 +48,11 @@ export function snapshotProjectInputs(projectId: string): Record<string, string>
   // profilurile referințelor (Reference DNA) influențează montajul: și ele au snapshot
   const refDir = projectFile(projectId, "references");
   if (fs.existsSync(refDir)) {
-    const profiles = fs.readdirSync(refDir).filter((x) => x.endsWith(".json")).sort().map((x) => readJsonLoose(path.join(refDir, x)));
+    const profiles = fs
+      .readdirSync(refDir)
+      .filter((x) => x.endsWith(".json"))
+      .sort()
+      .map((x) => readJsonLoose(path.join(refDir, x)));
     if (profiles.length) out.references = saveSnapshot(projectId, "references", profiles);
   }
   return out;

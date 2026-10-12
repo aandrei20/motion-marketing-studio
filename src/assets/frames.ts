@@ -15,8 +15,23 @@ export async function readFrames(file: string, opts: { fps: number; width: numbe
   const p = await probe(abs);
   if (!p.width || !p.height) throw new Error(`Nu pot citi dimensiunile video: ${abs}`);
   const w = opts.width;
-  const h = Math.max(2, Math.round((p.height / p.width) * w / 2) * 2);
-  const r = await ffmpeg(["-i", abs, "-an", "-r", String(opts.fps), "-vf", `scale=${w}:${h}`, "-f", "image2pipe", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-"]);
+  const h = Math.max(2, Math.round(((p.height / p.width) * w) / 2) * 2);
+  const r = await ffmpeg([
+    "-i",
+    abs,
+    "-an",
+    "-r",
+    String(opts.fps),
+    "-vf",
+    `scale=${w}:${h}`,
+    "-f",
+    "image2pipe",
+    "-c:v",
+    "rawvideo",
+    "-pix_fmt",
+    "rgb24",
+    "-",
+  ]);
   const size = w * h * 3;
   const frames: Uint8Array[] = [];
   for (let o = 0; o + size <= r.stdout.length; o += size) frames.push(new Uint8Array(r.stdout.subarray(o, o + size)));
