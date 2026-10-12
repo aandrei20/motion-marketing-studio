@@ -1,6 +1,6 @@
 # Starea implementării
 
-Actualizat: 2026-10-12 · ramura `build/production-os` (după 0.1.0, etapa „Video Production OS” și consolidarea: securitate, costuri, formatele verticale)
+Actualizat: 2026-10-12 · ramura `main` (lucrul din `build/production-os` integrat; după 0.1.0, etapa „Video Production OS” și consolidarea: securitate, costuri, formatele verticale)
 
 ## Ce înseamnă marcajele
 

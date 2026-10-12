@@ -2,7 +2,7 @@
 
 Formatul: o secțiune pe versiune; în fiecare: Adăugat, Schimbat, Reparat. Versiunile stabile primesc o etichetă Git (`v0.1.0`…).
 
-## [Nelansat] – ramura `build/production-os`
+## [Nelansat] – `main` (integrat din ramura `build/production-os`)
 
 Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Auditul și motivele: `docs/AUDIT.md` (secțiunea 2); bucla: `docs/CALITATE.md`.
 
