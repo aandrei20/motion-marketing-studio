@@ -12,9 +12,11 @@ import {
   Project,
   ProjectState,
   Research,
+  Slug,
   Script,
   Storyboard,
   Timeline,
+  VersionId,
   VersionMeta,
   type Change,
   type PipelineStep,
@@ -40,7 +42,12 @@ import { renderStateMarkdown } from "./state-md";
 
 export const now = (): string => new Date().toISOString();
 
+/**
+ * Folderul unui proiect. Id-ul trebuie să fie un slug: un id venit din URL-ul Studio-ului sau din linia de
+ * comandă (de ex. „..%2F..%2Fx”) nu poate ieși din projects/ și nu creează foldere înainte de validare.
+ */
 export function projectDir(id: string): string {
+  if (!Slug.safeParse(id).success) throw new MmsError("PROJECT_ID", `Id de proiect invalid: „${String(id).slice(0, 60)}”.`, "Folosește doar litere mici, cifre și cratimă (de ex. reclama-mea).");
   return path.join(PATHS.projects, id);
 }
 
@@ -172,7 +179,11 @@ export function refreshStateMd(id: string): void {
 
 // ─── versiuni ──────────────────────────────────────────────────────────────
 
-export const versionDir = (id: string, v: string): string => projectFile(id, path.join("versions", v));
+/** Folderul unei versiuni. Id-ul (v1, v2…) vine și din URL-ul Studio-ului: nu poate ieși din versions/. */
+export function versionDir(id: string, v: string): string {
+  if (!VersionId.safeParse(v).success) throw new MmsError("VERSION_ID", `Versiune invalidă: „${String(v).slice(0, 40)}”.`, "Versiunile se numesc v1, v2, v3…");
+  return projectFile(id, path.join("versions", v));
+}
 export const versionFile = (id: string, v: string, rel: string): string => path.join(versionDir(id, v), rel);
 
 export function listVersions(id: string): VersionMeta[] {

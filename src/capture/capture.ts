@@ -8,6 +8,7 @@ import { ffmpeg } from "../core/binaries";
 import { MmsError } from "../core/errors";
 import { PATHS } from "../core/paths";
 import type { Region } from "../core/schema";
+import { checkCaptureUrl, checkStepUrl, contextNetworkOptions, guardNetwork, resolvedHostKind, type CheckedUrl } from "./url-policy";
 
 export const VIEWPORTS = {
   desktop: { width: 1440, height: 900, dpr: 2, mobile: false },
@@ -81,6 +82,8 @@ export interface CaptureResult {
   pii: Region[];
   page: PageData;
   recording?: { file: string; fps: number; frames: number; durationSec: number; width: number; height: number };
+  /** pagina iese pe orizontală din ecran (pe telefon: pagina nu e adaptată, interfața apare tăiată) */
+  overflowX?: boolean;
   /** logo-ul găsit în pagină (SVG inline sau imaginea din antet), salvat lângă captură; lipsește dacă nu e sigur */
   logo?: { file: string; source: "inline-svg" | "img"; url?: string };
   capturedAt: string;
@@ -223,7 +226,7 @@ async function extractLogo(page: Page): Promise<{ kind: "svg"; svg: string } | {
   });
 }
 
-async function saveLogo(page: Page, found: NonNullable<Awaited<ReturnType<typeof extractLogo>>>, base: string): Promise<CaptureResult["logo"] | undefined> {
+async function saveLogo(page: Page, found: NonNullable<Awaited<ReturnType<typeof extractLogo>>>, base: string, start: CheckedUrl): Promise<CaptureResult["logo"] | undefined> {
   if (found.kind === "svg") {
     fs.writeFileSync(`${base}.svg`, found.svg);
     return { file: `${base}.svg`, source: "inline-svg" };
@@ -238,9 +241,13 @@ async function saveLogo(page: Page, found: NonNullable<Awaited<ReturnType<typeof
       bytes = m[2] ? Buffer.from(m[3], "base64") : Buffer.from(decodeURIComponent(m[3]));
     }
   } else if (found.src.startsWith("file:")) {
+    // un fișier de pe disc se citește doar pentru o machetă locală, niciodată la cererea unei pagini de pe internet
+    if (start.kind !== "file") return undefined;
     const p = fileURLToPath(found.src);
     if (fs.existsSync(p)) bytes = fs.readFileSync(p);
   } else {
+    // cererea din Node nu trece prin filtrul browserului: aceeași regulă, verificată aici
+    if (start.kind === "public" && (await resolvedHostKind(new URL(found.src).hostname)) !== "public") return undefined;
     const r = await page.request.get(found.src, { timeout: 15_000 }).catch(() => null);
     if (r?.ok()) {
       type = r.headers()["content-type"] ?? "";
@@ -431,15 +438,16 @@ async function recordSteps(page: Page, steps: CaptureStep[], fps: number, tailMs
  */
 const NAME_SHIM = "globalThis.__name = globalThis.__name || ((f) => f);";
 
-async function openContext(req: CaptureRequest, headed: boolean): Promise<{ ctx: BrowserContext; close: () => Promise<void> }> {
-  const r = await openContextRaw(req, headed);
+async function openContext(req: CaptureRequest, headed: boolean, start: CheckedUrl): Promise<{ ctx: BrowserContext; close: () => Promise<void> }> {
+  const r = await openContextRaw(req, headed, start);
   await r.ctx.addInitScript({ content: NAME_SHIM });
   return r;
 }
 
-async function openContextRaw(req: CaptureRequest, headed: boolean): Promise<{ ctx: BrowserContext; close: () => Promise<void> }> {
+async function openContextRaw(req: CaptureRequest, headed: boolean, start: CheckedUrl): Promise<{ ctx: BrowserContext; close: () => Promise<void> }> {
   const vp = VIEWPORTS[req.viewport];
   const opts = {
+    ...contextNetworkOptions(start),
     viewport: { width: vp.width, height: vp.height },
     deviceScaleFactor: vp.dpr,
     isMobile: vp.mobile,
@@ -460,7 +468,9 @@ async function openContextRaw(req: CaptureRequest, headed: boolean): Promise<{ c
 
 /** Deschide un browser vizibil cu profil persistent; utilizatorul se autentifică singur, apoi închide fereastra. */
 export async function interactiveLogin(url: string, profile: string): Promise<void> {
-  const { ctx, close } = await openContext(CaptureRequest.parse({ id: "login", url, profile }), true);
+  const start = await checkCaptureUrl(url);
+  const { ctx, close } = await openContext(CaptureRequest.parse({ id: "login", url, profile }), true, start);
+  await guardNetwork(ctx, start);
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   await page.goto(url);
   await new Promise<void>((resolve) => ctx.on("close", () => resolve()));
@@ -469,16 +479,21 @@ export async function interactiveLogin(url: string, profile: string): Promise<vo
 
 export async function capture(reqInput: CaptureRequestInput, outDir: string, opts: { headed?: boolean } = {}): Promise<CaptureResult> {
   const req = CaptureRequest.parse(reqInput);
+  const start = await checkCaptureUrl(req.url);
+  for (const s of [...req.before, ...(req.record?.steps ?? [])]) if (s.action === "goto") await checkStepUrl(start, s.url);
   fs.mkdirSync(outDir, { recursive: true });
-  const { ctx, close } = await openContext(req, opts.headed ?? false);
+  const { ctx, close } = await openContext(req, opts.headed ?? false, start);
   try {
+    const guard = await guardNetwork(ctx, start);
     const page = ctx.pages()[0] ?? (await ctx.newPage());
     const resp = await page.goto(req.url, { waitUntil: "networkidle", timeout: 60_000 });
+    await guard.assertClean(page);
     if (resp && resp.status() >= 400) throw new MmsError("CAPTURE_HTTP", `Pagina ${req.url} a răspuns cu ${resp.status()}.`);
     await page.addStyleTag({ content: DEFAULT_CSS + req.css });
     await page.evaluate(() => document.fonts.ready);
     for (const s of req.before) await runStep(page, s);
     await page.waitForTimeout(300);
+    await guard.assertClean(page);
     const vp = VIEWPORTS[req.viewport];
     const shotFile = path.join(outDir, `${req.id}.png`);
     if (req.fullPage) await page.evaluate(() => window.scrollTo(0, 0));
@@ -486,8 +501,20 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
     const raw = await extractRegions(page, req.fullPage);
     const pageData = await extractPageData(page);
     const foundLogo = req.record ? null : await extractLogo(page).catch(() => null);
-    const logo = foundLogo ? await saveLogo(page, foundLogo, path.join(outDir, `${req.id}-logo`)).catch(() => undefined) : undefined;
-    const dims = await page.evaluate((full) => ({ w: window.innerWidth, h: full ? document.documentElement.scrollHeight : window.innerHeight }), req.fullPage);
+    const logo = foundLogo ? await saveLogo(page, foundLogo, path.join(outDir, `${req.id}-logo`), start).catch(() => undefined) : undefined;
+    const dims = await page.evaluate((full) => {
+      // textul tăiat de marginea dreaptă (o pagină neadaptată poate ascunde depășirea cu overflow: hidden)
+      const W = document.documentElement.clientWidth;
+      let total = 0;
+      let cut = 0;
+      for (const el of Array.from(document.querySelectorAll("h1, h2, h3, h4, p, button, input, label, li"))) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0 || getComputedStyle(el).visibility === "hidden" || r.left >= W) continue;
+        total++;
+        if (r.right > W + 8) cut++;
+      }
+      return { w: window.innerWidth, h: full ? document.documentElement.scrollHeight : window.innerHeight, sw: document.documentElement.scrollWidth, cut, total };
+    }, req.fullPage);
     const used = new Set<string>();
     const toRegion = (r: Omit<Region, "id"> & { idHint: string }): Region => {
       let id = slug(r.idHint);
@@ -514,6 +541,10 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
         .map((x) => toRegion({ ...x.r, idHint: `pii-${x.hits[0].kind}`, label: [...new Set(x.hits.map((h) => PII_LABEL[h.kind]))].join(", ") })),
       page: pageData,
       ...(logo ? { logo } : {}),
+      // față de lățimea cerută (pe telefon, Chromium lărgește fereastra ca să încapă o pagină prea lată);
+      // toleranță de 2%: un element ieșit cu câțiva pixeli nu înseamnă o pagină neadaptată. Sau: cel puțin
+      // 15% din elementele de text sunt tăiate de marginea dreaptă (un carusel care iese puțin nu ajunge aici)
+      overflowX: Math.max(dims.sw, dims.w) > vp.width * 1.02 || (dims.cut >= 2 && dims.cut / Math.max(1, dims.total) >= 0.15),
       capturedAt: new Date().toISOString(),
     };
     if (req.record) {
@@ -522,8 +553,13 @@ export async function capture(reqInput: CaptureRequestInput, outDir: string, opt
       const r = await recordSteps(page, req.record.steps, req.record.fps, req.record.tailMs, vfile, outDir);
       result.recording = { file: vfile, fps: req.record.fps, frames: r.frames, durationSec: r.durationSec, width: Math.round(vp.width * vp.dpr) - (Math.round(vp.width * vp.dpr) % 2), height: Math.round(vp.height * vp.dpr) - (Math.round(vp.height * vp.dpr) % 2) };
     }
+    await guard.assertClean(page);
     fs.writeFileSync(path.join(outDir, `${req.id}.json`), JSON.stringify(result, null, 2));
     return result;
+  } catch (e) {
+    // o pagină publică ce a atins rețeaua locală nu lasă nimic pe disc (captura, logo-ul, înregistrarea)
+    if (e instanceof MmsError && e.code === "CAPTURE_REDIRECT") for (const f of fs.readdirSync(outDir)) if (f.startsWith(`${req.id}.`) || f.startsWith(`${req.id}-logo.`)) fs.rmSync(path.join(outDir, f), { force: true });
+    throw e;
   } finally {
     await close();
   }
