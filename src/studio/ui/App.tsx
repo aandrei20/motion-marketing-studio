@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/schema";
 import { api, type Job, type Meta, type ProjectBundle, type VersionBundle } from "./api";
 import {
@@ -103,9 +103,9 @@ export function App() {
     }
   }, [current, versionId, formatId, notify]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: datele se reîncarcă doar când se schimbă proiectul sau versiunea (nu la schimbarea formatului)
   useEffect(() => {
     void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, versionId]);
 
   useEffect(() => {
@@ -119,6 +119,7 @@ export function App() {
     .join(",");
   // joburile terminate înainte de deschiderea paginii (manifestele de pe disc) nu mai dau notificări
   const seenFinished = useRef<{ project: string | null; key: string } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: notificarea pornește doar când se termină un job (finishedKey), nu la fiecare reîncărcare
   useEffect(() => {
     const prev = seenFinished.current;
     seenFinished.current = { project: current, key: finishedKey };
@@ -130,7 +131,6 @@ export function App() {
     if (fresh && last.state === "failed") notify(`${last.label}: ${last.error}`, "err");
     if (fresh && last.state === "done") notify(`${last.label}: gata`);
     void reload().then(loadProjects);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finishedKey]);
 
   const runJob = useCallback(
@@ -183,12 +183,13 @@ export function App() {
             <div className="logo-sub">{meta ? `${meta.capabilities} capabilități · ${meta.recipes.length} rețete` : "…"}</div>
           </div>
         </div>
-        <button className="btn primary wide" onClick={() => setCreating(true)}>
+        <button type="button" className="btn primary wide" onClick={() => setCreating(true)}>
           + Proiect nou
         </button>
         <nav className="project-list">
           {projects.map((p) => (
             <button
+              type="button"
               key={p.id}
               className={`project-item ${p.id === current ? "active" : ""}`}
               onClick={() => {
@@ -219,7 +220,11 @@ export function App() {
                   etapa: <b>{j.stage}</b>
                 </div>
               ) : null}
-              <button className="btn tiny ghost" onClick={() => api.cancelJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>
+              <button
+                type="button"
+                className="btn tiny ghost"
+                onClick={() => api.cancelJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}
+              >
                 oprește
               </button>
               {j.progress !== null ? (
@@ -237,7 +242,7 @@ export function App() {
                 <span className="warn">întrerupt</span>
               </div>
               <div className="small muted">{j.error}</div>
-              <button className="btn tiny" onClick={() => api.resumeJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>
+              <button type="button" className="btn tiny" onClick={() => api.resumeJob(j.projectId, j.id).catch((e) => notify((e as Error).message, "err"))}>
                 reia
               </button>
             </div>
@@ -302,7 +307,7 @@ export function App() {
             <CommandBar ctx={ctx} />
             <nav className="tabs">
               {TABS.map(([id, label]) => (
-                <button key={id} className={`tab ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}>
+                <button type="button" key={id} className={`tab ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}>
                   {label}
                 </button>
               ))}

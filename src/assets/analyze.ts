@@ -94,7 +94,7 @@ export async function probe(file: string): Promise<ProbeResult> {
       width: v ? Number(v.width) : undefined,
       height: v ? Number(v.height) : undefined,
       durationSec: j.format?.duration ? Number(j.format.duration) : undefined,
-      fps: fr && fr[1] ? fr[0] / fr[1] : undefined,
+      fps: fr?.[1] ? fr[0] / fr[1] : undefined,
       hasAlpha: type === "image" ? /rgba|bgra|argb|abgr|ya8|ya16|pal8|gbrap|yuva/.test(pix) : undefined,
       hasAudio: !!a,
       codec: String((type === "audio" ? a?.codec_name : v?.codec_name) ?? ""),

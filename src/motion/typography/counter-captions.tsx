@@ -1,4 +1,3 @@
-import React from "react";
 import { z } from "zod";
 import { resolveColor } from "../core/context";
 import { EASE, SPRINGS, clamp, prog, sp } from "../core/easing";

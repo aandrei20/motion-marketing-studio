@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { z } from "zod";
 import { fbm1, rand } from "../../core/random";
 import { mix, withAlpha } from "../core/color";

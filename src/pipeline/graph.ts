@@ -682,7 +682,12 @@ export function downstream(changed: Iterable<ArtifactId>): Set<ArtifactId> {
     grew = false;
     for (const c of SYSTEM_CAPABILITIES) {
       if (c.status === "planned") continue;
-      if (c.inputs.some((i) => out.has(i))) for (const o of c.outputs) if (!out.has(o)) out.add(o), (grew = true);
+      if (c.inputs.some((i) => out.has(i)))
+        for (const o of c.outputs)
+          if (!out.has(o)) {
+            out.add(o);
+            grew = true;
+          }
     }
   }
   return out;

@@ -231,7 +231,9 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const flexible = plans.filter((p) => p.sc.durationSec === null);
     const weights = flexible.map((p) => (p.sc.narrativeRole === "cta" ? 0.6 : 1) * (1.2 - p.sc.energy));
     const tw = weights.reduce((a, b) => a + b, 0) || 1;
-    flexible.forEach((p, i) => (p.d.sec += (extra * weights[i]) / tw));
+    flexible.forEach((p, i) => {
+      p.d.sec += (extra * weights[i]) / tw;
+    });
   } else if (natural > target * 1.15) {
     warnings.push(
       `Durata naturală (${natural.toFixed(1)} s) depășește ținta (${target} s) cu peste 15%: vocea și timpul de citire nu permit mai scurt. Scurtează scriptul sau acceptă durata.`,
@@ -483,7 +485,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const blurPii = (l: TimelineLayer): TimelineLayer => {
       const children = l.children.map(blurPii);
       if (l.capability !== "media.screen") return { ...l, children };
-      const a = l.assets.map((p) => assetByPublicPath.get(p)).find((x) => x && x.pii.blurApproved && x.pii.regions.length);
+      const a = l.assets.map((p) => assetByPublicPath.get(p)).find((x) => x?.pii.blurApproved && x.pii.regions.length);
       if (!a) return { ...l, children };
       const blur = a.pii.regions.map((r, k) => ({
         id: `${l.id}-pii-${k + 1}`,
@@ -693,7 +695,9 @@ export function compileTimeline(input: CompileInput): CompileResult {
     }
     l.children.forEach(visit);
   };
-  scenes.forEach((s) => s.layers.forEach(visit));
+  scenes.forEach((s) => {
+    s.layers.forEach(visit);
+  });
   const concept = assets.assets.some(
     (a) => usedAssetIds.has(a.id) && a.rights.thirdParty && a.rights.status !== "confirmed-by-user" && a.rights.status !== "owned",
   );

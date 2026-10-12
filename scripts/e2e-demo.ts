@@ -132,12 +132,16 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
   log(`   ${loadResearch(ID).claims.length} afirmații, ${loadResearch(ID).claims.filter((c) => c.status === "needs-confirmation").length} de confirmat`);
 
   log("3. Brand kit din captură");
-  stepBrand(ID).notes.forEach((n) => log(`   ${n}`));
+  stepBrand(ID).notes.forEach((n) => {
+    log(`   ${n}`);
+  });
 
   log("4. Script și storyboard");
   if (args.has("--auto")) {
     stepScript(ID);
-    stepStoryboard(ID).rationale.forEach((r) => log(`   ${r}`));
+    stepStoryboard(ID).rationale.forEach((r) => {
+      log(`   ${r}`);
+    });
   } else {
     const v = writableVersion(ID, [
       { at: new Date().toISOString(), op: "creative", description: "Script și storyboard scrise de directorul creativ.", params: {} },
@@ -154,7 +158,9 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
   await stepVoice(ID, v, log);
   log("6. Timeline (toate formatele) + validare");
   const c = await stepCompile(ID, v, log);
-  c.warnings.forEach((w) => log(`   ! ${w}`));
+  c.warnings.forEach((w) => {
+    log(`   ! ${w}`);
+  });
   for (const [f, val] of Object.entries(c.validation)) {
     for (const x of val.findings) log(`   [${f}] ${x.timecode ?? "--"} ${x.severity} ${x.problem}`);
     if (!val.ok) throw new Error(`Validarea ${f} are blocaje.`);

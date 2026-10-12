@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useRef } from "react";
+import type React from "react";
+import { useLayoutEffect, useRef } from "react";
 import { z } from "zod";
 import { fbm1, hashString, mulberry32, rand } from "../../core/random";
 import { hexToRgb, withAlpha } from "../core/color";
@@ -365,7 +366,7 @@ export const fxBurst = defineLayer({
         w={box.w}
         h={box.h}
         scale={0.5}
-        draw={(ctx, cw, ch) => {
+        draw={(ctx, cw) => {
           const k = cw / box.w;
           for (let i = 0; i < n; i++) {
             const ang = -Math.PI / 2 + (r() - 0.5) * Math.PI * 1.4;

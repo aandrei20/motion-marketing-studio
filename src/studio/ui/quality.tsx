@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from "react";
+import type React from "react";
+import { useMemo, useState } from "react";
 import type { EditOpInput, Finding, QualityCategory, Timeline, TimelineScene } from "../../core/schema";
 import type { Ctx } from "./App";
 import { api } from "./api";
+import { keyed } from "./keys";
 
 const CAT_LABEL: Record<QualityCategory, string> = {
   story: "Poveste",
@@ -69,19 +71,29 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
   };
   const actions = (
     <div className="row">
-      <button className="btn" onClick={() => ctx.runJob("quality", { depth: "fast" })} title="Fără randare: reguli, timeline, audio">
+      <button type="button" className="btn" onClick={() => ctx.runJob("quality", { depth: "fast" })} title="Fără randare: reguli, timeline, audio">
         Rapid
       </button>
-      <button className="btn" onClick={() => ctx.runJob("quality", { depth: "standard" })} title="+ un cadru-cheie pe scenă (doar scenele schimbate)">
+      <button
+        type="button"
+        className="btn"
+        onClick={() => ctx.runJob("quality", { depth: "standard" })}
+        title="+ un cadru-cheie pe scenă (doar scenele schimbate)"
+      >
         Cadre-cheie
       </button>
-      <button className="btn" onClick={() => ctx.runJob("quality", { depth: "final" })} title="+ video întreg (refolosit dacă e la zi)">
+      <button type="button" className="btn" onClick={() => ctx.runJob("quality", { depth: "final" })} title="+ video întreg (refolosit dacă e la zi)">
         Final QA
       </button>
-      <button className="btn primary" onClick={() => ctx.runJob("autofix", { depth: "standard" })}>
+      <button type="button" className="btn primary" onClick={() => ctx.runJob("autofix", { depth: "standard" })}>
         Corecturi automate
       </button>
-      <button className="btn ghost" onClick={() => ctx.runJob("critique-pack")} title="Cadre-cheie + foaie de contact pentru revizuirea vizuală a lui Claude">
+      <button
+        type="button"
+        className="btn ghost"
+        onClick={() => ctx.runJob("critique-pack")}
+        title="Cadre-cheie + foaie de contact pentru revizuirea vizuală a lui Claude"
+      >
         Pachet de revizuire
       </button>
     </div>
@@ -125,8 +137,8 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
         </div>
         {run.score.reasons.length ? (
           <ul className="small">
-            {run.score.reasons.map((r, i) => (
-              <li key={i}>{r}</li>
+            {keyed(run.score.reasons, (r) => r).map(({ key, item: r }) => (
+              <li key={key}>{r}</li>
             ))}
           </ul>
         ) : null}
@@ -160,7 +172,7 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
           <div key={f.id} className={`issue ${f.severity}`}>
             <div className="row">
               {f.frame !== null && tl ? (
-                <button className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
+                <button type="button" className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
                   {f.timecode}
                 </button>
               ) : null}
@@ -175,7 +187,7 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
             {f.whyItMatters ? <div className="muted small">De ce contează: {f.whyItMatters}</div> : null}
             <div className="small">→ {f.recommendation}</div>
             {f.autoFixable && f.suggestedFix.length ? (
-              <button className="btn tiny" onClick={() => applyFix(f)} title={JSON.stringify(f.suggestedFix)}>
+              <button type="button" className="btn tiny" onClick={() => applyFix(f)} title={JSON.stringify(f.suggestedFix)}>
                 Aplică corectura ({f.suggestedFix.map((o) => o.op).join(", ")})
               </button>
             ) : (
@@ -190,7 +202,7 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
           {external.map((f) => (
             <div key={`${f.reviewer}-${f.id}`} className={`issue ${f.severity}`}>
               {f.frame !== null && tl ? (
-                <button className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
+                <button type="button" className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
                   {f.timecode}
                 </button>
               ) : null}{" "}
@@ -232,8 +244,8 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
       {ctx.version?.impact ? (
         <Card title="Impactul față de versiunea anterioară">
           <ul className="small">
-            {ctx.version.impact.reasons.map((r, i) => (
-              <li key={i}>{r}</li>
+            {keyed(ctx.version.impact.reasons, (r) => r).map(({ key, item: r }) => (
+              <li key={key}>{r}</li>
             ))}
           </ul>
         </Card>
@@ -300,10 +312,10 @@ export function ConceptsPanel({ ctx }: { ctx: Ctx }) {
   };
   const actions = (
     <div className="row">
-      <button className="btn" onClick={() => ctx.runJob("concepts", { force: true })}>
+      <button type="button" className="btn" onClick={() => ctx.runJob("concepts", { force: true })}>
         Regenerează conceptele
       </button>
-      <button className="btn primary" onClick={() => ctx.runJob("storyboard", { force: true })} disabled={!ctx.bundle.project.currentVersion}>
+      <button type="button" className="btn primary" onClick={() => ctx.runJob("storyboard", { force: true })} disabled={!ctx.bundle.project.currentVersion}>
         Storyboard din conceptul ales
       </button>
     </div>
@@ -318,8 +330,8 @@ export function ConceptsPanel({ ctx }: { ctx: Ctx }) {
   return (
     <Card title="Concept creativ" aside={actions}>
       <ul className="small">
-        {c.rationale.slice(0, 2).map((r, i) => (
-          <li key={i}>{r}</li>
+        {keyed(c.rationale.slice(0, 2), (r) => r).map(({ key, item: r }) => (
+          <li key={key}>{r}</li>
         ))}
       </ul>
       <div className="concepts">
@@ -334,7 +346,7 @@ export function ConceptsPanel({ ctx }: { ctx: Ctx }) {
               {x.id === c.selectedId ? (
                 <span className="ok small">ales</span>
               ) : (
-                <button className="btn tiny" onClick={() => choose(x.id)}>
+                <button type="button" className="btn tiny" onClick={() => choose(x.id)}>
                   Alege
                 </button>
               )}
@@ -387,36 +399,49 @@ export function SceneEditor({
       <h3>Editare {ctx.version?.meta.frozen ? <span className="muted small">(versiune înghețată: editarea creează versiunea următoare)</span> : null}</h3>
       <div className="row small">
         durata <input className="num" value={sec} onChange={(e) => setSec(e.target.value)} /> s
-        <button className="btn tiny" onClick={() => run([{ op: "scene-duration", sceneId: scene.id, sec: Number(sec) || null }])}>
+        <button type="button" className="btn tiny" onClick={() => run([{ op: "scene-duration", sceneId: scene.id, sec: Number(sec) || null }])}>
           aplică
         </button>
         <button
+          type="button"
           className="btn tiny ghost"
           onClick={() => run([{ op: "scene-extend", sceneId: scene.id, deltaSec: -0.5, currentSec: scene.durationInFrames / t.fps }])}
         >
           −0,5 s
         </button>
         <button
+          type="button"
           className="btn tiny ghost"
           onClick={() => run([{ op: "scene-extend", sceneId: scene.id, deltaSec: 0.5, currentSec: scene.durationInFrames / t.fps }])}
         >
           +0,5 s
         </button>
-        <button className="btn tiny ghost" onClick={() => run([{ op: "scene-duration", sceneId: scene.id, sec: null }])} title="din voce, citire și ritm">
+        <button
+          type="button"
+          className="btn tiny ghost"
+          onClick={() => run([{ op: "scene-duration", sceneId: scene.id, sec: null }])}
+          title="din voce, citire și ritm"
+        >
           auto
         </button>
       </div>
       <div className="row small">
-        <button className="btn tiny ghost" disabled={idx <= 0} onClick={() => run([{ op: "scene-move", sceneId: scene.id, to: idx - 1 }])}>
+        <button type="button" className="btn tiny ghost" disabled={idx <= 0} onClick={() => run([{ op: "scene-move", sceneId: scene.id, to: idx - 1 }])}>
           ← mută
         </button>
-        <button className="btn tiny ghost" disabled={idx >= t.scenes.length - 1} onClick={() => run([{ op: "scene-move", sceneId: scene.id, to: idx + 1 }])}>
+        <button
+          type="button"
+          className="btn tiny ghost"
+          disabled={idx >= t.scenes.length - 1}
+          onClick={() => run([{ op: "scene-move", sceneId: scene.id, to: idx + 1 }])}
+        >
           mută →
         </button>
-        <button className="btn tiny ghost" onClick={() => run([{ op: "scene-duplicate", sceneId: scene.id }])}>
+        <button type="button" className="btn tiny ghost" onClick={() => run([{ op: "scene-duplicate", sceneId: scene.id }])}>
           duplică
         </button>
         <button
+          type="button"
           className="btn tiny ghost"
           onClick={() => {
             if (confirm(`Ștergi scena ${scene.id}? (rămâne în versiunea anterioară)`)) void run([{ op: "scene-delete", sceneId: scene.id }]);
@@ -424,10 +449,10 @@ export function SceneEditor({
         >
           șterge
         </button>
-        <button className="btn tiny ghost" onClick={() => run([{ op: "scene-lock", sceneId: scene.id, locked: !sb.locked }])}>
+        <button type="button" className="btn tiny ghost" onClick={() => run([{ op: "scene-lock", sceneId: scene.id, locked: !sb.locked }])}>
           {sb.locked ? "deblochează" : "blochează"}
         </button>
-        <button className="btn tiny ghost" onClick={() => run([{ op: "scene-mute", sceneId: scene.id, muted: sb.audio.sfx !== "none" }])}>
+        <button type="button" className="btn tiny ghost" onClick={() => run([{ op: "scene-mute", sceneId: scene.id, muted: sb.audio.sfx !== "none" }])}>
           {sb.audio.sfx === "none" ? "pornește sunetele" : "fără efecte sonore"}
         </button>
       </div>
@@ -460,7 +485,7 @@ export function SceneEditor({
       </div>
       <div className="row small">
         text <input className="wide" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="titlul scenei" />
-        <button className="btn tiny" onClick={() => run([{ op: "scene-text", sceneId: scene.id, headline }])}>
+        <button type="button" className="btn tiny" onClick={() => run([{ op: "scene-text", sceneId: scene.id, headline }])}>
           schimbă
         </button>
       </div>
@@ -473,13 +498,17 @@ export function SceneEditor({
             return (
               <div key={l.id} className="row">
                 <code>{l.capability}</code>
-                <button className="btn tiny ghost" onClick={() => run([{ op: "layer-hide", sceneId: scene.id, slot: l.id, hidden: !ov?.hidden }])}>
+                <button
+                  type="button"
+                  className="btn tiny ghost"
+                  onClick={() => run([{ op: "layer-hide", sceneId: scene.id, slot: l.id, hidden: !ov?.hidden }])}
+                >
                   {ov?.hidden ? "arată" : "ascunde"}
                 </button>
-                <button className="btn tiny ghost" onClick={() => run([{ op: "layer-shift", sceneId: scene.id, slot: l.id, deltaSec: -0.2 }])}>
+                <button type="button" className="btn tiny ghost" onClick={() => run([{ op: "layer-shift", sceneId: scene.id, slot: l.id, deltaSec: -0.2 }])}>
                   −0,2 s
                 </button>
-                <button className="btn tiny ghost" onClick={() => run([{ op: "layer-shift", sceneId: scene.id, slot: l.id, deltaSec: 0.2 }])}>
+                <button type="button" className="btn tiny ghost" onClick={() => run([{ op: "layer-shift", sceneId: scene.id, slot: l.id, deltaSec: 0.2 }])}>
                   +0,2 s
                 </button>
               </div>
@@ -487,10 +516,10 @@ export function SceneEditor({
           })}
       </div>
       <div className="row">
-        <button className="btn tiny" disabled={!canUndo} onClick={() => ctx.runJob("undo")}>
+        <button type="button" className="btn tiny" disabled={!canUndo} onClick={() => ctx.runJob("undo")}>
           ↶ undo
         </button>
-        <button className="btn tiny" disabled={!canRedo} onClick={() => ctx.runJob("redo")}>
+        <button type="button" className="btn tiny" disabled={!canRedo} onClick={() => ctx.runJob("redo")}>
           ↷ redo
         </button>
         <span className="muted small">

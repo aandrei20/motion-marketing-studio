@@ -27,7 +27,8 @@ import { snapshotProjectInputs } from "../projects/snapshots";
 import { applyDna, loadReferenceDnas } from "../references/dna";
 import { formatTimecode } from "../core/time";
 import { orientationOf } from "../core/formats";
-import type { BeatGrid, MixReport, Timeline } from "../core/schema";
+import { z } from "zod";
+import { VoiceWord, type BeatGrid, type MixReport, type Timeline } from "../core/schema";
 import { MixReport as MixReportSchema } from "../core/schema";
 import { DIRECTIONS } from "../creative/directions";
 import { draftScript, validateScript } from "../creative/script";
@@ -493,8 +494,12 @@ export async function stepAudio(projectId: string, versionId: string, log: Log =
       "audio/cue-sheet.json",
       t.audio.cues.map((c) => ({ ...c, timecode: formatTimecode(c.atFrame, fps) })),
     );
-    // subtitrări .srt (dacă sunt cerute)
-    if (brief.captions.srt && t.captions) fs.writeFileSync(versionFile(projectId, versionId, "audio/captions.srt"), toSrt(t), "utf8");
+    // subtitrările vin din cuvintele vocii, arse sau nu în video: .srt dacă e cerut, .vtt pentru playerele din Studio
+    const words = t.captions?.words ?? voiceTranscript(projectId, versionId, t);
+    if (words.length) {
+      if (brief.captions.srt) fs.writeFileSync(versionFile(projectId, versionId, "audio/captions.srt"), toSrt(words, fps), "utf8");
+      fs.writeFileSync(versionFile(projectId, versionId, "audio/captions.vtt"), toVtt(words, fps), "utf8");
+    }
     const src = projectPublicPath(projectId, `versions/${versionId}/audio/mix.wav`);
     for (const f of project.formats) {
       const tf = loadTimeline(projectId, versionId, f.id);
@@ -516,12 +521,32 @@ function readWavPublic(p: string) {
   return readWav(path.join(PATHS.projects, p.replace(/^projects\//, "")));
 }
 
-export function toSrt(t: Timeline): string {
-  if (!t.captions) return "";
+type CaptionWord = { text: string; from: number; to: number };
+
+/** Cuvintele rostite pe timeline (cadre), din clipurile vocii, când subtitrările nu sunt arse în video. */
+function voiceTranscript(projectId: string, versionId: string, t: Timeline): CaptionWord[] {
+  if (!hasFile(projectId, `versions/${versionId}/audio/voice.json`)) return [];
+  const clips = Object.values(
+    readJson(versionFile(projectId, versionId, "audio/voice.json"), z.record(z.string(), z.object({ src: z.string(), words: z.array(VoiceWord) }))),
+  );
+  return t.audio.cues
+    .filter((c) => c.kind === "voice")
+    .flatMap((c) => {
+      const clip = clips.find((x) => x.src === c.sound);
+      return (clip?.words ?? []).map((w) => ({
+        text: w.text,
+        from: c.atFrame + Math.round(w.startSec * t.fps),
+        to: c.atFrame + Math.max(Math.round(w.startSec * t.fps) + 2, Math.round(w.endSec * t.fps)),
+      }));
+    });
+}
+
+/** Grupurile de subtitrare (cel mult 6 cuvinte, rupte la pauze și la sfârșit de propoziție), în cadre. */
+function captionGroups(words: CaptionWord[], fps: number): Array<{ from: number; to: number; text: string }> {
   const groups: Array<{ from: number; to: number; text: string }> = [];
   let cur: { from: number; to: number; words: string[] } | null = null;
-  for (const w of t.captions.words) {
-    if (!cur || cur.words.length >= 6 || w.from - cur.to > t.fps * 0.35 || /[.!?…]$/.test(cur.words[cur.words.length - 1] ?? "")) {
+  for (const w of words) {
+    if (!cur || cur.words.length >= 6 || w.from - cur.to > fps * 0.35 || /[.!?…]$/.test(cur.words[cur.words.length - 1] ?? "")) {
       if (cur) groups.push({ from: cur.from, to: cur.to, text: cur.words.join(" ") });
       cur = { from: w.from, to: w.to, words: [] };
     }
@@ -529,14 +554,28 @@ export function toSrt(t: Timeline): string {
     cur.to = w.to;
   }
   if (cur) groups.push({ from: cur.from, to: cur.to, text: cur.words.join(" ") });
-  const ts = (f: number) => {
-    const ms = Math.round((f / t.fps) * 1000);
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms % 1000).padStart(3, "0")}`;
-  };
-  return groups.map((g, i) => `${i + 1}\n${ts(g.from)} --> ${ts(g.to)}\n${g.text}\n`).join("\n");
+  return groups;
+}
+
+function captionTime(f: number, fps: number, sep: "," | "."): string {
+  const ms = Math.round((f / fps) * 1000);
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}${sep}${String(ms % 1000).padStart(3, "0")}`;
+}
+
+export function toSrt(words: CaptionWord[], fps: number): string {
+  return captionGroups(words, fps)
+    .map((g, i) => `${i + 1}\n${captionTime(g.from, fps, ",")} --> ${captionTime(g.to, fps, ",")}\n${g.text}\n`)
+    .join("\n");
+}
+
+/** Aceleași subtitrări în WebVTT, pentru playerele din Studio (pista „captions” a video-ului și a mixului). */
+export function toVtt(words: CaptionWord[], fps: number): string {
+  return `WEBVTT\n\n${captionGroups(words, fps)
+    .map((g) => `${captionTime(g.from, fps, ".")} --> ${captionTime(g.to, fps, ".")}\n${g.text}\n`)
+    .join("\n")}`;
 }
 
 // ─── preview, verificare, render final ──────────────────────────────────────

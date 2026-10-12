@@ -1,4 +1,3 @@
-import React from "react";
 import { z } from "zod";
 import { rand } from "../../core/random";
 import { withAlpha } from "../core/color";

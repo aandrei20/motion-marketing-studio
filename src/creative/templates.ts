@@ -51,10 +51,22 @@ export function chooseTemplate(input: { category: string; direction: string | nu
   const scored = all.map((t) => {
     let s = 0;
     const why: string[] = [];
-    if (t.products.includes(input.category as never)) (s += 3), why.push("potrivit tipului de produs");
-    if (input.direction && t.directions.includes(input.direction as never)) (s += 2), why.push("potrivit direcției");
-    if (input.durationSec >= t.durationSec[0] && input.durationSec <= t.durationSec[1]) (s += 3), why.push("durata se încadrează");
-    if (input.objective === "launch" && t.id === "product-launch") (s += 4), why.push("obiectiv: lansare");
+    if (t.products.includes(input.category as never)) {
+      s += 3;
+      why.push("potrivit tipului de produs");
+    }
+    if (input.direction && t.directions.includes(input.direction as never)) {
+      s += 2;
+      why.push("potrivit direcției");
+    }
+    if (input.durationSec >= t.durationSec[0] && input.durationSec <= t.durationSec[1]) {
+      s += 3;
+      why.push("durata se încadrează");
+    }
+    if (input.objective === "launch" && t.id === "product-launch") {
+      s += 4;
+      why.push("obiectiv: lansare");
+    }
     if (input.durationSec <= 16 && t.id === "teaser-15") s += 2;
     return { t, s, why };
   });

@@ -65,7 +65,7 @@ export async function analyzeReference(assetId: string, file: string): Promise<R
   const mid = seq.frames[Math.floor(seq.frames.length / 2)];
   const pal = mid ? palette({ w: seq.w, h: seq.h, rgb: mid }, 5) : [];
   const audio: ReferenceProfile["audio"] = { present: !!p.hasAudio || p.type === "audio" };
-  let loud: number[] = [];
+  const loud: number[] = [];
   if (audio.present) {
     try {
       const a = await decodeAudio(file);

@@ -25,7 +25,7 @@ export function loadEnv(): void {
 export function optionalEnv(key: string): string | undefined {
   loadEnv();
   const v = process.env[key];
-  return v && v.trim() ? v.trim() : undefined;
+  return v?.trim() ? v.trim() : undefined;
 }
 
 export function requireEnv(key: string, purpose: string): string {

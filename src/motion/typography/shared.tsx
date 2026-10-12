@@ -50,6 +50,7 @@ export interface ComputedText {
 
 export function useTextLayout(p: TextBaseParams, box: Rect, env: MotionEnv): ComputedText {
   const font = fontSpecFor(env, p);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fontul se recreează la fiecare cadru; câmpurile lui care schimbă măsurarea sunt dependențele
   return useMemo(() => {
     if (p.lines && p.fontSize) return { lines: p.lines, fontSize: p.fontSize, lineHeight: p.lineHeight, font };
     const l = layoutText(p.text, font, { w: box.w, h: box.h }, browserMeasure, {
@@ -59,7 +60,6 @@ export function useTextLayout(p: TextBaseParams, box: Rect, env: MotionEnv): Com
       maxLines: p.maxLines,
     });
     return { lines: l.lines, fontSize: l.fontSize, lineHeight: p.lineHeight, font };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.text, p.lines, p.fontSize, box.w, box.h, font.family, font.weight, font.tracking, font.uppercase, p.maxSize, p.minSize, p.lineHeight, p.maxLines]);
 }
 
@@ -88,12 +88,13 @@ export interface WordSlot {
 
 export function wordSlots(lines: string[], emphasis: string[]): WordSlot[] {
   const words: WordSlot[] = [];
-  lines.forEach((l, li) =>
-    l
-      .split(/\s+/)
+  lines.forEach((l, li) => {
+    l.split(/\s+/)
       .filter(Boolean)
-      .forEach((w) => words.push({ text: w, line: li, index: words.length, emphasized: false })),
-  );
+      .forEach((w) => {
+        words.push({ text: w, line: li, index: words.length, emphasized: false });
+      });
+  });
   const em = emphasisIndices(
     words.map((w) => w.text),
     emphasis,

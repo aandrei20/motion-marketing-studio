@@ -256,7 +256,9 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
         });
       }
     }
-    l.children.forEach((c) => visit(c, sceneId, sceneFrom + l.from, parentScreen || l.capability === "media.screen"));
+    l.children.forEach((c) => {
+      visit(c, sceneId, sceneFrom + l.from, parentScreen || l.capability === "media.screen");
+    });
   };
   for (const s of t.scenes) {
     for (const l of s.layers) visit(l, s.id, s.from, false);

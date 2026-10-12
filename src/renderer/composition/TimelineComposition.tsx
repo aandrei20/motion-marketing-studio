@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { AbsoluteFill, Audio, Sequence, useCurrentFrame } from "remotion";
 import type { Timeline, TimelineLayer, TimelineScene } from "../../core/schema";
 import { cameraMotionBlur, dofBlur, layerTransform, layerZoom, sampleCamera } from "../../motion/camera/rig";

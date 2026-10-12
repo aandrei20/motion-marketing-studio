@@ -84,8 +84,14 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
 
 function collectAssets(v: unknown, out: Set<string>): void {
   if (typeof v === "string" && /^(projects|library)\//.test(v)) out.add(v);
-  else if (Array.isArray(v)) v.forEach((x) => collectAssets(x, out));
-  else if (v && typeof v === "object") Object.values(v).forEach((x) => collectAssets(x, out));
+  else if (Array.isArray(v))
+    v.forEach((x) => {
+      collectAssets(x, out);
+    });
+  else if (v && typeof v === "object")
+    Object.values(v).forEach((x) => {
+      collectAssets(x, out);
+    });
 }
 
 export interface LayerOpts {
@@ -227,7 +233,10 @@ export function layer(ctx: RecipeContext, capability: string, box: Rect, params:
   if (capability.startsWith("text.") && (o.depth ?? 1) === 0) box = avoidExclusions(ctx, box);
   const assets = new Set<string>();
   collectAssets(params, assets);
-  for (const c of o.children ?? []) c.assets.forEach((a) => assets.add(a));
+  for (const c of o.children ?? [])
+    c.assets.forEach((a) => {
+      assets.add(a);
+    });
   const from = Math.max(0, o.from ?? 0);
   return {
     id: ctx.uid(capability.replace(/\./g, "-")),

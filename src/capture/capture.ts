@@ -186,9 +186,15 @@ async function extractRegions(
         const lbl = el.closest("label");
         push(lbl && lbl.getBoundingClientRect().height < 120 ? lbl : el, "input", out, el);
       });
-      document.querySelectorAll("button, [role=button], a.btn, .btn").forEach((el) => push(el, "button"));
-      document.querySelectorAll("h1, h2, h3").forEach((el) => push(el, "heading"));
-      document.querySelectorAll("nav, aside, [role=navigation]").forEach((el) => push(el, "nav"));
+      document.querySelectorAll("button, [role=button], a.btn, .btn").forEach((el) => {
+        push(el, "button");
+      });
+      document.querySelectorAll("h1, h2, h3").forEach((el) => {
+        push(el, "heading");
+      });
+      document.querySelectorAll("nav, aside, [role=navigation]").forEach((el) => {
+        push(el, "nav");
+      });
       document.querySelectorAll("article, .card, [class*=card], section, .panel").forEach((el) => {
         const r = el.getBoundingClientRect();
         if (r.width * r.height > 8000 && r.width < vw * 0.98) push(el, "custom");
@@ -201,8 +207,7 @@ async function extractRegions(
       // (sume de control, excluderea datelor și prețurilor) se face în Node, cu src/assets/pii.ts
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       const candRe = new RegExp(piiSource, "i");
-      let n: Node | null;
-      while ((n = walker.nextNode())) {
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         const t = (n.textContent ?? "").trim();
         if (t && candRe.test(t) && n.parentElement) {
           push(n.parentElement, "pii", pii);
@@ -377,7 +382,7 @@ async function extractPageData(page: Page): Promise<PageData> {
     });
     document.querySelectorAll("body *").forEach((el) => {
       const st = getComputedStyle(el);
-      if (st.backgroundImage && st.backgroundImage.includes("gradient(")) {
+      if (st.backgroundImage?.includes("gradient(")) {
         const r = el.getBoundingClientRect();
         count(grads, st.backgroundImage.slice(0, 400), Math.max(1, r.width * r.height));
       }
@@ -392,7 +397,7 @@ async function extractPageData(page: Page): Promise<PageData> {
     const buttonLike = (a: Element) => {
       const t = txt(a);
       if (!t || t.split(/\s+/).length > 6) return false;
-      if (/(btn|button|cta)/i.test(a.getAttribute("class") ?? "")) return true;
+      if (/\b(btn|button|cta)\b/i.test(a.getAttribute("class") ?? "")) return true;
       const st = getComputedStyle(a);
       const filled = !!st.backgroundColor && st.backgroundColor !== "transparent" && !/rgba\([^)]*,\s*0\)$/.test(st.backgroundColor);
       const bordered = parseFloat(st.borderTopWidth) > 0 && st.borderTopStyle !== "none";
@@ -400,7 +405,9 @@ async function extractPageData(page: Page): Promise<PageData> {
       return (filled || bordered) && padded;
     };
     const og: Record<string, string> = {};
-    document.querySelectorAll("meta[property^='og:']").forEach((m) => (og[m.getAttribute("property") ?? ""] = m.getAttribute("content") ?? ""));
+    document.querySelectorAll("meta[property^='og:']").forEach((m) => {
+      og[m.getAttribute("property") ?? ""] = m.getAttribute("content") ?? "";
+    });
     return {
       url: location.href,
       title: document.title,

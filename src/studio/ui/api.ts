@@ -52,6 +52,8 @@ export interface VersionBundle {
   > | null;
   cueSheet: Array<{ id: string; kind: string; atFrame: number; sound: string; gainDb: number; reason: string; timecode: string }> | null;
   renders: string[];
+  /** subtitrările versiunii (WebVTT), dacă reclama are voce și subtitrări */
+  captions: string | null;
   scriptIssues: Array<{ severity: string; lineId: string | null; message: string }>;
   quality: QualityRun | null;
   edits: EditLog;
@@ -111,7 +113,7 @@ async function call<T>(method: string, url: string, body?: unknown, headers: Rec
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new Error((data && data.error) || `${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(data?.error || `${res.status} ${res.statusText}`);
   return data as T;
 }
 

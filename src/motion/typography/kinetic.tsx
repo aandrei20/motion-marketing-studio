@@ -1,4 +1,3 @@
-import React from "react";
 import { z } from "zod";
 import { rand } from "../../core/random";
 import { resolveColor } from "../core/context";
@@ -108,7 +107,7 @@ export const textMaskReveal = defineLayer({
         p={p}
         t={t}
         env={env}
-        lineStyle={(li) => ({ overflow: "hidden", paddingBottom: "0.08em", marginBottom: "-0.08em" })}
+        lineStyle={() => ({ overflow: "hidden", paddingBottom: "0.08em", marginBottom: "-0.08em" })}
         renderWord={(w, _total, color) => {
           const s = prog(frame, w.line * p.stagger, w.line * p.stagger + 14, EASE.expoOut);
           const out = ex;

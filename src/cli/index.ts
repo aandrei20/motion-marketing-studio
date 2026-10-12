@@ -62,7 +62,9 @@ function parseArgs(argv: string[]): Args {
     if (t.startsWith("--")) {
       const [k, inline] = t.slice(2).split("=", 2);
       const next = argv[i + 1];
-      const v = inline ?? (next !== undefined && !next.startsWith("--") ? (i++, next) : true);
+      const takesNext = inline === undefined && next !== undefined && !next.startsWith("--");
+      const v = inline ?? (takesNext ? next : true);
+      if (takesNext) i++;
       const prev = a.flags[k];
       a.flags[k] = prev === undefined ? v : Array.isArray(prev) ? [...prev, String(v)] : [String(prev), String(v)];
     } else a._.push(t);
@@ -438,7 +440,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
     }
     case "brand": {
       const r = stepBrand(need(id, "proiectul"), { force: !!a.flags.force });
-      r.notes.forEach((n) => log(`• ${n}`));
+      r.notes.forEach((n) => {
+        log(`• ${n}`);
+      });
       return;
     }
     case "script": {
@@ -449,7 +453,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
     }
     case "storyboard": {
       const r = stepStoryboard(need(id, "proiectul"), { force: !!a.flags.force, templateId: str(a.flags.template) });
-      r.rationale.forEach((x) => log(`• ${x}`));
+      r.rationale.forEach((x) => {
+        log(`• ${x}`);
+      });
       return;
     }
     case "voices":
@@ -464,7 +470,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       const pid = need(id, "proiectul");
       const r = await stepCompile(pid, str(a.flags.version) ?? loadProject(pid).currentVersion!, log);
       log(`Versiunea compilată: ${r.versionId}`);
-      r.warnings.forEach((w) => log(`! ${w}`));
+      r.warnings.forEach((w) => {
+        log(`! ${w}`);
+      });
       for (const [f, v] of Object.entries(r.validation))
         for (const x of v.findings) log(`  [${f}] ${x.timecode ?? "--:--"} ${x.severity.padEnd(7)} ${x.problem}`);
       return;
@@ -484,7 +492,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
         onProgress: progressBar(),
       });
       log(`\nPreview: ${path.relative(PATHS.root, r.file)}\nFoaie de contact: ${path.relative(PATHS.root, r.contactSheet)}`);
-      r.check.problems.forEach((p) => log(`! ${p}`));
+      r.check.problems.forEach((p) => {
+        log(`! ${p}`);
+      });
       return;
     }
     case "make": {
@@ -555,7 +565,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       const raw = file ? readJsonLoose(path.resolve(file)) : JSON.parse(need(str(a.flags.op), "--op (JSON) sau --file ops.json"));
       const ops = Array.isArray(raw) ? raw : [raw];
       const r = applyEdit(pid, ops, { source: "editor" });
-      r.applied.forEach((x) => log(`• ${x.description}`));
+      r.applied.forEach((x) => {
+        log(`• ${x.description}`);
+      });
       if (!a.flags["no-compile"]) {
         const c = await stepCompile(pid, r.versionId, log);
         await stepAudio(pid, c.versionId, log);
@@ -596,9 +608,9 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
     case "critique-pack": {
       const pid = need(id, "proiectul");
       const r = await critiquePack(pid, { versionId: str(a.flags.version), formatId: str(a.flags.format), log });
-      log("Pachet de revizuire: " + path.relative(PATHS.root, r.request));
-      log("Foaia de contact: " + path.relative(PATHS.root, r.contactSheet) + " (" + r.frames.length + " cadre-cheie, " + r.rendered + " randate acum)");
-      log("Schema răspunsului: " + path.relative(PATHS.root, r.schema));
+      log(`Pachet de revizuire: ${path.relative(PATHS.root, r.request)}`);
+      log(`Foaia de contact: ${path.relative(PATHS.root, r.contactSheet)} (${r.frames.length} cadre-cheie, ${r.rendered} randate acum)`);
+      log(`Schema răspunsului: ${path.relative(PATHS.root, r.schema)}`);
       return;
     }
     case "review": {

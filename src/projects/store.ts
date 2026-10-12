@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  Approval,
+  type Approval,
   Approvals,
   AssetManifest,
   Brand,
   Brief,
   Critique,
-  FormatSpec,
+  type FormatSpec,
   PIPELINE_STEPS,
   Project,
   ProjectState,

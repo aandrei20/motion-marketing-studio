@@ -111,7 +111,9 @@ describe("lanțul de producție pe produsul demo", () => {
       // aceleași tăieturi în secunde ca formatul principal, indiferent de FPS (±1 cadru): mixul audio e comun
       const primary = store.loadTimeline(id, v, "9x16");
       const tol = 1 / format.fps + 1 / primary.fps;
-      r.timeline.scenes.forEach((sc, i) => expect(Math.abs(sc.from / format.fps - primary.scenes[i].from / primary.fps)).toBeLessThanOrEqual(tol));
+      r.timeline.scenes.forEach((sc, i) => {
+        expect(Math.abs(sc.from / format.fps - primary.scenes[i].from / primary.fps)).toBeLessThanOrEqual(tol);
+      });
       expect(Math.abs(r.timeline.durationInFrames / format.fps - primary.durationInFrames / primary.fps)).toBeLessThanOrEqual(tol);
       const val = validateTimeline(r.timeline, { assets: base.assets, research: base.research, format });
       expect(val.findings.filter((f) => f.severity === "critical")).toEqual([]);

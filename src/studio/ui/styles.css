@@ -1,10 +1,10 @@
 @font-face {
-  font-family: "Inter";
+  font-family: "Inter", sans-serif;
   src: url("/files/library/fonts/inter/Inter-Variable.ttf") format("truetype");
   font-weight: 100 900;
 }
 @font-face {
-  font-family: "JetBrains Mono";
+  font-family: "JetBrains Mono", monospace;
   src: url("/files/library/fonts/jetbrains-mono/JetBrainsMono-Variable.ttf") format("truetype");
   font-weight: 100 800;
 }
@@ -226,22 +226,10 @@ a {
   display: flex;
   gap: 12px;
 }
-.topbar-controls label {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 12px;
-  color: var(--muted);
-}
 .command {
   display: flex;
   gap: 8px;
   margin: 6px 0 12px;
-}
-.command input {
-  flex: 1;
-  font-size: 15px;
-  padding: 11px 14px;
 }
 .tabs {
   display: flex;
@@ -285,6 +273,11 @@ textarea {
   font: inherit;
   min-width: 0;
 }
+.command input {
+  flex: 1;
+  font-size: 15px;
+  padding: 11px 14px;
+}
 input:focus,
 select:focus,
 textarea:focus {
@@ -312,6 +305,13 @@ label {
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
+  color: var(--muted);
+}
+.topbar-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
   color: var(--muted);
 }
 label.check {
@@ -583,6 +583,17 @@ details summary {
   place-items: center;
   cursor: crosshair;
 }
+button.thumb {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+}
+.thumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .thumb img,
 .thumb video {
   width: 100%;
@@ -689,7 +700,7 @@ blockquote {
   border-radius: 999px;
   color: #fff;
   font-weight: 700;
-  font-family: "Inter";
+  font-family: "Inter", sans-serif;
 }
 
 /* storyboard */
@@ -725,9 +736,6 @@ blockquote {
 .preview.portrait {
   grid-template-columns: min(380px, calc(58vh * 0.5625)) 1fr;
 }
-.preview.landscape .player-wrap {
-  max-width: calc(62vh * 1.7778);
-}
 .preview.landscape {
   grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
 }
@@ -736,12 +744,12 @@ blockquote {
   flex-direction: column;
   gap: 8px;
 }
+.preview.landscape .player-wrap {
+  max-width: calc(62vh * 1.7778);
+}
 .scene-info .layers {
   padding-left: 16px;
   margin: 6px 0;
-}
-.scene-info .layers li {
-  margin: 3px 0;
 }
 .timeline {
   background: var(--panel);
@@ -776,7 +784,7 @@ blockquote {
 .track-labels .ruler-label {
   height: 22px;
   color: var(--text);
-  font-family: "JetBrains Mono";
+  font-family: "JetBrains Mono", monospace;
 }
 .track-scroll {
   overflow-x: auto;
@@ -857,7 +865,6 @@ blockquote {
 }
 .track-sfx .tbar {
   background: rgba(255, 92, 122, 0.6);
-  width: 3px !important;
   padding: 0;
 }
 .track-captions .tbar {
@@ -1103,6 +1110,9 @@ blockquote {
   gap: 2px;
   background: var(--panel-2);
   font-size: 12.5px;
+}
+.scene-info .layers li {
+  margin: 3px 0;
 }
 .flow li b::before {
   content: counter(flow) ". ";

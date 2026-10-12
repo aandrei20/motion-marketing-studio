@@ -250,7 +250,9 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
     scenes.splice(ctaIdx >= 0 ? ctaIdx : scenes.length, 0, scene);
     rationale.push(`Replica „${p.l.id}” a primit o scenă proprie (${recipeId}).`);
   }
-  scenes.forEach((s, i) => (s.id = s.id.replace(/^s\d+/, `s${i + 1}`)));
+  scenes.forEach((s, i) => {
+    s.id = s.id.replace(/^s\d+/, `s${i + 1}`);
+  });
   const unusable = inp.research.claims.filter((c) => !isClaimUsable(c)).length;
   if (unusable) rationale.push(`${unusable} afirmații nu sunt confirmate și nu au fost folosite.`);
   return {

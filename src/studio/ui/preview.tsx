@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import type { Timeline, TimelineLayer } from "../../core/schema";
 import { TimelineComposition } from "../../renderer/composition/TimelineComposition";
 import type { Ctx } from "./App";
 import { api } from "./api";
 import { SceneEditor } from "./quality";
+import { keyed } from "./keys";
 
 const tc = (frames: number, fps: number) => {
   const s = frames / fps;
@@ -55,9 +57,13 @@ function buildTracks(t: Timeline): Record<string, Bar[]> {
         title: `${l.capability}\n${l.id}${typeof l.params.text === "string" ? `\n„${l.params.text}”` : ""}`,
         kind: l.role,
       });
-      l.children.forEach((c) => visit(c, from));
+      l.children.forEach((c) => {
+        visit(c, from);
+      });
     };
-    s.layers.forEach((l) => visit(l, s.from));
+    s.layers.forEach((l) => {
+      visit(l, s.from);
+    });
   }
   for (const c of t.audio.cues) {
     if (c.kind === "voice")
@@ -72,7 +78,9 @@ function buildTracks(t: Timeline): Record<string, Bar[]> {
   }
   // lungimea replicilor de voce = până la ultimul cuvânt din subtitrări sau următoarea replică
   tracks.voice.sort((a, b) => a.from - b.from);
-  tracks.voice.forEach((v, i) => (v.to = Math.max(v.from + 6, (tracks.voice[i + 1]?.from ?? t.durationInFrames) - 2)));
+  tracks.voice.forEach((v, i) => {
+    v.to = Math.max(v.from + 6, (tracks.voice[i + 1]?.from ?? t.durationInFrames) - 2);
+  });
   for (const w of t.captions?.words ?? []) tracks.captions.push({ from: w.from, to: w.to, label: w.text, title: w.text, kind: "caption" });
   return tracks;
 }
@@ -132,7 +140,24 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
             </div>
           ))}
         </div>
-        <div className="track-scroll" onClick={clickSeek}>
+        <div
+          className="track-scroll"
+          role="slider"
+          tabIndex={0}
+          aria-label="Poziția în timeline (săgeți: ±1 s, Home/End: început/sfârșit)"
+          aria-valuemin={0}
+          aria-valuemax={t.durationInFrames - 1}
+          aria-valuenow={frame}
+          aria-valuetext={tc(frame, t.fps)}
+          onClick={clickSeek}
+          onKeyDown={(e) => {
+            const last = t.durationInFrames - 1;
+            const to = { ArrowLeft: frame - t.fps, ArrowRight: frame + t.fps, Home: 0, End: last }[e.key];
+            if (to === undefined) return;
+            e.preventDefault();
+            onSeek(Math.max(0, Math.min(last, to)));
+          }}
+        >
           <div style={{ width: t.durationInFrames * px, position: "relative" }}>
             <div className="ruler">
               {seconds.map((s) => (
@@ -141,13 +166,18 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
                 </span>
               ))}
               {beats.map((b, i) => (
-                <i key={i} className={i % (t.audio.beatGrid?.beatsPerBar ?? 4) === 0 ? "bar-tick" : "beat-tick"} style={{ left: b * px }} />
+                <i key={b} className={i % (t.audio.beatGrid?.beatsPerBar ?? 4) === 0 ? "bar-tick" : "beat-tick"} style={{ left: b * px }} />
               ))}
             </div>
             {Object.entries(tracks).map(([k, bars]) => (
               <div key={k} className={`track track-${k}`}>
-                {bars.map((b, i) => (
-                  <div key={i} className={`tbar k-${b.kind}`} title={b.title} style={{ left: b.from * px, width: Math.max(2, (b.to - b.from) * px) }}>
+                {keyed(bars, (b) => `${b.kind}:${b.from}:${b.to}:${b.label}`).map(({ key, item: b }) => (
+                  <div
+                    key={key}
+                    className={`tbar k-${b.kind}`}
+                    title={b.title}
+                    style={{ left: b.from * px, width: b.kind === "sfx" ? 3 : Math.max(2, (b.to - b.from) * px) }}
+                  >
                     {(b.to - b.from) * px > 40 ? b.label : ""}
                   </div>
                 ))}
@@ -155,8 +185,8 @@ function TimelineView({ t, frame, onSeek }: { t: Timeline; frame: number; onSeek
             ))}
             {t.markers
               .filter((m) => m.kind === "cta-hold")
-              .map((m, i) => (
-                <div key={i} className="marker" style={{ left: m.frame * px }} title={m.label} />
+              .map((m) => (
+                <div key={`${m.kind}:${m.frame}`} className="marker" style={{ left: m.frame * px }} title={m.label} />
               ))}
             <div className="playhead" style={{ left: frame * px }} />
           </div>
@@ -173,15 +203,14 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
   const [quality, setQuality] = useState<"draft" | "full">("draft");
   const [caps, setCaps] = useState<{ transitions: string[]; cameras: string[] }>({ transitions: [], cameras: [] });
   useEffect(() => {
-    void api
-      .registry()
-      .then((r) =>
-        setCaps({
-          transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id),
-          cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id),
-        }),
-      );
+    void api.registry().then((r) =>
+      setCaps({
+        transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id),
+        cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id),
+      }),
+    );
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: playerul apare (și se recreează) odată cu timeline-ul; abonarea se refă atunci
   useEffect(() => {
     const p = ref.current;
     if (!p) return;
@@ -200,7 +229,7 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
       <div className="card">
         <h2>Preview</h2>
         <p>Versiunea nu are încă timeline compilat pentru {ctx.formatId}.</p>
-        <button className="btn primary" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
+        <button type="button" className="btn primary" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
           Compilează
         </button>
       </div>
@@ -266,10 +295,10 @@ export function PreviewPanel({ ctx }: { ctx: Ctx }) {
           {issues.length ? (
             <>
               <h3>Validare</h3>
-              {issues.map((f, i) => (
-                <div key={i} className={`issue ${f.severity}`}>
+              {keyed(issues, (f) => `${f.frame ?? "-"}:${f.problem}`).map(({ key, item: f }) => (
+                <div key={key} className={`issue ${f.severity}`}>
                   {f.frame !== null ? (
-                    <button className="btn tiny ghost" onClick={() => ref.current?.seekTo(f.frame!)}>
+                    <button type="button" className="btn tiny ghost" onClick={() => ref.current?.seekTo(f.frame!)}>
                       {f.timecode}
                     </button>
                   ) : null}{" "}

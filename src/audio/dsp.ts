@@ -237,8 +237,8 @@ export function eq(x: Float32Array, type: BiquadType, f0: number, gainDb: number
 
 /** Filtru variabil în timp (frecvențele se actualizează la fiecare 32 de eșantioane). */
 export function sweep(x: Float32Array, lo: ((t: number) => number) | null, hi: ((t: number) => number) | null, sr = SR): Float32Array {
-  const fl = lo ? [new Biquad("highpass", lo(0), 0.7071, 0, sr)] : [];
-  const fh = hi ? [new Biquad("lowpass", hi(0), 0.7071, 0, sr)] : [];
+  const fl = lo ? [new Biquad("highpass", lo(0), Math.SQRT1_2, 0, sr)] : [];
+  const fh = hi ? [new Biquad("lowpass", hi(0), Math.SQRT1_2, 0, sr)] : [];
   const out = new Float32Array(x.length);
   for (let i = 0; i < x.length; i++) {
     if (i % 32 === 0) {

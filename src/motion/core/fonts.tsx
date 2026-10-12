@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { cancelRender, continueRender, delayRender } from "remotion";
 import type { TimelineFont } from "../../core/schema";
 import { useAssetUrl } from "./context";
@@ -27,6 +28,7 @@ export function FontGate({ fonts, children }: { fonts: TimelineFont[]; children:
   const [handle] = useState(() => delayRender("Încarc fonturile timeline-ului", { timeoutInMilliseconds: 60_000 }));
   const [ready, setReady] = useState(false);
   const signature = fonts.map((f) => `${f.family}:${f.src}`).join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: semnătura (familie + fișier) identifică lista de fonturi; obiectele se recreează la fiecare cadru, iar handle și url sunt stabile
   useEffect(() => {
     let cancelled = false;
     Promise.all(fonts.map((f) => loadFont(f, url(f.src))))
@@ -42,7 +44,6 @@ export function FontGate({ fonts, children }: { fonts: TimelineFont[]; children:
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
-  return ready ? <>{children}</> : null;
+  return ready ? children : null;
 }

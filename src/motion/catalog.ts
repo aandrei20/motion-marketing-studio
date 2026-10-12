@@ -62,8 +62,14 @@ export function exampleBox(box: CapabilityExample["box"]): Rect {
 
 function collectAssets(v: unknown, out: Set<string>): void {
   if (typeof v === "string" && /^(library|projects)\//.test(v)) out.add(v);
-  else if (Array.isArray(v)) v.forEach((x) => collectAssets(x, out));
-  else if (v && typeof v === "object") Object.values(v).forEach((x) => collectAssets(x, out));
+  else if (Array.isArray(v))
+    v.forEach((x) => {
+      collectAssets(x, out);
+    });
+  else if (v && typeof v === "object")
+    Object.values(v).forEach((x) => {
+      collectAssets(x, out);
+    });
 }
 
 function layer(
@@ -158,7 +164,7 @@ function sceneFor(cap: Capability, from: number): TimelineScene {
   if (cap.kind === "layer") {
     const children = (ex.children ?? []).map((c, i) => {
       const cc = ALL_CAPABILITIES.find((k) => k.id === c.capability);
-      if (!cc || cc.kind !== "layer") throw new Error(`Copil necunoscut în exemplul ${cap.id}: ${c.capability}`);
+      if (cc?.kind !== "layer") throw new Error(`Copil necunoscut în exemplul ${cap.id}: ${c.capability}`);
       return layer(
         `child-${i}`,
         c.capability,

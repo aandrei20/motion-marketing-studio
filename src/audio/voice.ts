@@ -133,7 +133,7 @@ export async function listVoices(): Promise<Array<{ provider: VoiceProvider; nam
 /** Lanț de procesare pentru voce: high-pass, căldură, prezență, nivelare lentă (clar pe difuzor de telefon). */
 export function polishVoice(s: Stereo): Stereo {
   const chain = () => [
-    new Biquad("highpass", 75, 0.707),
+    new Biquad("highpass", 75, Math.SQRT1_2),
     new Biquad("peaking", 180, 0.9, 1.0),
     new Biquad("peaking", 3500, 0.8, 2.2),
     new Biquad("highshelf", 9000, 0.7, 1.2),

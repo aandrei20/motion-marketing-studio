@@ -51,21 +51,21 @@ export function getCapability(id: string): Capability | undefined {
 
 export function getLayer(id: string): LayerCapability {
   const c = byId.get(id);
-  if (!c || c.kind !== "layer") throw new Error(`Nu există stratul „${id}” în registry.`);
+  if (c?.kind !== "layer") throw new Error(`Nu există stratul „${id}” în registry.`);
   return c;
 }
 export function getModifier(id: string): ModifierCapability {
   const c = byId.get(id);
-  if (!c || c.kind !== "modifier") throw new Error(`Nu există modificatorul „${id}” în registry.`);
+  if (c?.kind !== "modifier") throw new Error(`Nu există modificatorul „${id}” în registry.`);
   return c;
 }
 export function getCamera(id: string): CameraCapability {
   const c = byId.get(id);
-  if (!c || c.kind !== "camera") throw new Error(`Nu există camera „${id}” în registry.`);
+  if (c?.kind !== "camera") throw new Error(`Nu există camera „${id}” în registry.`);
   return c;
 }
 export function getTransition(id: string): TransitionCapability {
   const c = byId.get(id);
-  if (!c || c.kind !== "transition") throw new Error(`Nu există tranziția „${id}” în registry.`);
+  if (c?.kind !== "transition") throw new Error(`Nu există tranziția „${id}” în registry.`);
   return c;
 }

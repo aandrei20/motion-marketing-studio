@@ -7,9 +7,20 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": { "noNonNullAssertion": "off" }
     }
   },
+  "overrides": [
+    {
+      "includes": ["src/motion/**", "src/renderer/**"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noArrayIndexKey": "off" },
+          "a11y": { "noSvgWithoutTitle": "off" }
+        }
+      }
+    }
+  ],
   "assist": { "enabled": false }
 }

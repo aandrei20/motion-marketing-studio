@@ -131,21 +131,6 @@ export interface CheckDef {
 const flat = (ls: TimelineLayer[]): TimelineLayer[] => ls.flatMap((l) => [l, ...flat(l.children)]);
 const sec = (t: Timeline, f: number) => f / t.fps;
 
-/** Interpolarea liniară a zoom-ului camerei la un cadru local (aproximare suficientă pentru lizibilitate). */
-function zoomAt(keys: Timeline["scenes"][number]["camera"]["keys"], local: number): number {
-  if (!keys.length) return 1;
-  if (local <= keys[0].at) return keys[0].zoom;
-  for (let i = 1; i < keys.length; i++) {
-    if (local <= keys[i].at) {
-      const a = keys[i - 1];
-      const b = keys[i];
-      const p = (local - a.at) / Math.max(1, b.at - a.at);
-      return a.zoom + (b.zoom - a.zoom) * p;
-    }
-  }
-  return keys[keys.length - 1].zoom;
-}
-
 export const CHECKS: CheckDef[] = [
   // ─── PASS 0: plan
   {
@@ -799,10 +784,7 @@ export const CHECKS: CheckDef[] = [
           .split(/\s+/)
           .filter((w) => w.length > 1 || /\d/.test(w));
       for (const s of t.scenes) {
-        const words = t.captions.words
-          .filter((w) => w.from >= s.from && w.from < s.from + s.durationInFrames)
-          .map((w) => norm(w.text))
-          .flat();
+        const words = t.captions.words.filter((w) => w.from >= s.from && w.from < s.from + s.durationInFrames).flatMap((w) => norm(w.text));
         if (words.length < 2) continue;
         const screen = new Set(
           norm(

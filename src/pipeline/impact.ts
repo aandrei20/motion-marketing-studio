@@ -163,8 +163,10 @@ function keysDiff(a: Record<string, string>, b: Record<string, string>) {
 export function diffFingerprints(a: VersionFingerprint, b: VersionFingerprint): ChangeSet {
   const artifacts = new Set<ArtifactId>();
   for (const k of ["brief", "research", "brand", "assets", "references"] as const) if (a.inputs[k] !== b.inputs[k]) artifacts.add(k);
-  if (a.script?.voice !== b.script?.voice) artifacts.add("script"), artifacts.add("voice");
-  else if (a.script?.text !== b.script?.text) artifacts.add("script");
+  if (a.script?.voice !== b.script?.voice) {
+    artifacts.add("script");
+    artifacts.add("voice");
+  } else if (a.script?.text !== b.script?.text) artifacts.add("script");
   const sbA = a.storyboard;
   const sbB = b.storyboard;
   const sbd = sbA && sbB ? keysDiff(sbA.scenes, sbB.scenes) : { changed: [], added: [], removed: [] };

@@ -104,3 +104,17 @@ describe("mixer", () => {
     expect(out.report.ok).toBe(true);
   });
 });
+
+describe("subtitrările ca fișier (.srt pentru livrare, .vtt pentru Studio)", () => {
+  it("grupează cuvintele vocii pe propoziții și le scrie în ambele formate, cu aceiași timpi", async () => {
+    const { toSrt, toVtt } = await import("../../src/pipeline/steps");
+    const words = [
+      { text: "Planifică", from: 0, to: 12 },
+      { text: "săptămâna.", from: 13, to: 30 },
+      { text: "Încearcă", from: 45, to: 57 },
+      { text: "gratuit.", from: 58, to: 75 },
+    ];
+    expect(toSrt(words, 30)).toBe("1\n00:00:00,000 --> 00:00:01,000\nPlanifică săptămâna.\n\n2\n00:00:01,500 --> 00:00:02,500\nÎncearcă gratuit.\n");
+    expect(toVtt(words, 30)).toBe("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nPlanifică săptămâna.\n\n00:00:01.500 --> 00:00:02.500\nÎncearcă gratuit.\n");
+  });
+});

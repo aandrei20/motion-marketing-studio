@@ -57,7 +57,6 @@ export interface IntakeResult {
 }
 
 const q = (id: string) => INTAKE_QUESTIONS.find((x) => x.id === id)?.text ?? id;
-const has = (t: string, re: RegExp) => re.test(t.toLowerCase());
 
 /**
  * Categoria produsului din semnalele de pe pagină, cu greutăți: titlul, descrierea și titlurile de secțiune
@@ -127,7 +126,6 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   const answers: IntakeAnswer[] = [];
   const ask: IntakeQuestionToAsk[] = [];
   const vision = (req.vision ?? "").trim();
-  const text = page ? `${page.title} ${page.description} ${page.headings.map((h) => h.text).join(" ")} ${page.fullText.slice(0, 6000)}` : vision;
   const A = (id: string, value: string, source: AnswerSource, confidence: IntakeAnswer["confidence"], why: string) =>
     answers.push({ id, question: q(id), value, source, confidence, why });
   const Q = (id: string, why: string, o: { options?: string[]; suggestion?: string } = {}) => ask.push({ id, question: q(id), why, ...o });

@@ -17,7 +17,6 @@ import {
   normStereo,
   normalize,
   pan,
-  perc,
   place,
   reverb,
   samples,

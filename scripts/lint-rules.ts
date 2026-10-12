@@ -89,6 +89,10 @@ export function lintRules(): LintProblem[] {
       .split(/\r?\n/)
       .forEach((l, i) => {
         if (SECRET.test(l)) problems.push({ rule: "regula 19: secret în Git", file: rel, line: i + 1, text: "(ascuns)" });
+        // un caracter de control într-un fișier text e aproape mereu o secvență stricată (de ex. „\b” scris ca backspace)
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: căutăm tocmai caracterele de control
+        const ctrl = l.match(/[\x00-\x08\x0b\x0c\x0e-\x1f]/);
+        if (ctrl) problems.push({ rule: "caracter de control în fișier text", file: rel, line: i + 1, text: `0x${ctrl[0].charCodeAt(0).toString(16)}` });
       });
     if (/^\.env$/.test(path.basename(rel))) problems.push({ rule: "regula 19: .env urmărit de Git", file: rel, line: 0, text: "" });
   }
@@ -111,7 +115,7 @@ export function lintRules(): LintProblem[] {
   return problems;
 }
 
-if (process.argv[1] && process.argv[1].endsWith("lint-rules.ts")) {
+if (process.argv[1]?.endsWith("lint-rules.ts")) {
   const p = lintRules();
   for (const x of p) console.error(`${x.file}:${x.line}  [${x.rule}]  ${x.text}`);
   if (p.length) {

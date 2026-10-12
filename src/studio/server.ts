@@ -221,8 +221,8 @@ function serveFile(req: http.IncomingMessage, res: http.ServerResponse, file: st
   const range = req.headers.range;
   if (range) {
     const m = range.match(/bytes=(\d*)-(\d*)/);
-    const start = m && m[1] ? Number(m[1]) : 0;
-    const end = m && m[2] ? Math.min(Number(m[2]), stat.size - 1) : stat.size - 1;
+    const start = m?.[1] ? Number(m[1]) : 0;
+    const end = m?.[2] ? Math.min(Number(m[2]), stat.size - 1) : stat.size - 1;
     res.writeHead(206, {
       "Content-Type": type,
       "Content-Range": `bytes ${start}-${end}/${stat.size}`,
@@ -260,6 +260,7 @@ function versionBundle(id: string, v: string) {
     compileReport: read("compile-report.json"),
     cueSheet: read("audio/cue-sheet.json"),
     renders,
+    captions: hasFile(id, `versions/${v}/audio/captions.vtt`) ? `projects/${id}/versions/${v}/audio/captions.vtt` : null,
     scriptIssues:
       hasFile(id, `versions/${v}/script.json`) && hasFile(id, "brief.json") ? validateScript(loadScript(id, v), loadBrief(id), loadResearch(id)) : [],
     quality: loadQualityRun(id, v),
@@ -522,7 +523,7 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
           return send(res, 200, setClaimStatus(id, parts[4], b.status));
         }
         if (sub === "assets" && m === "POST" && !parts[4]) {
-          const name = String(req.headers["x-filename"] ?? "fisier.bin").replace(/[^\w.\-]+/g, "_");
+          const name = String(req.headers["x-filename"] ?? "fisier.bin").replace(/[^\w.-]+/g, "_");
           if (!UPLOAD_EXT.has(path.extname(name).toLowerCase()))
             return send(res, 415, {
               error: `Tip de fișier nepermis: ${path.extname(name) || "fără extensie"}. Permise: ${[...UPLOAD_EXT].join(" ")}`,

@@ -31,7 +31,7 @@ export function parseWith<S extends z.ZodType>(schema: S, raw: unknown, where: s
 export function writeJson(file: string, data: unknown): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");
+  fs.writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   fs.renameSync(tmp, file);
 }
 

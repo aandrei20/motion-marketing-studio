@@ -164,10 +164,16 @@ export function suggestDirections(input: {
   if (/energic|amuzant|fun|tânăr|tanar|social/.test(tone)) bump("energetic", 3);
   if (input.pacing === "aggressive") bump("aggressive", 2);
   if (input.pacing === "fast") bump("energetic", 2);
-  if (input.pacing === "slow") bump("emotional", 1), bump("premium", 1);
+  if (input.pacing === "slow") {
+    bump("emotional", 1);
+    bump("premium", 1);
+  }
   if (/developer|ai-product|saas/.test(input.category)) bump("technical", 1);
   if (/fintech|enterprise/.test(input.category)) bump("premium", 1);
-  if (input.platforms.some((p) => ["tiktok", "reels", "shorts"].includes(p))) bump("energetic", 1), bump("aggressive", 1);
+  if (input.platforms.some((p) => ["tiktok", "reels", "shorts"].includes(p))) {
+    bump("energetic", 1);
+    bump("aggressive", 1);
+  }
   return (Object.keys(scores) as CreativeDirection[])
     .sort((a, b) => scores[b] - scores[a])
     .slice(0, 3)

@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProductionFlow } from "./quality";
 import type { Asset, Brief, Claim, Script, Storyboard } from "../../core/schema";
 import type { Ctx } from "./App";
 import { api, fileUrl } from "./api";
+import { keyed } from "./keys";
 
 const tc = (frames: number, fps: number) => {
   const s = frames / fps;
@@ -45,28 +47,42 @@ async function saveVersioned(ctx: Ctx, kind: "script" | "storyboard", data: unkn
   await ctx.reload();
 }
 
+/** Subtitrările versiunii (aceleași replici ca în .srt), pentru playerele din Studio. */
+function captionsOf(ctx: Ctx): { src: string; lang: string } | null {
+  const vtt = ctx.version?.captions;
+  if (!vtt) return null;
+  return { src: fileUrl(vtt), lang: ctx.bundle.project.language.voice ?? ctx.bundle.project.language.text ?? "ro" };
+}
+
 // ─── Prezentare ─────────────────────────────────────────────────────────────
+
+/** **aldin** și `cod` dintr-un rând, ca elemente React: textul (care poate veni de pe un site capturat) nu devine HTML. */
+function inlineMd(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  const re = /\*\*(.+?)\*\*|`(.+?)`/g;
+  let last = 0;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(m[1] !== undefined ? <b key={m.index}>{m[1]}</b> : <code key={m.index}>{m[2]}</code>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
 function Markdownish({ text }: { text: string }) {
   return (
     <div className="md">
-      {text.split("\n").map((l, i) => {
-        if (l.startsWith("# ")) return <h2 key={i}>{l.slice(2)}</h2>;
-        if (l.startsWith("## ")) return <h3 key={i}>{l.slice(3)}</h3>;
+      {keyed(text.split("\n"), (l) => l).map(({ key, item: l }) => {
+        if (l.startsWith("# ")) return <h2 key={key}>{l.slice(2)}</h2>;
+        if (l.startsWith("## ")) return <h3 key={key}>{l.slice(3)}</h3>;
         if (l.startsWith("- ") || l.startsWith("  - "))
           return (
-            <div
-              key={i}
-              className={l.startsWith("  ") ? "li sub" : "li"}
-              dangerouslySetInnerHTML={{
-                __html: l
-                  .replace(/^\s*- /, "")
-                  .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
-                  .replace(/`(.+?)`/g, "<code>$1</code>"),
-              }}
-            />
+            <div key={key} className={l.startsWith("  ") ? "li sub" : "li"}>
+              {inlineMd(l.replace(/^\s*- /, ""))}
+            </div>
           );
-        return l.trim() ? <p key={i}>{l}</p> : null;
+        return l.trim() ? <p key={key}>{l}</p> : null;
       })}
     </div>
   );
@@ -83,34 +99,35 @@ export function OverviewPanel({ ctx }: { ctx: Ctx }) {
           <p className="muted small">Fiecare pas e un job; progresul apare în stânga. Lucrul de producție începe doar după aprobarea brief-ului.</p>
           <div className="steps">
             <button
+              type="button"
               className="btn"
               disabled={!approved}
               onClick={() => ctx.runJob("capture", { demo: false, url: p.product.url, captureId: `cap-${Date.now() % 100000}` })}
             >
               Captură reală (URL produs)
             </button>
-            <button className="btn" disabled={!approved} onClick={() => ctx.runJob("brand")}>
+            <button type="button" className="btn" disabled={!approved} onClick={() => ctx.runJob("brand")}>
               Brand kit din captură
             </button>
-            <button className="btn" disabled={!approved} onClick={() => ctx.runJob("script")}>
+            <button type="button" className="btn" disabled={!approved} onClick={() => ctx.runJob("script")}>
               Schiță de script
             </button>
-            <button className="btn" disabled={!approved} onClick={() => ctx.runJob("storyboard")}>
+            <button type="button" className="btn" disabled={!approved} onClick={() => ctx.runJob("storyboard")}>
               Storyboard
             </button>
-            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("voice")}>
+            <button type="button" className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("voice")}>
               Voce
             </button>
-            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
+            <button type="button" className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("compile")}>
               Compilează timeline
             </button>
-            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("audio")}>
+            <button type="button" className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("audio")}>
               Audio (mix)
             </button>
-            <button className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("preview")}>
+            <button type="button" className="btn" disabled={!ctx.versionId} onClick={() => ctx.runJob("preview")}>
               Preview
             </button>
-            <button className="btn primary" disabled={!approved} onClick={() => ctx.runJob("make")}>
+            <button type="button" className="btn primary" disabled={!approved} onClick={() => ctx.runJob("make")}>
               Producție completă
             </button>
           </div>
@@ -207,7 +224,7 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
       <Section
         title="Brief"
         aside={
-          <button className="btn ghost" onClick={() => setRaw(raw === null ? JSON.stringify(b, null, 2) : null)}>
+          <button type="button" className="btn ghost" onClick={() => setRaw(raw === null ? JSON.stringify(b, null, 2) : null)}>
             {raw === null ? "JSON avansat" : "Formular"}
           </button>
         }
@@ -350,6 +367,7 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             {!b.direction ? (
               <div>
                 <button
+                  type="button"
                   className="btn ghost"
                   onClick={async () =>
                     setSuggest(
@@ -366,9 +384,9 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
                   Propune 3 direcții
                 </button>
                 {suggest.map((s) => (
-                  <div key={s.direction} className="suggest" onClick={() => up({ direction: s.direction as Brief["direction"] })}>
+                  <button type="button" key={s.direction} className="suggest" onClick={() => up({ direction: s.direction as Brief["direction"] })}>
                     {s.why} <span className="muted">(alege)</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : null}
@@ -527,7 +545,7 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
           </div>
         )}
         <div className="actions">
-          <button className="btn primary" onClick={save}>
+          <button type="button" className="btn primary" onClick={save}>
             Salvează brief-ul
           </button>
         </div>
@@ -543,6 +561,7 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
             <div className="row">
               <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="aprob" />
               <button
+                type="button"
                 className="btn primary"
                 disabled={!ctx.bundle.brief}
                 onClick={async () => {
@@ -595,28 +614,43 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
     }
   };
   const f = a.analysis.focalPoint;
+  const focusable = a.type === "image" || a.type === "svg";
   return (
     <div className="asset">
-      <div
-        className="thumb"
-        onClick={(e) => {
-          if (a.type !== "image" && a.type !== "svg") return;
-          const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-          void patch({ focalPoint: { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } });
-        }}
-        title="Clic pe imagine = punct focal"
-      >
-        {a.type === "image" || a.type === "svg" ? (
+      {focusable ? (
+        <button
+          type="button"
+          className="thumb"
+          aria-label={`Punctul focal al lui ${a.originalName}: clic pe imagine sau săgeți`}
+          title="Clic pe imagine sau săgeți = punct focal"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            void patch({ focalPoint: { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } });
+          }}
+          onKeyDown={(e) => {
+            const step = { ArrowLeft: [-0.05, 0], ArrowRight: [0.05, 0], ArrowUp: [0, -0.05], ArrowDown: [0, 0.05] }[e.key];
+            if (!step) return;
+            e.preventDefault();
+            const cur = f ?? { x: 0.5, y: 0.5 };
+            const clamp = (v: number) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+            void patch({ focalPoint: { x: clamp(cur.x + step[0]), y: clamp(cur.y + step[1]) } });
+          }}
+        >
           <img src={src} alt="" />
-        ) : a.type === "video" ? (
-          <video src={src} muted controls />
-        ) : a.type === "audio" ? (
-          <audio src={src} controls />
-        ) : (
-          <div className="file-type">{a.type}</div>
-        )}
-        {f && (a.type === "image" || a.type === "svg") ? <span className="focal" style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%` }} /> : null}
-      </div>
+          {f ? <span className="focal" style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%` }} /> : null}
+        </button>
+      ) : (
+        <div className="thumb">
+          {a.type === "video" ? (
+            <video src={src} muted controls />
+          ) : a.type === "audio" ? (
+            // biome-ignore lint/a11y/useMediaCaption: miniatura unui material încărcat (muzică, efecte, voce), fără transcriere
+            <audio src={src} controls />
+          ) : (
+            <div className="file-type">{a.type}</div>
+          )}
+        </div>
+      )}
       <div className="asset-body">
         <div className="asset-name" title={a.originalName}>
           {a.originalName}
@@ -664,10 +698,10 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
             {a.rights.status !== "confirmed-by-user" ? (
               <div className="row">
                 <span className="small">Ai dreptul să-l folosești?</span>
-                <button className="btn tiny" onClick={() => patch({ rights: "confirmed-by-user" })}>
+                <button type="button" className="btn tiny" onClick={() => patch({ rights: "confirmed-by-user" })}>
                   Da
                 </button>
-                <button className="btn tiny ghost" onClick={() => patch({ rights: "denied" })}>
+                <button type="button" className="btn tiny ghost" onClick={() => patch({ rights: "denied" })}>
                   Nu
                 </button>
               </div>
@@ -679,12 +713,12 @@ function AssetCard({ a, ctx }: { a: Asset; ctx: Ctx }) {
             {a.pii.regions.length} zone cu date personale.{" "}
             {a.pii.blurApproved ? "Se estompează în video." : a.pii.keepApproved ? "Rămân vizibile (decizia ta)." : "Decide:"}{" "}
             {!a.pii.blurApproved ? (
-              <button className="btn tiny" onClick={() => patch({ blurApproved: true })}>
+              <button type="button" className="btn tiny" onClick={() => patch({ blurApproved: true })}>
                 Estompează
               </button>
             ) : null}{" "}
             {!a.pii.keepApproved ? (
-              <button className="btn tiny" onClick={() => patch({ keepApproved: true })}>
+              <button type="button" className="btn tiny" onClick={() => patch({ keepApproved: true })}>
                 Lasă-le vizibile
               </button>
             ) : null}
@@ -735,10 +769,11 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
             <p className="muted small">Proiectul are un format vertical: se face automat și varianta de telefon a paginii, folosită pe vertical.</p>
           ) : null}
           <div className="actions">
-            <button className="btn ghost" onClick={() => ctx.runJob("capture", { demo: true })}>
+            <button type="button" className="btn ghost" onClick={() => ctx.runJob("capture", { demo: true })}>
               Capturează produsul demo
             </button>
             <button
+              type="button"
               className="btn primary"
               disabled={!url}
               onClick={() => ctx.runJob("capture", { url, viewport, fullPage: full, research, thirdParty: capThird, captureId: `cap-${Date.now() % 100000}` })}
@@ -814,12 +849,12 @@ export function ResearchPanel({ ctx }: { ctx: Ctx }) {
       </div>
       <div className="row">
         {c.status !== "approved-by-user" ? (
-          <button className="btn tiny" onClick={() => set(c, "approved-by-user")}>
+          <button type="button" className="btn tiny" onClick={() => set(c, "approved-by-user")}>
             Confirm (poate intra în video)
           </button>
         ) : null}
         {c.status !== "rejected" ? (
-          <button className="btn tiny ghost" onClick={() => set(c, "rejected")}>
+          <button type="button" className="btn tiny ghost" onClick={() => set(c, "rejected")}>
             Resping
           </button>
         ) : null}
@@ -865,7 +900,7 @@ export function BrandPanel({ ctx }: { ctx: Ctx }) {
     return (
       <Section title="Brand kit">
         <p>Nu există încă. Se deduce din captura site-ului și din logo.</p>
-        <button className="btn primary" onClick={() => ctx.runJob("brand")}>
+        <button type="button" className="btn primary" onClick={() => ctx.runJob("brand")}>
           Deduce brand kit-ul
         </button>
       </Section>
@@ -951,6 +986,7 @@ export function BrandPanel({ ctx }: { ctx: Ctx }) {
         </label>
         <p className="muted small">Logo-ul se folosește la scară uniformă: fără recolorare, rotire sau deformare.</p>
         <button
+          type="button"
           className="btn primary"
           onClick={async () => {
             try {
@@ -980,7 +1016,7 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
         <p>
           Nu există încă. Schița se face din faptele verificate și din cuvintele tale (hook, fraze obligatorii, CTA); Claude o rescrie creativ în Claude Code.
         </p>
-        <button className="btn primary" onClick={() => ctx.runJob("script")}>
+        <button type="button" className="btn primary" onClick={() => ctx.runJob("script")}>
           Fă schița
         </button>
       </Section>
@@ -990,8 +1026,8 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
     <div>
       {ctx.version?.scriptIssues.length ? (
         <Section title="Verificări">
-          {ctx.version.scriptIssues.map((i, k) => (
-            <div key={k} className={`issue ${i.severity}`}>
+          {keyed(ctx.version.scriptIssues, (x) => `${x.lineId ?? "-"}:${x.message}`).map(({ key, item: i }) => (
+            <div key={key} className={`issue ${i.severity}`}>
               [{i.severity}] {i.lineId ? <code>{i.lineId}</code> : null} {i.message}
             </div>
           ))}
@@ -1000,7 +1036,7 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
       <Section
         title={`Script (${s.lines.length} replici · text ${s.textLanguage} · voce ${s.voiceLanguage ?? "—"})`}
         aside={
-          <button className="btn primary" onClick={() => saveVersioned(ctx, "script", s).catch((e) => ctx.notify((e as Error).message, "err"))}>
+          <button type="button" className="btn primary" onClick={() => saveVersioned(ctx, "script", s).catch((e) => ctx.notify((e as Error).message, "err"))}>
             Salvează
           </button>
         }
@@ -1074,14 +1110,12 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
   useEffect(() => setSb(ctx.version?.storyboard ?? null), [ctx.version?.storyboard]);
   useEffect(
     () =>
-      void api
-        .registry()
-        .then((r) =>
-          setCaps({
-            transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id),
-            cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id),
-          }),
-        ),
+      void api.registry().then((r) =>
+        setCaps({
+          transitions: r.capabilities.filter((c) => c.kind === "transition").map((c) => c.id),
+          cameras: r.capabilities.filter((c) => c.kind === "camera").map((c) => c.id),
+        }),
+      ),
     [],
   );
   const report = ctx.version?.compileReport?.[ctx.formatId];
@@ -1089,7 +1123,7 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
     return (
       <Section title="Storyboard">
         <p>Nu există încă. Se construiește din șablon + script + materiale.</p>
-        <button className="btn primary" onClick={() => ctx.runJob("storyboard")}>
+        <button type="button" className="btn primary" onClick={() => ctx.runJob("storyboard")}>
           Construiește storyboard-ul
         </button>
       </Section>
@@ -1102,17 +1136,21 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
         title={`Storyboard (${sb.scenes.length} scene${sb.templateId ? ` · șablon ${sb.templateId}` : ""}${sb.direction ? ` · direcție ${sb.direction}` : ""})`}
         aside={
           <div className="row">
-            <button className="btn" onClick={() => ctx.runJob("compile")}>
+            <button type="button" className="btn" onClick={() => ctx.runJob("compile")}>
               Recompilează
             </button>
-            <button className="btn primary" onClick={() => saveVersioned(ctx, "storyboard", sb).catch((e) => ctx.notify((e as Error).message, "err"))}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => saveVersioned(ctx, "storyboard", sb).catch((e) => ctx.notify((e as Error).message, "err"))}
+            >
               Salvează
             </button>
           </div>
         }
       >
-        {sb.rationale.map((r, i) => (
-          <div key={i} className="muted small">
+        {keyed(sb.rationale, (r) => r).map(({ key, item: r }) => (
+          <div key={key} className="muted small">
             • {r}
           </div>
         ))}
@@ -1129,7 +1167,7 @@ export function StoryboardPanel({ ctx }: { ctx: Ctx }) {
                   <span className="chip">{s.narrativeRole}</span>
                   <span className="chip">{s.emotionalRole}</span>
                   {ts ? (
-                    <button className="btn tiny ghost" onClick={() => ctx.seek(ts.from + 1)}>
+                    <button type="button" className="btn tiny ghost" onClick={() => ctx.seek(ts.from + 1)}>
                       {tc(ts.from, tl!.fps)} · {(ts.durationInFrames / tl!.fps).toFixed(2)} s
                     </button>
                   ) : null}
@@ -1236,12 +1274,13 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
   const tl = ctx.version?.timelines[ctx.formatId];
   const [notes, setNotes] = useState("");
   const mixUrl = tl?.audio.src ? fileUrl(tl.audio.src) : null;
+  const cap = captionsOf(ctx);
   return (
     <div className="cols">
       <Section
         title="Mix"
         aside={
-          <button className="btn" onClick={() => ctx.runJob("audio")}>
+          <button type="button" className="btn" onClick={() => ctx.runJob("audio")}>
             Refă mixul
           </button>
         }
@@ -1267,7 +1306,16 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
             <p className={m.ok ? "ok" : "warn"}>{m.ok ? "Mixul trece verificările tehnice." : m.problems.join(" ")}</p>
-            {mixUrl ? <audio controls src={mixUrl} className="wide" /> : null}
+            {mixUrl ? (
+              cap ? (
+                <audio controls src={mixUrl} className="wide">
+                  <track kind="captions" src={cap.src} srcLang={cap.lang} label="Subtitrări" default />
+                </audio>
+              ) : (
+                // biome-ignore lint/a11y/useMediaCaption: fără voce în reclamă nu există replici de subtitrat
+                <audio controls src={mixUrl} className="wide" />
+              )
+            ) : null}
             <p className="muted small">Recenzenții AI nu aud: ascultă cu atenție (pe telefon, la volum normal) și notează problemele pe timestamp.</p>
           </>
         ) : (
@@ -1276,7 +1324,7 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
         <h3>Ajustări (versiune nouă, prin comenzi)</h3>
         <div className="steps">
           {["mai puțină muzică sub voce", "muzica mai tare", "muzica mai încet", "efectele sonore mai încet", "fără muzică"].map((c) => (
-            <button key={c} className="btn tiny" onClick={() => ctx.runJob("iterate", { command: c })}>
+            <button type="button" key={c} className="btn tiny" onClick={() => ctx.runJob("iterate", { command: c })}>
               {c}
             </button>
           ))}
@@ -1284,6 +1332,7 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
         <h3>Notele tale după ascultare</h3>
         <textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={"secunda 7,3: logo-ul e prea mic\n11: muzica sună ciudat"} />
         <button
+          type="button"
           className="btn primary"
           disabled={!notes.trim() || !ctx.versionId || !tl}
           onClick={async () => {
@@ -1378,7 +1427,7 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
       <Section
         title="Critică (rubrica fixă, prag 8/10)"
         aside={
-          <button className="btn primary" onClick={() => ctx.runJob("critique")}>
+          <button type="button" className="btn primary" onClick={() => ctx.runJob("critique")}>
             Rundă nouă
           </button>
         }
@@ -1425,7 +1474,7 @@ export function CritiquePanel({ ctx }: { ctx: Ctx }) {
           .map((f) => (
             <div key={`${f.reviewer}-${f.id}`} className={`issue ${f.severity}`}>
               {f.frame !== null && tl ? (
-                <button className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
+                <button type="button" className="btn tiny ghost" onClick={() => ctx.seek(f.frame!)}>
                   {f.timecode}
                 </button>
               ) : null}{" "}
@@ -1444,7 +1493,7 @@ export function VersionsPanel({ ctx, onSelect }: { ctx: Ctx; onSelect: (v: strin
     <Section
       title="Versiuni"
       aside={
-        <button className="btn" onClick={() => ctx.runJob("new-version", { label: "manual" })}>
+        <button type="button" className="btn" onClick={() => ctx.runJob("new-version", { label: "manual" })}>
           Versiune nouă
         </button>
       }
@@ -1461,14 +1510,14 @@ export function VersionsPanel({ ctx, onSelect }: { ctx: Ctx; onSelect: (v: strin
             {v.frozen ? <span className="chip">înghețată</span> : <span className="chip ok">editabilă</span>}
             {v.parent ? <span className="muted small">din {v.parent}</span> : null}
             <span className="muted small">{v.createdAt.slice(0, 16).replace("T", " ")}</span>
-            <button className="btn tiny" onClick={() => onSelect(v.id)}>
+            <button type="button" className="btn tiny" onClick={() => onSelect(v.id)}>
               Deschide
             </button>
           </div>
           {v.label ? <div className="muted">{v.label}</div> : null}
           <ul>
-            {v.changes.map((c, i) => (
-              <li key={i}>
+            {keyed(v.changes, (c) => `${c.at}:${c.op}:${c.description}`).map(({ key, item: c }) => (
+              <li key={key}>
                 {c.description} {c.request ? <span className="muted small">(„{c.request}”)</span> : null}
               </li>
             ))}
@@ -1484,6 +1533,7 @@ export function VersionsPanel({ ctx, onSelect }: { ctx: Ctx; onSelect: (v: strin
 export function ExportPanel({ ctx }: { ctx: Ctx }) {
   const [phrase, setPhrase] = useState("");
   const renders = ctx.version?.renders ?? [];
+  const cap = captionsOf(ctx);
   const videos = renders.filter((r) => r.endsWith(".mp4"));
   const sheets = renders.filter((r) => r.endsWith(".png"));
   const tl = ctx.version?.timelines[ctx.formatId];
@@ -1495,7 +1545,7 @@ export function ExportPanel({ ctx }: { ctx: Ctx }) {
         <p className="muted small">Preview-ul e o randare completă (MP4) plus foaia de contact; versiunea se îngheață după preview.</p>
         <div className="row">
           {ctx.bundle.project.formats.map((f) => (
-            <button key={f.id} className="btn" disabled={!tl} onClick={() => ctx.runJob("preview", { format: f.id })}>
+            <button type="button" key={f.id} className="btn" disabled={!tl} onClick={() => ctx.runJob("preview", { format: f.id })}>
               Randează preview {f.id}
             </button>
           ))}
@@ -1503,7 +1553,14 @@ export function ExportPanel({ ctx }: { ctx: Ctx }) {
         {videos.map((v) => (
           <div key={v} className="render">
             <div className="small muted">{v.split("/").pop()}</div>
-            <video src={fileUrl(v)} controls className="render-video" />
+            {cap ? (
+              <video src={fileUrl(v)} controls className="render-video">
+                <track kind="captions" src={cap.src} srcLang={cap.lang} label="Subtitrări" default />
+              </video>
+            ) : (
+              // biome-ignore lint/a11y/useMediaCaption: fără voce în reclamă nu există replici de subtitrat
+              <video src={fileUrl(v)} controls className="render-video" />
+            )}
           </div>
         ))}
         {sheets.map((s) => (
@@ -1518,13 +1575,14 @@ export function ExportPanel({ ctx }: { ctx: Ctx }) {
           Exportul final se face doar după ce scrii exact <b>render final</b> pentru versiunea {ctx.versionId}.
         </p>
         {finalApproved ? (
-          <button className="btn primary" onClick={() => ctx.runJob("final")}>
+          <button type="button" className="btn primary" onClick={() => ctx.runJob("final")}>
             Randează final {ctx.formatId}
           </button>
         ) : (
           <div className="row">
             <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="render final" />
             <button
+              type="button"
               className="btn primary"
               disabled={!ctx.versionId}
               onClick={async () => {

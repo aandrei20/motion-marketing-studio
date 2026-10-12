@@ -1,5 +1,3 @@
-import React from "react";
-
 /** Id sigur pentru filtre SVG (doar litere, cifre, cratimă). */
 export const filterId = (...parts: Array<string | number>): string => parts.join("-").replace(/[^a-zA-Z0-9-]/g, "_");
 

@@ -104,7 +104,9 @@ export async function runRealE2E(o: RealE2EOptions): Promise<{ id: string; versi
   );
 
   log("4. Brand kit din captura reală");
-  stepBrand(ID).notes.forEach((n) => log(`   ${n}`));
+  stepBrand(ID).notes.forEach((n) => {
+    log(`   ${n}`);
+  });
 
   log("5. Producția cu bucla de calitate (concept → script → storyboard → voce → timeline → mix → calitate → corecturi → preview)");
   const rep = await produce(ID, { depth: "standard", autofix: true, preview: o.render !== false, log: (m) => log(`   ${m}`), stage: (s) => log(`   — ${s}`) });

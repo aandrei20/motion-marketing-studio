@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { Img } from "remotion";
 import { z } from "zod";
 import { mix, readableOn, withAlpha } from "../core/color";
@@ -244,8 +244,7 @@ const KEYWORDS = new Set(
 export function tokenize(line: string): Array<{ text: string; kind: "kw" | "str" | "com" | "num" | "plain" }> {
   const out: Array<{ text: string; kind: "kw" | "str" | "com" | "num" | "plain" }> = [];
   const re = /(\/\/.*$|#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)|(\s+|.)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(line))) {
+  for (let m = re.exec(line); m; m = re.exec(line)) {
     if (m[1]) out.push({ text: m[1], kind: "com" });
     else if (m[2]) out.push({ text: m[2], kind: "str" });
     else if (m[3]) out.push({ text: m[3], kind: "num" });

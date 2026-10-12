@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { z } from "zod";
 import { withAlpha } from "../core/color";
 import { resolveColor } from "../core/context";

@@ -68,7 +68,7 @@ export function scoreQuality(inp: ScoreInput): QualityScore {
       .filter((f) => f.category === cat)
       .map((f) => cfg.penalties[f.severity] * f.confidence)
       .sort((a, b) => b - a);
-    const penalty = list.reduce((s, p, k) => s + p * Math.pow(0.85, k), 0);
+    const penalty = list.reduce((s, p, k) => s + p * 0.85 ** k, 0);
     categories[cat] = Math.max(0, Math.round((100 - penalty) * 10) / 10);
   }
   const weights = { ...DEFAULT_WEIGHTS, ...cfg.weights };

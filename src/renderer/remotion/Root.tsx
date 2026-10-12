@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { Composition, staticFile, type CalculateMetadataFunction } from "remotion";
 import type { Timeline } from "../../core/schema";
 import { buildCatalogTimeline } from "../../motion/catalog";

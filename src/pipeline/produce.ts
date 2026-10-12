@@ -54,15 +54,23 @@ export async function produce(projectId: string, o: ProduceOptions = {}): Promis
   for (const r of concepts.rationale.slice(0, 2)) log(`  ${r}`);
   stage("script");
   const s = stepScript(projectId);
-  s.issues.filter((i) => i.severity === "critical").forEach((i) => log(`! script: ${i.message}`));
+  s.issues
+    .filter((i) => i.severity === "critical")
+    .forEach((i) => {
+      log(`! script: ${i.message}`);
+    });
   stage("storyboard");
-  stepStoryboard(projectId).rationale.forEach((x) => log(`• ${x}`));
+  stepStoryboard(projectId).rationale.forEach((x) => {
+    log(`• ${x}`);
+  });
   stage("voce");
   const v0 = loadProject(projectId).currentVersion!;
   if (!hasFile(projectId, `versions/${v0}/audio/voice.json`)) await stepVoice(projectId, v0, log);
   stage("timeline");
   const c = await stepCompile(projectId, loadProject(projectId).currentVersion!, log);
-  c.warnings.forEach((w) => log(`! ${w}`));
+  c.warnings.forEach((w) => {
+    log(`! ${w}`);
+  });
   stage("audio");
   const mixR = await stepAudio(projectId, c.versionId, log);
   log(`Audio: ${mixR.integratedLufs} LUFS, TP ${mixR.truePeakDbtp} dBTP${mixR.ok ? "" : ` – ${mixR.problems.join("; ")}`}`);

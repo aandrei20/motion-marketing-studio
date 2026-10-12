@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useRef, useState } from "react";
 import { api, type Meta } from "./api";
 
 const CATEGORIES = [
@@ -20,6 +20,8 @@ const CATEGORIES = [
 const PLATFORMS = ["tiktok", "reels", "shorts", "youtube", "feed", "linkedin", "x", "generic"];
 
 interface FormatRow {
+  /** id stabil al rândului (cheia React; nu se trimite la server) */
+  uid: number;
   preset: string;
   width: number;
   height: number;
@@ -46,7 +48,8 @@ export function NewProject({
   const [category, setCategory] = useState("saas");
   const [textLang, setTextLang] = useState("");
   const [voiceLang, setVoiceLang] = useState("");
-  const [formats, setFormats] = useState<FormatRow[]>([{ preset: "9x16", width: 1080, height: 1920, platform: "tiktok", fps: 30, durationSec: 30 }]);
+  const rowId = useRef(1);
+  const [formats, setFormats] = useState<FormatRow[]>([{ uid: 0, preset: "9x16", width: 1080, height: 1920, platform: "tiktok", fps: 30, durationSec: 30 }]);
   const slug = (s: string) =>
     s
       .toLowerCase()
@@ -116,7 +119,7 @@ export function NewProject({
         </thead>
         <tbody>
           {formats.map((f, i) => (
-            <tr key={i}>
+            <tr key={f.uid}>
               <td>
                 <select value={f.preset} onChange={(e) => set(i, { preset: e.target.value })}>
                   {[...meta.formats, "custom"].map((p) => (
@@ -153,7 +156,7 @@ export function NewProject({
               </td>
               <td>
                 {formats.length > 1 ? (
-                  <button className="btn ghost" onClick={() => setFormats((x) => x.filter((_, k) => k !== i))}>
+                  <button type="button" className="btn ghost" onClick={() => setFormats((x) => x.filter((_, k) => k !== i))}>
                     ×
                   </button>
                 ) : null}
@@ -163,18 +166,23 @@ export function NewProject({
         </tbody>
       </table>
       <button
+        type="button"
         className="btn ghost"
         onClick={() =>
-          setFormats((f) => [...f, { preset: "16x9", width: 1920, height: 1080, platform: "youtube", fps: 30, durationSec: f[0]?.durationSec ?? 30 }])
+          setFormats((f) => [
+            ...f,
+            { uid: rowId.current++, preset: "16x9", width: 1920, height: 1080, platform: "youtube", fps: 30, durationSec: f[0]?.durationSec ?? 30 },
+          ])
         }
       >
         + format
       </button>
       <div className="actions">
-        <button className="btn ghost" onClick={onCancel}>
+        <button type="button" className="btn ghost" onClick={onCancel}>
           Renunță
         </button>
         <button
+          type="button"
           className="btn primary"
           disabled={!id || !product || !textLang}
           onClick={async () => {
