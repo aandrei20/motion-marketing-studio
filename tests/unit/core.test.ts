@@ -1,9 +1,13 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { hashString, mulberry32, noise1, rand } from "../../src/core/random";
 import { formatTimecode, parseTimeToSec } from "../../src/core/time";
 import { makeFormat, resolveSafeZone, rectInside } from "../../src/core/formats";
 import { contrastRatio, readableOn } from "../../src/motion/core/color";
 import { layoutText, type Measure } from "../../src/motion/core/text-layout";
+import { USED_MARKER, dirSize, pruneOldDirs } from "../../src/core/prune";
 
 describe("determinism", () => {
   it("aceeași cheie dă aceeași valoare", () => {
@@ -81,5 +85,32 @@ describe("așezarea textului", () => {
   it("majusculele românești se aplică corect", () => {
     const r = layoutText("ședință", { ...font, uppercase: true }, { w: 900, h: 300 }, mono, { maxSize: 100, minSize: 10 });
     expect(r.lines[0]).toBe("ȘEDINȚĂ");
+  });
+});
+
+describe("curățarea cache-ului", () => {
+  it("păstrează intrarea curentă, ultimele folosite și tot ce s-a folosit recent", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mms-prune-"));
+    const now = Date.now();
+    const H = 3600_000;
+    const make = (name: string, usedAgoMs: number) => {
+      fs.mkdirSync(path.join(dir, name));
+      fs.writeFileSync(path.join(dir, name, "bundle.js"), "x".repeat(1000));
+      const m = path.join(dir, name, USED_MARKER);
+      fs.writeFileSync(m, "");
+      const t = new Date(now - usedAgoMs);
+      fs.utimesSync(m, t, t);
+    };
+    make("curent", 100 * H); // codul curent: rămâne oricât de vechi ar fi
+    make("a", 1 * H); // cel mai recent dintre cele vechi: rămâne (maxOld = 1)
+    make("b", 1.5 * H); // peste limită, dar folosit acum 1,5 ore: rămâne (perioada de grație)
+    make("c", 40 * H);
+    make("d", 50 * H);
+    make("e", 60 * H);
+    const removed = pruneOldDirs(dir, { keep: ["curent"], maxOld: 1, graceMs: 2 * H, now });
+    expect(removed.sort()).toEqual(["c", "d", "e"]);
+    expect(fs.readdirSync(dir).sort()).toEqual(["a", "b", "curent"]);
+    expect(dirSize(dir)).toBe(3000);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

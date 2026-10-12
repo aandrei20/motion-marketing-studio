@@ -6,6 +6,7 @@ import { makeCancelSignal, openBrowser, renderMedia, renderStill, selectComposit
 import { optionalEnv } from "../../core/env";
 import { MmsError, throwIfCancelled } from "../../core/errors";
 import { PATHS, publicToAbs } from "../../core/paths";
+import { USED_MARKER, pruneOldDirs } from "../../core/prune";
 import type { Timeline, TimelineLayer } from "../../core/schema";
 
 const ENTRY = path.join(PATHS.root, "src", "renderer", "remotion", "index.ts");
@@ -39,21 +40,36 @@ export function renderCodeHash(): string {
 }
 
 let bundlePromise: Promise<string> | null = null;
+const BUNDLES = path.join(PATHS.cache, "bundles");
 
 /** Bundle-ul Remotion, construit o singură dată pentru o versiune a codului. */
 export function getBundle(onProgress?: (p: number) => void): Promise<string> {
   if (bundlePromise) return bundlePromise;
   bundlePromise = (async () => {
     const hash = renderCodeHash();
-    const outDir = path.join(PATHS.cache, "bundles", hash);
-    if (fs.existsSync(path.join(outDir, "index.html"))) return outDir;
+    const outDir = path.join(BUNDLES, hash);
+    if (fs.existsSync(path.join(outDir, "index.html"))) {
+      markUsed(outDir);
+      return outDir;
+    }
     const emptyPublic = path.join(PATHS.cache, "empty-public");
     fs.mkdirSync(emptyPublic, { recursive: true });
     fs.rmSync(outDir, { recursive: true, force: true });
     const serve = await bundle({ entryPoint: ENTRY, outDir, publicDir: emptyPublic, onProgress: (p) => onProgress?.(p), enableCaching: true });
+    markUsed(outDir);
+    pruneBundles(hash);
     return serve;
   })();
   return bundlePromise;
+}
+
+function markUsed(dir: string): void {
+  fs.writeFileSync(path.join(dir, USED_MARKER), new Date().toISOString());
+}
+
+/** Șterge bundle-urile vechi (vezi `pruneOldDirs`); codul curent își păstrează bundle-ul. */
+export function pruneBundles(keep = renderCodeHash()): string[] {
+  return pruneOldDirs(BUNDLES, { keep: [keep] });
 }
 
 /** Toate căile publice referite de timeline (straturi, copii, fonturi, audio). */

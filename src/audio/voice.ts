@@ -14,6 +14,7 @@ import path from "node:path";
 import { optionalEnv, requireEnv } from "../core/env";
 import { MmsError } from "../core/errors";
 import { PATHS } from "../core/paths";
+import { recordUsage, reservePaidCall } from "../core/usage";
 import type { VoiceWord } from "../core/schema";
 import { decodeAudio, trimSilence } from "./decode";
 import { Biquad } from "./dsp";
@@ -155,15 +156,52 @@ function words(text: string, engine: Array<{ text: string; start: number }>, hea
   return src.map((w, i) => ({ text: w, startSec: starts[i], endSec: i + 1 < starts.length ? Math.max(starts[i] + 0.05, starts[i + 1] - 0.02) : duration }));
 }
 
-/** Sintetizează o replică (cu cache). */
-export async function synthesize(req: VoiceRequest, cacheDir: string): Promise<VoiceResult & { file: string }> {
-  const key = crypto.createHash("sha256").update(JSON.stringify([req.provider, req.voice, req.rate ?? 1, req.text])).digest("hex").slice(0, 20);
+/** Modelul vocilor din cloud (intră în cheia de cache: alt model = altă voce); null pentru vocile locale. */
+export function ttsModel(provider: string | null | undefined): string | null {
+  if (provider === "elevenlabs") return optionalEnv("ELEVENLABS_MODEL") ?? "eleven_multilingual_v2";
+  if (provider === "openai") return optionalEnv("OPENAI_TTS_MODEL") ?? "gpt-4o-mini-tts";
+  return null;
+}
+
+const PAID_PROVIDERS = new Set(["elevenlabs", "openai"]);
+/** Un apel la o voce din cloud nu așteaptă la nesfârșit. */
+const TTS_TIMEOUT_MS = 90_000;
+
+/** Sintetizează o replică (cu cache). Apelurile și refolosirile intră în jurnalul de utilizare al proiectului. */
+export async function synthesize(req: VoiceRequest, cacheDir: string, meta: { projectId?: string; reason?: string } = {}): Promise<VoiceResult & { file: string }> {
+  const model = ttsModel(req.provider);
+  // modelul intră în cheie doar când există, ca vocile locale deja sintetizate să rămână valabile
+  const key = crypto.createHash("sha256").update(JSON.stringify([req.provider, req.voice, req.rate ?? 1, req.text, ...(model ? [model] : [])])).digest("hex").slice(0, 20);
   const file = path.join(cacheDir, `${key}.wav`);
   const metaFile = path.join(cacheDir, `${key}.json`);
+  const paid = PAID_PROVIDERS.has(req.provider);
+  const usage = { projectId: meta.projectId, provider: req.provider, model, op: "tts" as const, reason: meta.reason, units: { chars: req.text.length }, paid };
   if (fs.existsSync(file) && fs.existsSync(metaFile)) {
-    const meta = JSON.parse(fs.readFileSync(metaFile, "utf8")) as { words: VoiceWord[]; wordTiming: "engine" | "estimated" };
-    return { audio: readWav(file), words: meta.words, wordTiming: meta.wordTiming, provider: req.provider, voice: req.voice, file };
+    const m = JSON.parse(fs.readFileSync(metaFile, "utf8")) as { words: VoiceWord[]; wordTiming: "engine" | "estimated" };
+    recordUsage({ ...usage, durationMs: 0, cached: true, ok: true });
+    return { audio: readWav(file), words: m.words, wordTiming: m.wordTiming, provider: req.provider, voice: req.voice, file };
   }
+  if (paid) reservePaidCall(req.provider);
+  const t0 = Date.now();
+  try {
+    const r = await synthesizeFresh(req, file, metaFile, cacheDir, key);
+    recordUsage({ ...usage, durationMs: Date.now() - t0, cached: false, ok: true });
+    return r;
+  } catch (e) {
+    const err =
+      e instanceof MmsError
+        ? e
+        : (e as Error).name === "TimeoutError"
+          ? new MmsError("TTS_TIMEOUT", `Vocea ${req.provider} nu a răspuns în ${TTS_TIMEOUT_MS / 1000} s.`, "Încearcă din nou; dacă se repetă, verifică starea serviciului sau alege o voce locală.")
+          : paid
+            ? new MmsError("TTS_FAILED", `Apelul la vocea ${req.provider} a eșuat: ${(e as Error).message}`, "Verifică conexiunea la internet și cheia din .env.")
+            : e;
+    recordUsage({ ...usage, durationMs: Date.now() - t0, cached: false, ok: false, error: err instanceof MmsError ? err.code : "ERROR" });
+    throw err;
+  }
+}
+
+async function synthesizeFresh(req: VoiceRequest, file: string, metaFile: string, cacheDir: string, key: string): Promise<VoiceResult & { file: string }> {
   fs.mkdirSync(cacheDir, { recursive: true });
   const work = path.join(PATHS.cache, "tts-work", key);
   fs.mkdirSync(work, { recursive: true });
@@ -196,7 +234,8 @@ export async function synthesize(req: VoiceRequest, cacheDir: string): Promise<V
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(req.voice)}/with-timestamps`, {
         method: "POST",
         headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ text: req.text, model_id: optionalEnv("ELEVENLABS_MODEL") ?? "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: req.rate ?? 1 } }),
+        body: JSON.stringify({ text: req.text, model_id: ttsModel("elevenlabs"), voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: req.rate ?? 1 } }),
+        signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
       });
       if (!res.ok) throw new MmsError("TTS_FAILED", `ElevenLabs a răspuns ${res.status}: ${(await res.text()).slice(0, 400)}`);
       const j = (await res.json()) as { audio_base64: string; alignment?: { characters: string[]; character_start_times_seconds: number[] } };
@@ -224,7 +263,8 @@ export async function synthesize(req: VoiceRequest, cacheDir: string): Promise<V
       const res = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: optionalEnv("OPENAI_TTS_MODEL") ?? "gpt-4o-mini-tts", voice: req.voice, input: req.text, response_format: "wav", speed: req.rate ?? 1 }),
+        body: JSON.stringify({ model: ttsModel("openai"), voice: req.voice, input: req.text, response_format: "wav", speed: req.rate ?? 1 }),
+        signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
       });
       if (!res.ok) throw new MmsError("TTS_FAILED", `OpenAI a răspuns ${res.status}: ${(await res.text()).slice(0, 400)}`);
       const wav = path.join(work, "out.wav");
