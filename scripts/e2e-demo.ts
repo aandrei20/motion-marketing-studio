@@ -9,6 +9,11 @@
  *          npm run e2e -- --auto  (script și storyboard generate automat, fără cele curate)
  *          npm run e2e -- --no-render (fără randare: bucla de calitate la adâncimea fast)
  *          npm run e2e -- --autofix   (plus corecturile automate, cu rollback)
+ *          npm run e2e -- --export    (plus exportul final, verificat cu ffprobe; vezi mai jos)
+ *
+ * Exportul final cere „render final” (regula 6). Pe produsul demo FICTIV, cu `--export`, aprobarea o
+ * înregistrează testul, la fel ca aprobarea brief-ului de mai sus: e singurul fel în care drumul complet până la
+ * MP4-ul final se poate verifica automat. O reclamă reală cere fraza de la om; testul nu atinge alte proiecte.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -21,8 +26,9 @@ import { Brief, Script, Storyboard } from "../src/core/schema";
 import { validateScript } from "../src/creative/script";
 import { runQuality } from "../src/quality/run";
 import { autoFixLoop } from "../src/quality/autofix";
-import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepScript, stepStoryboard, stepVoice } from "../src/pipeline/steps";
-import { createProject, loadAssets, loadBrief, loadProject, loadResearch, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
+import { probe } from "../src/assets/analyze";
+import { approve, demoUrl, shutdown, stepAudio, stepBrand, stepCapture, stepCompile, stepFinalRender, stepScript, stepStoryboard, stepVoice } from "../src/pipeline/steps";
+import { createProject, loadAssets, loadBrief, loadProject, loadResearch, loadTimeline, projectDir, projectExists, saveBrief, saveScript, saveStoryboard, writableVersion } from "../src/projects/store";
 import { setClaimStatus } from "../src/research/extract";
 
 const ex = path.join(PATHS.examples, "demo-product");
@@ -33,10 +39,12 @@ export interface E2EOptions {
   auto?: boolean;
   render?: boolean;
   autofix?: boolean;
+  /** exportul final al produsului demo fictiv (aprobarea de test „render final”), verificat cu ffprobe */
+  exportFinal?: boolean;
   log?: (m: string) => void;
 }
 
-export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionId: string; finalVersion: string }> {
+export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionId: string; finalVersion: string; exports: string[] }> {
   const ID = o.id ?? "e2e-kolibri";
   const args = new Set([o.fresh ? "--fresh" : "", o.auto ? "--auto" : "", o.render === false ? "--no-render" : "", o.autofix ? "--autofix" : ""]);
   const log = o.log ?? ((m: string) => console.log(m));
@@ -138,13 +146,40 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
     }
     log(`   final QA: ${fin.run.score.overall}/100 · ${fin.run.score.verdict} · video randat ${fin.run.renders.fullRendered}, refolosit ${fin.run.renders.fullReused}`);
   }
+  const exports: string[] = [];
+  if (o.exportFinal) {
+    if (!ID.startsWith("e2e-")) throw new Error("Exportul de test se face doar pe proiectul de test e2e-… al produsului fictiv.");
+    log("11. Export final (produs FICTIV: aprobarea „render final” e a testului) + verificarea fișierului");
+    approve(ID, "render-final", "render final", finalVersion);
+    for (const f of loadProject(ID).formats) {
+      const t1 = Date.now();
+      const out = await stepFinalRender(ID, finalVersion, f.id, (m) => log(`   ${m}`));
+      const pr = await probe(out);
+      const chk = JSON.parse(fs.readFileSync(out.replace(/\.mp4$/, ".check.json"), "utf8")) as { check: { blackFrames: number[]; maxFlashesPerSec: number; problems: string[] }; mix: { ok: boolean; integratedLufs: number; truePeakDbtp: number } };
+      const expectSec = loadTimeline(ID, finalVersion, f.id).durationInFrames / f.fps;
+      log(`   [${f.id}] ${path.relative(PATHS.root, out)} · ${pr.width}×${pr.height} @ ${pr.fps?.toFixed(2)} fps · ${pr.durationSec?.toFixed(2)} s · ${pr.codec} + ${pr.hasAudio ? "audio" : "FĂRĂ audio"} · ${(fs.statSync(out).size / 1024 ** 2).toFixed(1)} MB · ${((Date.now() - t1) / 1000).toFixed(0)} s`);
+      const bad = [
+        pr.width !== f.width || pr.height !== f.height ? `rezoluția ${pr.width}×${pr.height} ≠ ${f.width}×${f.height}` : "",
+        !pr.fps || Math.abs(pr.fps - f.fps) > 0.01 ? `FPS ${pr.fps} ≠ ${f.fps}` : "",
+        !pr.durationSec || Math.abs(pr.durationSec - expectSec) > 2 / f.fps + 0.05 ? `durata ${pr.durationSec} ≠ ${expectSec.toFixed(2)} s` : "",
+        pr.codec !== "h264" ? `codec ${pr.codec}` : "",
+        !pr.hasAudio ? "fără pistă audio" : "",
+        chk.check.blackFrames.length ? `${chk.check.blackFrames.length} cadre negre` : "",
+        chk.check.maxFlashesPerSec > 2 ? `${chk.check.maxFlashesPerSec} flash-uri/s` : "",
+        !chk.mix.ok ? "mixul nu trece" : "",
+      ].filter(Boolean);
+      if (bad.length) throw new Error(`Exportul ${f.id} nu e valid: ${bad.join("; ")}`);
+      exports.push(out);
+    }
+  }
   log(`\nGata în ${((Date.now() - t0) / 1000).toFixed(0)} s. Proiect: ${path.relative(PATHS.root, projectDir(ID))}`);
-  return { id: ID, versionId: v, finalVersion };
+  return { id: ID, versionId: v, finalVersion, exports };
 }
 
 if (process.argv[1] && /e2e-demo\.ts$/.test(process.argv[1])) {
   const a = new Set(process.argv.slice(2));
-  runE2E({ fresh: a.has("--fresh"), auto: a.has("--auto"), render: !a.has("--no-render"), autofix: a.has("--autofix") })
+  if (a.has("--export") && a.has("--no-render")) throw new Error("--export cere randarea (fără --no-render).");
+  runE2E({ fresh: a.has("--fresh"), auto: a.has("--auto"), render: !a.has("--no-render"), autofix: a.has("--autofix"), exportFinal: a.has("--export") })
     .then(() => shutdown())
     .catch(async (e) => {
       console.error(e);

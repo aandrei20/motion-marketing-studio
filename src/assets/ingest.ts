@@ -196,6 +196,7 @@ export async function ingestFile(projectId: string, src: string, opts: IngestOpt
           capturedAt: cap.capturedAt,
           fullPage: cap.fullPage,
           regions: opts.captureRecording ? [] : cap.regions,
+          ...(cap.overflowX !== undefined ? { overflowX: cap.overflowX } : {}),
         }
       : undefined,
     pii: { regions: piiRegions, blurApproved: false, keepApproved: false },

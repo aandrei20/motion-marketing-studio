@@ -6,17 +6,19 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { PHONE_MAX_CSS_WIDTH, samePageKey } from "../assets/counterpart";
 import { ingestCapture } from "../assets/ingest";
 import { detectBeatGrid, musicStructure } from "../audio/beat";
 import { decodeAudio } from "../audio/decode";
 import { mix } from "../audio/mixer";
 import { composeMusic } from "../audio/music";
 import { getSfx } from "../audio/sfx";
-import { synthesize, voiceFromFile, type VoiceProvider } from "../audio/voice";
+import { synthesize, ttsModel, voiceFromFile, type VoiceProvider } from "../audio/voice";
 import { readWav, writeWav } from "../audio/wav";
 import { inferBrand } from "../brand/infer";
 import { capture, type CaptureRequestInput, type CaptureResult, type PageData } from "../capture/capture";
 import { MmsError } from "../core/errors";
+import { recordUsage } from "../core/usage";
 import { readJson, writeJson } from "../core/json";
 import { PATHS, projectPublicPath, publicToAbs } from "../core/paths";
 import { fileFingerprint } from "../core/hash";
@@ -24,6 +26,7 @@ import { audioKey, timelineRenderKey } from "./impact";
 import { snapshotProjectInputs } from "../projects/snapshots";
 import { applyDna, loadReferenceDnas } from "../references/dna";
 import { formatTimecode } from "../core/time";
+import { orientationOf } from "../core/formats";
 import type { BeatGrid, MixReport, Timeline } from "../core/schema";
 import { MixReport as MixReportSchema } from "../core/schema";
 import { DIRECTIONS } from "../creative/directions";
@@ -71,12 +74,54 @@ const noop: Log = () => undefined;
 
 // ─── captură + research + brand ─────────────────────────────────────────────
 
-export async function stepCapture(projectId: string, reqs: CaptureRequestInput[], log: Log = noop, opts: { headed?: boolean; thirdParty?: boolean } = {}): Promise<CaptureResult[]> {
+/**
+ * Pentru un proiect cu format vertical (9:16, 4:5), fiecare captură statică de desktop primește și varianta de
+ * telefon a aceleiași pagini (`<id>-mobile`), dacă nu există deja: compilatorul o alege pe vertical, unde
+ * captura desktop ar fi ilizibilă. Înregistrările nu se dublează (pașii lor țin de layout-ul desktop).
+ */
+export function withPhoneTwins(projectId: string, reqs: CaptureRequestInput[]): CaptureRequestInput[] {
+  const project = loadProject(projectId);
+  if (!project.formats.some((f) => orientationOf(f.width, f.height) === "portrait")) return reqs;
+  const isPhone = (vp: string | undefined) => vp === "mobile";
+  const have = new Set([
+    ...reqs.filter((r) => isPhone(r.viewport)).map((r) => `${samePageKey(r.url)}|${!!r.fullPage}`),
+    ...loadAssets(projectId)
+      .assets.filter((a) => a.role === "screenshot" && a.capture && a.capture.viewport.width < PHONE_MAX_CSS_WIDTH)
+      .map((a) => `${samePageKey(a.capture!.url)}|${a.capture!.fullPage}`),
+  ]);
+  const out: CaptureRequestInput[] = [];
+  for (const r of reqs) {
+    out.push(r);
+    const key = `${samePageKey(r.url)}|${!!r.fullPage}`;
+    if (r.record || isPhone(r.viewport) || have.has(key)) continue;
+    have.add(key);
+    out.push({ ...r, id: `${r.id}-mobile`, viewport: "mobile", research: false, twinOf: r.id } as CaptureRequestInput & { twinOf: string });
+  }
+  return out;
+}
+
+export async function stepCapture(projectId: string, reqs: CaptureRequestInput[], log: Log = noop, opts: { headed?: boolean; thirdParty?: boolean; mobile?: boolean } = {}): Promise<CaptureResult[]> {
   const out: CaptureResult[] = [];
   const dir = path.join(projectDir(projectId), "captures");
-  for (const r of reqs) {
-    log(`Captură ${r.id}: ${r.url} (${r.viewport ?? "desktop"}${r.fullPage ? ", pagină întreagă" : ""}${r.record ? ", înregistrare" : ""})`);
-    const res = await capture(r, dir, opts);
+  const all = opts.mobile === false ? reqs : withPhoneTwins(projectId, reqs);
+  for (const r of all) {
+    const twinOf = (r as { twinOf?: string }).twinOf;
+    log(`Captură ${r.id}: ${r.url} (${r.viewport ?? "desktop"}${r.fullPage ? ", pagină întreagă" : ""}${r.record ? ", înregistrare" : ""}${twinOf ? `, varianta de telefon a lui ${twinOf} pentru formatele verticale` : ""})`);
+    let res: CaptureResult;
+    try {
+      res = await capture(r, dir, opts);
+    } catch (e) {
+      // varianta de telefon e un plus: dacă pagina nu merge pe mobil, verticalul folosește captura desktop
+      if (!twinOf || (e instanceof MmsError && ["CAPTURE_URL", "CAPTURE_REDIRECT", "CANCELLED"].includes(e.code))) throw e;
+      log(`  ! varianta de telefon ${r.id} nu s-a putut face (${(e as Error).message.split("\n")[0]}); pe vertical rămâne captura desktop ${twinOf}.`);
+      continue;
+    }
+    if (twinOf && res.overflowX) {
+      // pagina nu e adaptată pentru telefon: interfața ar apărea tăiată, deci varianta nu devine material
+      for (const f of [res.screenshot, res.logo?.file, path.join(dir, `${r.id}.json`)]) if (f) fs.rmSync(f, { force: true });
+      log(`  → pagina nu e adaptată pentru telefon (iese din ecran pe orizontală); pe vertical rămâne captura desktop ${twinOf}.`);
+      continue;
+    }
     await ingestCapture(projectId, res, { thirdParty: opts.thirdParty });
     let claims = 0;
     if (res.research && !r.record) {
@@ -87,7 +132,7 @@ export async function stepCapture(projectId: string, reqs: CaptureRequestInput[]
     log(`  → ${res.regions.length} zone, ${claims} afirmații extrase, ${res.pii.length} zone cu date personale${opts.thirdParty ? " · material al unui terț: drepturi neconfirmate" : ""}`);
     out.push(res);
   }
-  updateState(projectId, { step: "capture", note: `${reqs.length} capturi`, log: `Capturi reale: ${reqs.map((r) => r.id).join(", ")}.` });
+  updateState(projectId, { step: "capture", note: `${out.length} capturi`, log: `Capturi reale: ${out.map((r) => r.id).join(", ")}.` });
   updateState(projectId, { step: "assets" });
   return out;
 }
@@ -170,7 +215,9 @@ export function stepStoryboard(projectId: string, opts: { force?: boolean; templ
 /** Amprenta vocii: setările din brief + textul rostit al fiecărei replici. Altă amprentă = vocea trebuie refăcută. */
 export function voiceKey(brief: ReturnType<typeof loadBrief>, script: ReturnType<typeof loadScript>): string {
   const lines = script.lines.map((l) => [l.id, l.voiceover, l.pronunciation]);
-  return crypto.createHash("sha1").update(JSON.stringify([brief.audio.voice, lines])).digest("hex");
+  // modelul vocii din cloud (din .env) schimbă vocea; intră în cheie doar când există
+  const model = brief.audio.voice.mode === "tts" ? ttsModel(brief.audio.voice.provider) : null;
+  return crypto.createHash("sha1").update(JSON.stringify([brief.audio.voice, lines, ...(model ? [model] : [])])).digest("hex");
 }
 
 export async function stepVoice(projectId: string, versionId: string, log: Log = noop): Promise<Record<string, VoiceClipRef>> {
@@ -201,7 +248,7 @@ export async function stepVoice(projectId: string, versionId: string, log: Log =
       let text = l.voiceover;
       for (const p of l.pronunciation) text = text.split(p.text).join(p.say);
       log(`Voce „${l.id}”: ${text.slice(0, 60)}`);
-      const r = await synthesize({ provider: vm.provider as VoiceProvider, voice: vm.voiceId, text, rate: vm.rate }, cacheDir);
+      const r = await synthesize({ provider: vm.provider as VoiceProvider, voice: vm.voiceId, text, rate: vm.rate }, cacheDir, { projectId, reason: `replica ${l.id} (${versionId})` });
       // marcajele de cuvinte folosesc textul afișat (nu varianta de pronunție)
       const shown = l.voiceover.split(/\s+/).filter(Boolean);
       const words = r.words.length === shown.length ? r.words.map((w, i) => ({ ...w, text: shown[i] })) : r.words;
@@ -443,6 +490,7 @@ export async function stepPreview(projectId: string, versionId: string, formatId
   if (fs.existsSync(file)) fs.renameSync(file, path.join(renders, `${label}-inainte-${Date.now()}.mp4`));
   if (cached && !opts.force) {
     log(`Preview ${fmt}: același timeline și același sunet erau deja randate; refolosesc video-ul (fără randare).`);
+    recordUsage({ projectId, provider: "remotion", op: "render-preview", reason: `${versionId} ${fmt}`, units: { frames: t.durationInFrames }, durationMs: 0, cached: true, paid: false, ok: true });
     linkOrCopy(`${cacheBase}.mp4`, file);
     const sheetOut = path.join(renders, `contact-${fmt}.png`);
     linkOrCopy(`${cacheBase}.contact.png`, sheetOut);
@@ -452,7 +500,9 @@ export async function stepPreview(projectId: string, versionId: string, formatId
     return { file, contactSheet: sheetOut, check, renderMs: 0, reused: true };
   }
   log(`Randez preview ${fmt}: ${(t.durationInFrames / t.fps).toFixed(1)} s…`);
+  const frameCount = opts.frameRange ? opts.frameRange[1] - opts.frameRange[0] + 1 : t.durationInFrames;
   const r = await renderTimelineVideo(t, { out: file, muted: !t.audio.src, frameRange: opts.frameRange, signal: opts.signal, onProgress: (p) => opts.onProgress?.(p.progress) });
+  recordUsage({ projectId, provider: "remotion", op: "render-preview", reason: `${versionId} ${fmt}`, units: { frames: frameCount }, durationMs: r.durationMs, cached: false, paid: false, ok: true });
   log(`  → ${path.relative(PATHS.root, file)} în ${(r.durationMs / 1000).toFixed(0)} s`);
   // foaie de contact: 2 cadre pe secundă + cadrele critice (început, tranziții, CTA, ultimul cadru)
   const frames = new Set<number>();
@@ -513,7 +563,8 @@ export async function stepFinalRender(projectId: string, versionId: string, form
   if (vm.mode === "tts" && (vm.provider === "windows" || vm.provider === "say"))
     notes.push(`Vocea e generată cu TTS-ul sistemului (${vm.provider}). Drepturile de folosire comercială nu sunt clare; pentru publicare comercială folosește vocea ta sau un furnizor cu termeni comerciali (docs/LICENTE.md).`);
   for (const n of notes) log(`ATENȚIE: ${n}`);
-  await renderTimelineVideo(t, { out, crf: 16 });
+  const fr = await renderTimelineVideo(t, { out, crf: 16 });
+  recordUsage({ projectId, provider: "remotion", op: "render-final", reason: `${versionId} ${fmt}`, units: { frames: t.durationInFrames }, durationMs: fr.durationMs, cached: false, paid: false, ok: true });
   const check = await analyzeVideo(out, t.fps, intendedHolds(t));
   writeJson(path.join(exportsDir, `${projectId}-${versionId}-${fmt}-final.check.json`), { check, mix: rep, validation: val.stats, notes });
   if (fs.existsSync(versionFile(projectId, versionId, "audio/captions.srt"))) fs.copyFileSync(versionFile(projectId, versionId, "audio/captions.srt"), path.join(exportsDir, `${projectId}-${versionId}-${fmt}.srt`));

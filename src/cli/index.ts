@@ -12,7 +12,7 @@ import { formatError, MmsError } from "../core/errors";
 import { makeFormat, FORMAT_PRESETS, type FormatPresetId } from "../core/formats";
 import { readJsonLoose } from "../core/json";
 import { PATHS } from "../core/paths";
-import { Brief, type AssetRole, type FormatSpec, type ProductCategory, type RightsStatus } from "../core/schema";
+import { Brief, RightsStatus, type AssetRole, type FormatSpec, type ProductCategory } from "../core/schema";
 import { intakeMarkdown } from "../creative/intake";
 import { inferIntake, intakeSummaryMarkdown, projectFromIntake } from "../creative/smart-intake";
 import { listTemplates } from "../creative/templates";
@@ -93,11 +93,14 @@ PROIECT
 MATERIALE ȘI RESEARCH
   capture <id> --url <u> [--id nume] [--viewport desktop|laptop|tablet|mobile] [--full]
           [--wait 2000] [--click "#selector"] [--type "#selector=text"] [--hide "#cookie,.banner"]
-          [--steps pasi.json] [--record] [--profile nume] [--no-research] [--third-party]
+          [--steps pasi.json] [--record] [--profile nume] [--no-research] [--third-party] [--no-mobile]
+                                         cu format vertical, fiecare captură desktop primește și varianta
+                                         de telefon (<id>-mobile), folosită automat pe 9:16 și 4:5
   capture <id> --demo                    capturează produsul demo inclus (pentru test)
   login --url <u> --profile <nume>       deschide un browser; te autentifici tu, sesiunea rămâne local
   add-asset <id> <fișier> [--role logo|screenshot|music|…] [--tag nume] [--third-party] [--rights confirmed|not-confirmed|denied] [--origin user_provided|stock|generated]
   rights <id> <assetId> confirmed|not-confirmed|denied
+  rights <id> --source <site> confirmed|…  toate capturile unui site (desktop, telefon, logo-ul din pagină)
   pii <id> <assetId> blur|keep           datele personale din captură: estompează sau lasă vizibile
   focus <id> <assetId> <x> <y>           punct focal (0..1)
   blur-ok <id> <assetId>                 acord pentru estomparea datelor personale
@@ -146,6 +149,10 @@ BIBLIOTECĂ
   recipes | templates | sfx
   studio                                 pornește Studio-ul (interfața web locală)
   remotion-studio [<id>] [--version v1] [--format 9x16]
+
+ÎNTREȚINERE
+  cache [--prune]                        mărimea cache-ului; --prune șterge bundle-urile vechi de randare
+  usage [<id>]                           jurnalul operațiilor: voci (plătite / locale / din cache), randări
 `;
 
 async function main(): Promise<void> {
@@ -247,7 +254,7 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
           css: hideFlag ? hideFlag.split(",").map((sel) => `${sel.trim()}{display:none!important}`).join("\n") : "",
         });
       }
-      await stepCapture(pid, reqs, log, { headed: !!a.flags.headed, thirdParty: !!a.flags["third-party"] });
+      await stepCapture(pid, reqs, log, { headed: !!a.flags.headed, thirdParty: !!a.flags["third-party"], mobile: !a.flags["no-mobile"] });
       return;
     }
     case "login":
@@ -278,8 +285,21 @@ Proiect creat cu brief-ul dedus (neaprobat): ${path.relative(PATHS.root, project
       return;
     }
     case "rights": {
-      const s = need(a._[3], "starea (confirmed|not-confirmed|denied)");
-      setRights(need(id, "proiectul"), need(a._[2], "assetId"), s === "confirmed" ? "confirmed-by-user" : (s as RightsStatus));
+      const pid = need(id, "proiectul");
+      const source = str(a.flags.source);
+      const raw = need(source ? a._[2] : a._[3], "starea (confirmed|not-confirmed|denied)");
+      const status = raw === "confirmed" ? "confirmed-by-user" : RightsStatus.parse(raw);
+      if (source) {
+        // toate capturile unui site (desktop, telefon, pagină întreagă, logo-ul din pagină): o singură întrebare
+        const { captureSource } = await import("../assets/source");
+        const m = loadAssets(pid);
+        const hits = m.assets.filter((x) => x.rights.thirdParty && captureSource(m, x) === source);
+        if (!hits.length) throw new MmsError("RIGHTS_SOURCE", `Nu există capturi ale unui terț de pe ${source} în proiect.`, "Vezi sursele în raportul de calitate sau în Studio → Materiale.");
+        for (const x of hits) setRights(pid, x.id, status);
+        log(`Drepturi actualizate pentru ${hits.length} materiale de pe ${source}: ${hits.map((x) => x.id).join(", ")}.`);
+        return;
+      }
+      setRights(pid, need(a._[2], "assetId"), status);
       log("Drepturi actualizate.");
       return;
     }
@@ -536,6 +556,31 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
     case "sfx":
       for (const s of SFX) log(`${s.id.padEnd(14)} ${s.category.padEnd(11)} ${s.title}`);
       return;
+    case "usage": {
+      const { loadUsage, summarizeUsage } = await import("../core/usage");
+      const rows = summarizeUsage(loadUsage(id));
+      if (!rows.length) {
+        log(id ? `Proiectul ${id} nu are încă operații înregistrate.` : "Nu există operații înregistrate în afara proiectelor.");
+        return;
+      }
+      for (const r of rows)
+        log(`${r.provider.padEnd(11)} ${(r.model ?? "").padEnd(24)} ${r.op.padEnd(15)} ${String(r.calls).padStart(4)} operații · ${String(r.cached).padStart(4)} din cache · ${r.failed} eșuate${r.chars ? ` · ${r.chars} caractere sintetizate` : ""}${r.frames ? ` · ${r.frames} cadre randate` : ""} · ${(r.durationMs / 1000).toFixed(1)} s`);
+      log("Costul în bani nu e calculat: furnizorii nu îl întorc în aceste apeluri (vezi contul furnizorului).");
+      return;
+    }
+    case "cache": {
+      const { cacheReport } = await import("../core/prune");
+      if (a.flags.prune) {
+        const { pruneBundles } = await import("../renderer/node/render");
+        const removed = pruneBundles();
+        log(removed.length ? `Șterse ${removed.length} bundle-uri vechi.` : "Niciun bundle de șters (se păstrează cel curent, ultimele 2 și cele folosite în ultimele 2 ore).");
+      }
+      const rows = cacheReport(PATHS.cache);
+      const mb = (b: number) => `${(b / 1024 ** 2).toFixed(0).padStart(6)} MB`;
+      for (const r of rows) log(`${mb(r.bytes)}  ${r.name}`);
+      log(`${mb(rows.reduce((s, r) => s + r.bytes, 0))}  total (${PATHS.cache})`);
+      return;
+    }
     case "studio": {
       const { startStudio } = await import("../studio/server");
       await startStudio({ port: Number(str(a.flags.port) ?? process.env.MMS_STUDIO_PORT ?? 4321), open: !a.flags["no-open"] });

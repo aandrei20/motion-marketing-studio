@@ -115,6 +115,24 @@ describe("validatorul de timeline", () => {
   });
 });
 
+describe("poarta de drepturi pe sursă", () => {
+  const ctx = () => ({ research: { schemaVersion: 1 as const, productSummary: "", sources: [], claims: [], openQuestions: [] }, format: formats.makeFormat("9x16", { platform: "tiktok", durationSec: 10 }) });
+  const cap = (id: string, url: string, width: number, tags: string[]) => ({ id, file: `assets/${id}.png`, originalName: `${id}.png`, sha256: id, bytes: 1, mime: "image/png", type: "image" as const, origin: "real_capture" as const, role: "screenshot" as const, roleSource: "inferred" as const, roleConfidence: 1, showsProductUI: true, rights: { thirdParty: true, status: "not-confirmed" as const, note: "" }, media: {}, analysis: { palette: [], nearDuplicates: [] }, capture: { url, viewport: { width, height: 900 }, deviceScaleFactor: 2, capturedAt: "2026-10-12", fullPage: false, regions: [] }, pii: { regions: [], blurApproved: false, keepApproved: false }, tags, notes: "", addedAt: "2026" });
+  const logo = { ...cap("logo-1", "", 0, ["logo", "landing"]), role: "logo" as const, type: "svg" as const, file: "assets/logo-1.svg", capture: undefined };
+  const screen = (file: string, id: string) => layer({ id, capability: "media.screen", depth: 1, assets: [`projects/t1/${file}`], params: { src: `projects/t1/${file}`, imageWidth: 400, imageHeight: 300 } });
+  it("capturile aceluiași site (desktop, telefon, logo-ul din pagină) sunt o singură întrebare", () => {
+    const assets = [cap("landing", "https://exemplu.ro/", 1440, ["landing"]), cap("landing-mobile", "https://exemplu.ro/", 390, ["landing-mobile"]), logo, cap("blog", "https://alt-site.ro/blog", 1440, ["blog"])];
+    const t = { ...timeline([{ id: "a", from: 0, durationInFrames: 90, transitionIn: null, camera: cam, layers: assets.map((a, i) => screen(a.file, `l${i}`)), meta: meta("cta") }]), concept: true };
+    const rights = validate.validateTimeline(t, { ...ctx(), assets: { schemaVersion: 1, assets } }).findings.filter((f) => f.dimension === "rights");
+    expect(rights.map((f) => f.problem).sort()).toEqual([
+      "Capturile de pe alt-site.ro aparțin unui terț și nu au drepturi confirmate. Preview-ul e marcat „concept”, iar exportul final e blocat.",
+      "Capturile de pe exemplu.ro aparțin unui terț și nu au drepturi confirmate. Preview-ul e marcat „concept”, iar exportul final e blocat.",
+    ]);
+    expect(rights.find((f) => f.problem.includes("exemplu.ro"))!.recommendation).toContain("mms rights <proiect> --source exemplu.ro confirmed");
+    expect(rights.every((f) => f.severity === "high")).toBe(true);
+  });
+});
+
 describe("camera", () => {
   it("adâncimea 0 nu se mișcă; adâncimea 1 urmează camera", () => {
     const s = rig.sampleCamera({ ...cam, keys: [{ ...cam.keys[0] }, { ...cam.keys[0], at: 30, x: 700, zoom: 2 }] }, 30, 30, "x");

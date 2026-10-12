@@ -472,6 +472,7 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
   const [viewport, setViewport] = useState("desktop");
   const [full, setFull] = useState(false);
   const [research, setResearch] = useState(true);
+  const [capThird, setCapThird] = useState(false);
   const [third, setThird] = useState(false);
   const [busy, setBusy] = useState(false);
   const assets = ctx.bundle.assets.assets;
@@ -490,10 +491,12 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
             </select>
             <label className="check"><input type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} /> pagină întreagă</label>
             <label className="check"><input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} /> textul intră în research</label>
+            <label className="check"><input type="checkbox" checked={capThird} onChange={(e) => setCapThird(e.target.checked)} /> site-ul altcuiva (întreb de drepturi)</label>
           </div>
+          {viewport !== "mobile" && ctx.bundle.project.formats.some((f) => f.height > f.width * 1.15) ? <p className="muted small">Proiectul are un format vertical: se face automat și varianta de telefon a paginii, folosită pe vertical.</p> : null}
           <div className="actions">
             <button className="btn ghost" onClick={() => ctx.runJob("capture", { demo: true })}>Capturează produsul demo</button>
-            <button className="btn primary" disabled={!url} onClick={() => ctx.runJob("capture", { url, viewport, fullPage: full, research, captureId: `cap-${Date.now() % 100000}` })}>Capturează</button>
+            <button className="btn primary" disabled={!url} onClick={() => ctx.runJob("capture", { url, viewport, fullPage: full, research, thirdParty: capThird, captureId: `cap-${Date.now() % 100000}` })}>Capturează</button>
           </div>
           <p className="muted small">Pentru pagini cu autentificare: <code>npm run mms -- login --url … --profile nume</code>, apoi capturează cu <code>--profile nume</code>.</p>
         </Section>

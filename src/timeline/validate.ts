@@ -2,6 +2,7 @@
  * Validarea timeline-ului înainte de randare. Fiecare problemă are cadru, scenă, gravitate și
  * recomandare, ca să poată fi reparată local. Regulile dure din CLAUDE.md sunt „critical” (blochează exportul).
  */
+import { captureSource } from "../assets/source";
 import { rectInside, rectsOverlap, resolveSafeZone } from "../core/formats";
 import { isClaimUsable, type AssetManifest, type Finding, type FormatSpec, type Rect, type Research, type Timeline, type TimelineLayer } from "../core/schema";
 import { getCapability } from "../motion/registry";
@@ -146,8 +147,19 @@ export function validateTimeline(t: Timeline, ctx: { assets: AssetManifest; rese
   }
   if (!t.scenes.some((s) => s.meta.narrativeRole === "cta")) add({ frame: null, sceneId: null, dimension: "cta", severity: "high", problem: "Nu există scenă de CTA.", recommendation: "Adaugă cardul final cu apelul la acțiune." });
   // drepturile: o problemă pe material (nu pe fiecare strat), cu scenele în care apare
-  for (const u of unlicensed.values())
-    add({ frame: u.frame, sceneId: u.sceneId, dimension: "rights", severity: t.concept ? "high" : "critical", problem: `„${u.name}” aparține unui terț și nu are drepturi confirmate (în ${u.scenes.size} ${u.scenes.size === 1 ? "scenă" : "scene"}: ${[...u.scenes].join(", ")}). Preview-ul e marcat „concept”, iar exportul final e blocat.`, recommendation: "Întreabă utilizatorul o singură dată: „Ai dreptul să-l folosești?”. Da: mms rights <proiect> <assetId> confirmed. Nu: înlocuiește materialul." });
+  // capturile aceluiași site sunt o singură întrebare (regula 3), cu același text pe toate formatele
+  const bySource = new Map<string, string[]>();
+  for (const [id, u] of unlicensed) {
+    const a = ctx.assets.assets.find((x) => x.id === id);
+    const src = a ? captureSource(ctx.assets, a) : null;
+    if (!src) {
+      add({ frame: u.frame, sceneId: u.sceneId, dimension: "rights", severity: t.concept ? "high" : "critical", problem: `„${u.name}” aparține unui terț și nu are drepturi confirmate (în ${u.scenes.size} ${u.scenes.size === 1 ? "scenă" : "scene"}: ${[...u.scenes].join(", ")}). Preview-ul e marcat „concept”, iar exportul final e blocat.`, recommendation: "Întreabă utilizatorul o singură dată: „Ai dreptul să-l folosești?”. Da: mms rights <proiect> <assetId> confirmed. Nu: înlocuiește materialul." });
+      continue;
+    }
+    (bySource.get(src) ?? bySource.set(src, []).get(src)!).push(u.name);
+  }
+  for (const [src, names] of bySource)
+    add({ frame: null, sceneId: null, dimension: "rights", severity: t.concept ? "high" : "critical", problem: `Capturile de pe ${src} aparțin unui terț și nu au drepturi confirmate. Preview-ul e marcat „concept”, iar exportul final e blocat.`, recommendation: `Întreabă utilizatorul o singură dată: „Ai dreptul să folosești capturile de pe ${src}?”. Da: mms rights <proiect> --source ${src} confirmed (toate capturile site-ului). Nu: înlocuiește materialele (${names.join(", ")}).` });
   if (t.concept && !unlicensed.size) add({ frame: null, sceneId: null, dimension: "rights", severity: "high", problem: "Timeline-ul folosește materiale fără drepturi confirmate (preview „concept”).", recommendation: "Confirmă drepturile sau înlocuiește materialele înainte de exportul final." });
   const ok = !findings.some((f) => f.severity === "critical");
   return { ok, findings, stats: { flashes: flashes.length, maxFlashesPerSec: maxPerSec, textLayers, minFontAt360: minAt360 === null ? null : Math.round(minAt360 * 10) / 10 } };

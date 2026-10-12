@@ -39,6 +39,30 @@ describe("lanțul de producție pe produsul demo", () => {
     const assets = store.loadAssets(r.id).assets;
     expect(assets.some((a) => a.origin === "real_capture" && (a.capture?.regions.length ?? 0) > 5)).toBe(true);
     expect(assets.some((a) => a.role === "screen-recording")).toBe(true);
+    // proiectul are 9:16: fiecare captură statică desktop are și varianta de telefon, folosită doar pe vertical
+    const phoneTags = assets.filter((a) => a.role === "screenshot" && (a.capture?.viewport.width ?? 9999) < 600).map((a) => a.tags[0]);
+    expect(phoneTags).toEqual(expect.arrayContaining(["landing-mobile", "landing-full-mobile", "app-mobile"]));
+    // pe scenă: captura afișată și nota compilatorului
+    const report = JSON.parse(fs.readFileSync(path.join(tmp, r.id, "versions", r.versionId, "compile-report.json"), "utf8"));
+    const sceneScreens = (fid: string) => {
+      const t = store.loadTimeline(r.id, r.versionId, fid);
+      return t.scenes.map((sc) => {
+        const out: string[] = [];
+        const visit = (l: (typeof t.scenes)[number]["layers"][number]) => {
+          if (l.capability === "media.screen") out.push(...l.assets);
+          l.children.forEach(visit);
+        };
+        sc.layers.forEach(visit);
+        const shots = out.map((src) => assets.find((a) => src.endsWith(a.file))!).filter((a) => a.role === "screenshot");
+        const notes: string[] = report[fid].scenes.find((x: { id: string }) => x.id === sc.id).notes;
+        return { id: sc.id, shots, notes };
+      });
+    };
+    const vertical = sceneScreens("9x16").filter((x) => x.shots.length);
+    expect(vertical.some((x) => x.shots.every((a) => a.capture!.viewport.width < 600))).toBe(true);
+    // o scenă rămasă pe desktop are motivul în raport (aici: zonele tablei kanban nu sunt pe ecranul de telefon)
+    for (const x of vertical.filter((v) => v.shots.some((a) => a.capture!.viewport.width >= 600))) expect(x.notes.join(" "), x.id).toMatch(/pe vertical rămâne captura desktop/);
+    expect(sceneScreens("16x9").every((x) => x.shots.every((a) => a.capture!.viewport.width >= 600))).toBe(true);
     // logo-ul din antetul paginii reale e găsit și e același fișier cu cel dat de utilizator (deduplicare pe conținut)
     const logos = assets.filter((a) => a.role === "logo");
     expect(logos).toHaveLength(1);

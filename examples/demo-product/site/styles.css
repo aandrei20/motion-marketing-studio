@@ -131,3 +131,38 @@ button { font: inherit; cursor: pointer; }
 .modal h3 { margin-bottom: 16px; }
 .modal input { width: 100%; height: 46px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 14px; font: inherit; }
 .modal .row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+/* ─── telefon (sub 600 px): același produs, așezat pentru ecran îngust; desktopul nu se schimbă ─── */
+@media (max-width: 600px) {
+  .nav { padding: 14px 18px; }
+  .nav-links, .nav-cta .btn-ghost { display: none; }
+  .nav-cta .btn { padding: 10px 14px; font-size: 14px; }
+  .hero { grid-template-columns: 1fr; gap: 32px; padding: 36px 18px 28px; }
+  .hero h1 { font-size: 40px; }
+  .hero p.lead { font-size: 17px; }
+  .hero .actions { flex-wrap: wrap; }
+  .mini-board { gap: 8px; }
+  .mini-col { min-height: 170px; padding: 8px; }
+  .mini-card { font-size: 12px; padding: 8px; }
+  .section { padding: 44px 18px; }
+  .section h2 { font-size: 30px; }
+  .section .sub { font-size: 16px; margin-bottom: 24px; }
+  .features, .pricing { grid-template-columns: 1fr; gap: 14px; }
+  .change { grid-template-columns: 1fr; gap: 6px; }
+  .footer { padding: 28px 18px; flex-direction: column; gap: 8px; }
+
+  .app { grid-template-columns: 1fr; }
+  .side { display: none; }
+  .main { padding: 14px 16px; }
+  .topbar { flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .search { flex: 1 1 100%; order: 2; height: 46px; }
+  .search kbd { display: none; }
+  .topbar > div[style] { display: none; }
+  .topbar .btn { margin-right: auto; padding: 10px 14px; font-size: 14px; }
+  .page-head h1 { font-size: 26px; }
+  .grid { grid-template-columns: 1fr; gap: 14px; }
+  .grid > div:last-child { order: -1; }
+  .board { grid-template-columns: 1fr; gap: 12px; }
+  .column { min-height: 0; }
+  .modal { width: calc(100vw - 32px); }
+}

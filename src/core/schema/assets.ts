@@ -102,6 +102,8 @@ export const Asset = z.object({
       capturedAt: IsoDate,
       fullPage: z.boolean(),
       regions: z.array(Region).default([]),
+      /** pagina iese pe orizontală din ecran (pe telefon: neadaptată, apare tăiată); lipsește la capturile vechi */
+      overflowX: z.boolean().optional(),
     })
     .optional(),
   /** date personale vizibile (email, nume de cont); se estompează doar cu acordul utilizatorului */

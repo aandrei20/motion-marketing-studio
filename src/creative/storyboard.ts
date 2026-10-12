@@ -4,6 +4,7 @@
  * Rezultatul e executabil (compilatorul îl transformă în timeline), nu proză.
  */
 import { assetRegions, isClaimUsable, type Asset, type Brief, type Claim, type Research, type Script, type ScriptLine, type Storyboard, type StoryboardScene } from "../core/schema";
+import { PHONE_MAX_CSS_WIDTH, samePageKey } from "../assets/counterpart";
 import { bestRegion, norm } from "../recipes/kit";
 import { getRecipe } from "../recipes/recipes";
 import type { AdTemplate, TemplateScene } from "./templates";
@@ -44,8 +45,13 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
   const claims = new Map(inp.research.claims.map((c) => [c.id, c]));
   const rationale: string[] = [`Șablon: ${inp.template.title} – ${inp.template.description}`];
   const pool = inp.script.lines.map((l) => ({ l, kind: lineKind(l, claims), used: false }));
-  const screenshots = inp.assets.filter((a) => a.role === "screenshot" && a.showsProductUI && !a.capture?.fullPage);
-  const tall = inp.assets.filter((a) => a.role === "screenshot" && a.capture?.fullPage);
+  // varianta de telefon a unei pagini capturate și pe desktop nu intră în storyboard: storyboard-ul e comun
+  // tuturor formatelor, iar compilatorul o alege singur pe vertical (assets/counterpart.ts)
+  const isPhone = (a: Asset) => !!a.capture && a.capture.viewport.width < PHONE_MAX_CSS_WIDTH;
+  const desktopPages = new Set(inp.assets.filter((a) => a.role === "screenshot" && a.capture && !isPhone(a)).map((a) => `${samePageKey(a.capture!.url)}|${a.capture!.fullPage}`));
+  const twin = (a: Asset) => isPhone(a) && desktopPages.has(`${samePageKey(a.capture!.url)}|${a.capture!.fullPage}`);
+  const screenshots = inp.assets.filter((a) => a.role === "screenshot" && a.showsProductUI && !a.capture?.fullPage && !twin(a));
+  const tall = inp.assets.filter((a) => a.role === "screenshot" && a.capture?.fullPage && !twin(a));
   const recordings = inp.assets.filter((a) => a.role === "screen-recording");
   const logo = inp.assets.find((a) => a.role === "logo");
   const scenes: StoryboardScene[] = [];

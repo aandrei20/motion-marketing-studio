@@ -2,6 +2,7 @@
  * Compilatorul: storyboard + script + materiale + brand + voce → timeline (singura sursă pentru randare).
  * Pur și determinist: aceleași intrări dau același timeline.
  */
+import { chooseCounterpart, counterpartRegion } from "../assets/counterpart";
 import { MmsError } from "../core/errors";
 import { orientationOf, resolveSafeZone } from "../core/formats";
 import { projectPublicPath } from "../core/paths";
@@ -295,19 +296,54 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const sc: StoryboardScene = plan.sc;
     const duration = durFrames[i];
     const from = starts[i];
+    const focusOrig = sc.focus ? resolveAsset(project.id, assets, sc.focus.assetId) : null;
+    // zona cerută poate fi și una cu date personale (de ex. ca să arăți că e estompată)
+    const origRegion = sc.focus?.region && focusOrig ? (focusOrig.regions.find((r) => r.id === sc.focus!.region) ?? focusOrig.asset.pii.regions.find((r) => r.id === sc.focus!.region) ?? null) : null;
+    if (sc.focus?.region && focusOrig && !origRegion) warnings.push(`Zona „${sc.focus.region}” din scena ${sc.id} nu există în ${focusOrig.asset.id}; rețeta alege zona cea mai potrivită textului. Zonele disponibile: captures/<id>.json → regions.`);
+    // pe vertical, o captură desktop se înlocuiește cu captura de telefon a aceleiași pagini, dacă există și
+    // dacă arată zona demonstrată în scenă; aceeași alegere pentru slot și pentru focus
+    const sceneNotes = new Set<string>();
+    const chosen = new Map<string, ResolvedAsset>();
+    // id-urile de zone din parametrii rețetei (de ex. drag.from / drag.to) și echivalentul lor pe telefon
+    const paramStrings = new Set<string>();
+    const collect = (v: unknown): void => {
+      if (typeof v === "string") paramStrings.add(v);
+      else if (Array.isArray(v)) v.forEach(collect);
+      else if (v && typeof v === "object") Object.values(v).forEach(collect);
+    };
+    collect(sc.recipe.params);
+    const regionRemap = new Map<string, string>();
+    const pick = (id: string): ResolvedAsset => {
+      const r = resolveAsset(project.id, assets, id);
+      if (orientation !== "portrait") return r;
+      const done = chosen.get(r.asset.id);
+      if (done) return done;
+      const wanted = [...(focusOrig?.asset.id === r.asset.id && origRegion ? [origRegion] : []), ...r.regions.filter((x) => paramStrings.has(x.id) && x.id !== origRegion?.id)];
+      const c = chooseCounterpart(assets, r.asset, wanted);
+      if (c.note) sceneNotes.add(c.note);
+      if (c.asset) for (const w of wanted) {
+        const m = counterpartRegion(w, c.asset);
+        if (m && m.id !== w.id) regionRemap.set(w.id, m.id);
+      }
+      const out = c.asset ? resolveAsset(project.id, assets, c.asset.id) : r;
+      chosen.set(r.asset.id, out);
+      return out;
+    };
     const slotGet = (name: string): ResolvedAsset | null => {
       const v = sc.slots[name];
       const id = Array.isArray(v) ? v[0] : v;
-      return id ? resolveAsset(project.id, assets, id) : null;
+      return id ? pick(id) : null;
     };
     const slotsGet = (name: string): ResolvedAsset[] => {
       const v = sc.slots[name];
-      return (Array.isArray(v) ? v : v ? [v] : []).map((id) => resolveAsset(project.id, assets, id));
+      return (Array.isArray(v) ? v : v ? [v] : []).map(pick);
     };
-    const focusAsset = sc.focus ? resolveAsset(project.id, assets, sc.focus.assetId) : null;
-    // zona cerută poate fi și una cu date personale (de ex. ca să arăți că e estompată)
-    const focusRegion = sc.focus?.region && focusAsset ? (focusAsset.regions.find((r) => r.id === sc.focus!.region) ?? focusAsset.asset.pii.regions.find((r) => r.id === sc.focus!.region) ?? null) : null;
-    if (sc.focus?.region && focusAsset && !focusRegion) warnings.push(`Zona „${sc.focus.region}” din scena ${sc.id} nu există în ${focusAsset.asset.id}; rețeta alege zona cea mai potrivită textului. Zonele disponibile: captures/<id>.json → regions.`);
+    // alegerea se face înainte de parametri: zonele din parametri se remapează pe captura de telefon
+    for (const v of Object.values(sc.slots)) for (const id of [v].flat()) if (id) pick(id);
+    // focusul dă zonele în coordonatele capturii afișate: se schimbă doar împreună cu materialul din slot
+    // (o înregistrare desktop păstrează zonele capturii desktop a aceleiași pagini)
+    const focusAsset = focusOrig ? (chosen.get(focusOrig.asset.id) ?? focusOrig) : null;
+    const focusRegion = focusAsset && focusOrig && focusAsset.asset.id !== focusOrig.asset.id ? counterpartRegion(origRegion, focusAsset.asset) : origRegion;
     const lines = plan.lines;
     const sceneBeats = beatFrames.filter((f) => f >= from && f < from + duration).map((f) => f - from);
     const ctx: RecipeContext = {
@@ -342,7 +378,8 @@ export function compileTimeline(input: CompileInput): CompileResult {
       forbidden,
       uid: (hint) => `${sc.id}-${hint}-${++uidCounter}`,
     };
-    const params = plan.recipe.params.parse(sc.recipe.params);
+    const remap = (v: unknown): unknown => (typeof v === "string" ? (regionRemap.get(v) ?? v) : Array.isArray(v) ? v.map(remap) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, remap(x)])) : v);
+    const params = plan.recipe.params.parse(regionRemap.size ? remap(sc.recipe.params) : sc.recipe.params);
     const out = plan.recipe.build(ctx, params);
     // suprascrieri explicite din storyboard pe straturile rețetei (după capabilitate)
     // `slot` = capabilitatea sau o parte din id-ul stratului; se pot înlocui animația (aceeași cutie) și parametrii,
@@ -445,7 +482,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
       for (const c of out.cues ?? []) cues.push({ id: `rc-${sc.id}-${c.at}-${c.sound}`, kind: "sfx", atFrame: from + c.at, sound: c.sound, gainDb: c.gainDb ?? 0, pan: 0, sceneId: sc.id, reason: c.reason });
       if (tr) for (const s of getTransition(tr.capability).sfx) cues.push({ id: `tr-${sc.id}-${s.sound}`, kind: "sfx", atFrame: Math.max(0, from + (s.at === "end" ? tr.frames : 0) + (s.offsetFrames ?? 0) - (s.sound.startsWith("whoosh") || s.sound === "swipe" ? Math.round(fps * 0.12) : 0)), sound: s.sound, gainDb: s.gainDb ?? 0, pan: 0, sceneId: sc.id, reason: `tranziția ${tr.capability}` });
     }
-    reports.push({ id: sc.id, recipe: sc.recipe.id, durationSec: duration / fps, minSec: plan.d.minSec, reasons: plan.d.reasons, transition: tr?.capability ?? null, notes: out.notes ?? [] });
+    reports.push({ id: sc.id, recipe: sc.recipe.id, durationSec: duration / fps, minSec: plan.d.minSec, reasons: plan.d.reasons, transition: tr?.capability ?? null, notes: [...sceneNotes, ...(out.notes ?? [])] });
   });
 
   // 5. densitatea efectelor sonore (brief): filtrare deterministă și fără aglomerare

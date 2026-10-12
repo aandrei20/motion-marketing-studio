@@ -255,7 +255,7 @@ export async function startStudio(o: { port: number; open: boolean }): Promise<h
                 { id: "app", url: demoUrl("app.html"), viewport: "desktop" as const, research: false },
               ]
             : [{ id: String(params.captureId ?? `cap-${Date.now()}`), url: String(params.url), viewport: (params.viewport as "desktop") ?? "desktop", fullPage: !!params.fullPage, research: params.research !== false }];
-          return stepCapture(id, reqs, log);
+          return stepCapture(id, reqs, log, { thirdParty: params.thirdParty === true ? true : undefined, mobile: params.mobile !== false });
         }
         case "brand":
           return stepBrand(id, { force: true });
