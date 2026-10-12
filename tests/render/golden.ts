@@ -12,6 +12,8 @@ import { thumbnail } from "../../src/assets/analyze";
 import { PATHS } from "../../src/core/paths";
 
 export const GOLDEN_DIR = path.join(PATHS.root, "tests", "golden");
+/** cadrele care nu trec regresia, pentru inspecție */
+export const DIFF_DIR = path.join(PATHS.cache, "golden-diff");
 export const GRID_W = 32;
 /** media diferenței pe canal (0–255) peste care cadrul s-a schimbat vizibil */
 export const MEAN_LIMIT = 6;
@@ -83,7 +85,15 @@ export async function checkGolden(
       continue;
     }
     const c = compareGrid(ref, g);
-    if (c.mean > MEAN_LIMIT || c.maxBlock > BLOCK_LIMIT) regressions.push(`${id}: diferență medie ${c.mean}, maximă pe bloc ${c.maxBlock}`);
+    if (c.mean > MEAN_LIMIT || c.maxBlock > BLOCK_LIMIT) {
+      regressions.push(`${id}: diferență medie ${c.mean}, maximă pe bloc ${c.maxBlock}`);
+      // cadrul nou se păstrează pentru inspecție (în CI devine artefact)
+      const src = frames.find((f) => f.id === id)?.file;
+      if (src) {
+        fs.mkdirSync(path.join(DIFF_DIR, name), { recursive: true });
+        fs.copyFileSync(src, path.join(DIFF_DIR, name, `${id}${path.extname(src)}`));
+      }
+    }
   }
   return { regressions, missing, written: false };
 }

@@ -1,14 +1,15 @@
 /**
- * Filtrul de rețea al capturii pe o pagină publică (SSRF): resursele spre rețeaua locală sunt oprite înainte
- * să plece, iar o redirecționare spre o adresă locală (pe care Playwright nu o trece prin `route`) oprește
- * captura. „public.test” e mapat în Chromium pe 127.0.0.1 (`--host-resolver-rules`), iar în Node numele nu
- * se rezolvă, deci politica îl tratează ca public: testul nu depinde de internet.
+ * Filtrul de rețea al capturii pe o pagină publică (SSRF), fără internet: un server local joacă rolul
+ * site-ului public „public.test”, iar proxy-ul de filtrare primește o rezolvare de test care îl tratează ca
+ * public. Orice altă adresă locală trebuie oprită înainte să ajungă la server: resurse, WebSocket, pașii unei
+ * redirecționări și un nume care „devine” local abia la conectare (DNS rebinding).
  */
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { contextNetworkOptions, guardNetwork, type CheckedUrl } from "../../src/capture/url-policy";
+import { startFilterProxy } from "../../src/capture/filter-proxy";
+import { type CheckedUrl, contextNetworkOptions, guardNetwork, hostKind } from "../../src/capture/url-policy";
 import { MmsError } from "../../src/core/errors";
 
 let server: http.Server;
@@ -20,16 +21,14 @@ beforeAll(async () => {
   server = http.createServer((req, res) => {
     const host = (req.headers.host ?? "").split(":")[0];
     hits.push(`${host}${req.url}`);
-    if (req.url === "/direct") {
+    const page = (body: string) => {
       res.writeHead(200, { "Content-Type": "text/html" });
-      return res.end(
-        `<img src="http://127.0.0.1:${port}/secret-direct.png"><script>try { new WebSocket("ws://127.0.0.1:${port}/ws") } catch {}</script><h1>pagina</h1>`,
-      );
-    }
-    if (req.url === "/hop") {
-      res.writeHead(200, { "Content-Type": "text/html" });
-      return res.end(`<img src="http://public.test:${port}/redirect.png"><h1>pagina</h1>`);
-    }
+      res.end(`${body}<h1>pagina</h1>`);
+    };
+    if (req.url === "/direct")
+      return page(`<img src="http://127.0.0.1:${port}/secret-direct.png"><script>try { new WebSocket("ws://127.0.0.1:${port}/ws") } catch {}</script>`);
+    if (req.url === "/hop") return page(`<img src="http://public.test:${port}/redirect.png">`);
+    if (req.url === "/rebind") return page(`<img src="http://rebind.test:${port}/secret-rebind.png">`);
     if (req.url === "/redirect.png") {
       res.writeHead(302, { Location: `http://127.0.0.1:${port}/secret-hop.png` });
       return res.end();
@@ -49,35 +48,50 @@ afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 async function openPublic(pathname: string) {
   const start: CheckedUrl = { url: new URL(`http://public.test:${port}${pathname}`), kind: "public" };
-  const browser = await chromium.launch({ args: [`--host-resolver-rules=MAP public.test 127.0.0.1`] });
+  // „public.test” e site-ul public al testului; „rebind.test” pare public la verificare, dar proxy-ul îl rezolvă local
+  const proxy = await startFilterProxy({
+    lookup: async (h) => (h === "public.test" || h === "rebind.test" ? [{ address: "127.0.0.1", family: 4 }] : []),
+    classify: (h, ip) => (h === "public.test" ? "public" : hostKind(ip)),
+  });
+  const browser = await chromium.launch({ proxy: { server: proxy.server } });
   const ctx = await browser.newContext(contextNetworkOptions(start));
   const guard = await guardNetwork(ctx, start);
   const page = await ctx.newPage();
   await page.goto(start.url.href, { waitUntil: "networkidle" });
   await page.waitForTimeout(300);
-  return { browser, guard, page };
+  return {
+    guard,
+    page,
+    proxy,
+    close: async () => {
+      await browser.close();
+      await proxy.close();
+    },
+  };
 }
 
 describe("filtrul de rețea pentru o pagină publică", () => {
   it("oprește resursele și WebSocket-urile spre rețeaua locală înainte să plece", async () => {
-    const { browser, guard, page } = await openPublic("/direct");
+    const { guard, page, close } = await openPublic("/direct");
     try {
-      expect(hits).toContain(`public.test/direct`);
+      expect(hits).toContain("public.test/direct");
       expect(hits.some((h) => h.includes("secret-direct"))).toBe(false);
       expect(upgrades).toBe(0);
       expect(guard.blocked.some((u) => u.includes("secret-direct"))).toBe(true);
       expect(guard.blocked.some((u) => u.startsWith("ws://127.0.0.1"))).toBe(true);
-      // nimic nu a trecut de filtru: captura poate continua
       await expect(guard.assertClean(page)).resolves.toBeUndefined();
     } finally {
-      await browser.close();
+      await close();
     }
   }, 60_000);
 
-  it("o redirecționare spre o adresă locală oprește captura înainte de salvare", async () => {
-    const { browser, guard, page } = await openPublic("/hop");
+  it("o redirecționare spre o adresă locală e oprită de proxy înainte să plece, iar captura se oprește", async () => {
+    const { guard, page, proxy, close } = await openPublic("/hop");
     try {
-      expect(guard.violations.some((u) => u.includes("127.0.0.1") && u.includes("secret-hop"))).toBe(true);
+      expect(hits).toContain("public.test/redirect.png");
+      // cererea redirecționată nu ajunge la serviciul local
+      expect(hits.some((h) => h.includes("secret-hop"))).toBe(false);
+      expect(proxy.blocked.some((u) => u.includes("127.0.0.1") && u.includes("secret-hop"))).toBe(true);
       const err = await guard.assertClean(page).then(
         () => null,
         (e: unknown) => e,
@@ -85,7 +99,17 @@ describe("filtrul de rețea pentru o pagină publică", () => {
       expect(err).toBeInstanceOf(MmsError);
       expect((err as MmsError).code).toBe("CAPTURE_REDIRECT");
     } finally {
-      await browser.close();
+      await close();
+    }
+  }, 60_000);
+
+  it("un nume care se rezolvă local abia la conectare (DNS rebinding) nu ajunge la server", async () => {
+    const { proxy, close } = await openPublic("/rebind");
+    try {
+      expect(hits.some((h) => h.includes("secret-rebind"))).toBe(false);
+      expect(proxy.blocked.some((u) => u.includes("rebind.test"))).toBe(true);
+    } finally {
+      await close();
     }
   }, 60_000);
 });

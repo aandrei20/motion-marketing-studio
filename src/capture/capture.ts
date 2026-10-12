@@ -8,6 +8,7 @@ import { ffmpeg } from "../core/binaries";
 import { MmsError } from "../core/errors";
 import { PATHS } from "../core/paths";
 import type { Region } from "../core/schema";
+import { startFilterProxy } from "./filter-proxy";
 import { checkCaptureUrl, checkStepUrl, contextNetworkOptions, guardNetwork, resolvedHostKind, type CheckedUrl } from "./url-policy";
 
 export const VIEWPORTS = {
@@ -560,15 +561,27 @@ async function openContextRaw(req: CaptureRequest, headed: boolean, start: Check
     locale: "ro-RO",
     reducedMotion: "no-preference" as const,
   };
-  if (req.profile) {
-    const dir = path.join(PATHS.browserProfiles, req.profile.replace(/[^a-z0-9-]/gi, "_"));
-    fs.mkdirSync(dir, { recursive: true });
-    const ctx = await chromium.launchPersistentContext(dir, { ...opts, headless: !headed });
-    return { ctx, close: () => ctx.close() };
+  // o pagină publică trece prin proxy-ul de filtrare (rețeaua locală e oprită înainte de conectare, cu IP-ul fixat);
+  // WebRTC nu poate ocoli proxy-ul prin UDP spre adrese locale
+  const proxy = start.kind === "public" ? await startFilterProxy() : null;
+  const net = proxy ? { proxy: { server: proxy.server }, args: ["--force-webrtc-ip-handling-policy=disable_non_proxied_udp"] } : {};
+  const stopProxy = async () => {
+    await proxy?.close();
+  };
+  try {
+    if (req.profile) {
+      const dir = path.join(PATHS.browserProfiles, req.profile.replace(/[^a-z0-9-]/gi, "_"));
+      fs.mkdirSync(dir, { recursive: true });
+      const ctx = await chromium.launchPersistentContext(dir, { ...opts, ...net, headless: !headed });
+      return { ctx, close: () => ctx.close().finally(stopProxy) };
+    }
+    const browser = await chromium.launch({ ...net, headless: !headed });
+    const ctx = await browser.newContext(opts);
+    return { ctx, close: () => browser.close().finally(stopProxy) };
+  } catch (e) {
+    await stopProxy();
+    throw e;
   }
-  const browser = await chromium.launch({ headless: !headed });
-  const ctx = await browser.newContext(opts);
-  return { ctx, close: () => browser.close() };
 }
 
 /** Deschide un browser vizibil cu profil persistent; utilizatorul se autentifică singur, apoi închide fereastra. */

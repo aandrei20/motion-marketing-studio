@@ -8,9 +8,10 @@
  *    spre localhost, IP-uri private sau nume care se rezolvă la IP-uri private sunt blocate, iar o pagină
  *    care ajunge totuși pe o adresă locală oprește captura înainte să se salveze ceva.
  *
- * Limite cunoscute: o redirecționare spre o adresă locală se vede abia după ce cererea a plecat (captura se
- * oprește, dar cererea GET a ajuns la serviciul local); numele se rezolvă separat în Node și în Chromium, deci
- * un DNS care se schimbă între cele două (DNS rebinding) nu e prins.
+ * Două straturi: filtrul din browser de aici (route, WebSocket, service workers, verificarea paginii finale) și
+ * proxy-ul de filtrare (`filter-proxy.ts`), prin care trece tot traficul unei pagini publice. Proxy-ul oprește
+ * și pașii redirecționărilor (pe care `route` nu îi vede) înainte să plece și se conectează la IP-ul pe care
+ * l-a verificat, deci un DNS care se schimbă între verificare și conectare (DNS rebinding) nu ajunge local.
  */
 import dns from "node:dns";
 import net from "node:net";

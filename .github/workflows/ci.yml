@@ -1,0 +1,59 @@
+# Porțile de calitate la fiecare push și pull request, pe Windows (platforma pe care rulează studioul).
+# Nu publică nimic și nu folosește chei: vocile din cloud nu se testează aici (docs/TESTARE.md).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: typecheck, lint, teste
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # lint-ul verifică atribuirea în toate commit-urile noi, deci are nevoie de istoric
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run e2e -- --fresh --no-render
+
+  render:
+    name: randare (catalog, determinism, MP4, regresie vizuală)
+    needs: check
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      # fără GPU pe mașina de CI: randare software, aceeași toleranță de 2/255
+      MMS_GL: swangle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run test:render
+      - name: Cadrele care nu trec regresia vizuală
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regresie-vizuala
+          path: .cache/golden-diff/
+          if-no-files-found: ignore
