@@ -27,7 +27,14 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
 - **Logo-ul din pagină** (SVG inline cu culoarea lui sau imaginea din antet), doar cu semnal clar; **paginile citite la research devin materiale**; captura cu `--third-party` pentru site-ul altcuiva.
 - **Verificarea limbii replicilor** (offline): citatele de pe site în altă limbă decât reclama apar ca problemă mare, de tradus cu acordul utilizatorului.
 - În Studio, banda „Unde e reclama”: etapele cap-coadă (brief → … → export), calculate din datele reale, cu etapa curentă și marcajul „concept”.
-- Documentație: `docs/CALITATE.md`, `docs/TESTARE.md`, deciziile 39–68, auditul etapei.
+- **Captura de telefon pe formatele verticale**: la un proiect cu 9:16 sau 4:5, fiecare captură desktop se face și pe telefon (`--no-mobile` o oprește); compilatorul o folosește pe vertical doar dacă pagina e adaptată pentru telefon și arată toate zonele demonstrate în scenă, altfel raportul spune de ce rămâne desktopul. Pe un site real, interfața de pe 9:16 a trecut de la ~3,7 px la testul de 360 px la lizibilă.
+- **Politica de adrese a capturii (SSRF)**: o pagină publică nu poate atinge rețeaua locală (resurse, WebSocket, service workers, redirecționări, pași `goto`), metadatele norilor nu se deschid niciodată, fără date de autentificare în adresă.
+- **Jurnalul operațiilor** (`projects/<id>/usage.jsonl`, `mms usage`): vocile din cloud și locale, refolosirile din cache, randările, cu durată și unități; **bugetul de apeluri plătite** pe rulare (`MMS_MAX_PAID_CALLS`).
+- `mms cache [--prune]` și curățarea automată a bundle-urilor vechi de randare.
+- `mms rights <proiect> --source <site> confirmed`: drepturile tuturor capturilor unui site, într-o singură decizie.
+- `npm run e2e -- --export`: testul cap-coadă merge până la exportul final al produsului demo fictiv, verificat cu ffprobe și cu analiza video.
+- În Studio, la captură: opțiunea „site-ul altcuiva” (drepturi neconfirmate) și nota despre varianta de telefon.
+- Documentație: deciziile 69–76.
 
 ### Schimbat
 
@@ -38,6 +45,9 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
 - Efectele sonore se coboară sub voce (−4 dB).
 - Studio-ul acceptă doar Host-ul local; cererile care modifică cer Origin local și antetul `X-MMS`; încărcările acceptă doar tipuri cunoscute, maximum 500 MB.
 - Joburile au manifest pe disc, timeout pe tip și oprire până la randarea Remotion.
+- Drepturile capturilor se cer o dată pe site, cu același text pe toate formatele (înainte: o problemă pe fiecare captură și format).
+- Storyboard-ul folosește captura desktop când există și varianta de telefon a aceleiași pagini; alegerea pe format o face compilatorul.
+- Produsul demo fictiv are și așezare pentru telefon (doar sub 600 px; desktopul e neschimbat).
 
 ### Reparat
 
@@ -66,6 +76,10 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
   - Corecturile de cameră pentru odihnă vizuală și pentru lizibilitate se anulau una pe alta.
   - Adresa de pe cardul final păstra „/” la sfârșit.
   - Schița de script lua „funcții” din documentație și din paginile concurenților.
+- Securitate: un id de versiune din URL-ul Studio-ului (`..%2F..%2F`) putea scrie în afara folderului proiectului; id-urile de proiect și de versiune se validează acum acolo unde devin căi. Logo-ul unei pagini de pe internet putea fi citit de pe disc (`file:`) sau din rețeaua locală.
+- Cheia de cache a vocilor din cloud nu includea modelul (un model nou refolosea vocea veche), iar apelurile nu aveau timeout.
+- Bundle-urile de randare se adunau la fiecare schimbare de cod (1,4 GB pe laptopul de test; 254 MB după curățare).
+- README și `docs/LICENTE.md` spuneau „repo privat”, deși repo-ul e public; licența (toate drepturile rezervate) nu s-a schimbat.
 
 ### Contribuitori
 

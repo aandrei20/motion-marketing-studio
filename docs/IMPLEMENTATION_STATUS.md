@@ -1,6 +1,6 @@
 # Starea implementării
 
-Actualizat: 2026-10-11 · ramura `build/production-os` (după 0.1.0, etapa „Video Production OS”)
+Actualizat: 2026-10-12 · ramura `build/production-os` (după 0.1.0, etapa „Video Production OS” și consolidarea: securitate, costuri, formatele verticale)
 
 ## Ce înseamnă marcajele
 
@@ -19,10 +19,10 @@ Inventarul complet de design și producție (200 de elemente, cu stare și prior
 | --- | --- |
 | `npm run typecheck` | trece |
 | `npm run lint` | trece (nume de produs, determinism, secrete, fără co-autori în commit-urile noi) |
-| `npm test` | 125 de teste în 15 fișiere trec (unitare + integrare), ~1 min |
-| `npm run test:render` | 8 teste trec, ~4 min: toate cele 124 de capabilități randate și comparate cu referința vizuală, determinismul cadrelor (toleranță 2/255), MP4 H.264 + AAC, toate cele 16 rețete pe 16:9 și 9:16 față de referință, testul de sensibilitate al pragurilor |
-| `npm run e2e -- --fresh --autofix` | trece, 303 s: 2 formate × 23 s; v1 96,6 → corecturi automate (4 corecturi, 3 scene re-verificate, restul din cache) → v2 97,3; −14,25 LUFS / −1,58 dBTP; 691 de cadre pe format fără cadre negre, flash-uri sau înghețări. Verdict **FIX**: rămâne o problemă mare (subtitrările acoperă 20% din coloana demonstrată în s6, pe 9:16), care cere o decizie de om |
-| `npm run e2e:real -- --url <site public> --fresh --lang en` | trece, 316 s, pe un site public real (adresa dată la rulare, niciun nume în cod): 5 pagini citite, 119 afirmații (21 de confirmat); 2 formate × 20,5 s; v1 89,7 → corecturi automate → v2 **91,4, FIX**, 0 probleme critice; −14,26 LUFS / −1,5 dBTP; fără cadre negre, flash-uri sau înghețări (hold-ul de 3,3 s de pe CTA e raportat separat). Cele 3 probleme mari sunt drepturile capturilor unui terț: reclama iese „concept”, iar exportul final e refuzat, cum cere regula 3. Rămân pentru om și Claude: hook-ul de 4,5 s, ritmul lent pentru TikTok, interfața desktop ilizibilă la 360 px pe 9:16 |
+| `npm test` | 148 de teste în 20 de fișiere trec (unitare + integrare), ~80 s |
+| `npm run test:render` | 8 teste trec, 4 min 33 s (rulat după schimbările din 2026-10-12, fără referințe actualizate): toate cele 124 de capabilități randate și comparate cu referința vizuală, determinismul cadrelor (toleranță 2/255), MP4 H.264 + AAC, toate cele 16 rețete pe 16:9 și 9:16 față de referință, testul de sensibilitate al pragurilor |
+| `npm run e2e -- --fresh --autofix --export` | trece, 382 s (din care ~2 min exportul final): 2 formate × 23 s; capturi desktop + variantele de telefon; v1 96,6 → corecturi automate (4 corecturi, vocea refolosită) → v2 97,6; −14,25 LUFS / −1,58 dBTP; 691 de cadre pe format fără cadre negre, flash-uri sau înghețări. Exportul final al produsului fictiv (aprobarea de test): 1080×1920 și 1920×1080 @ 30 fps, 23,04 s, H.264 + AAC, ~21 MB, ~1 min fiecare, verificate cu ffprobe. Verdict **FIX**: rămâne o problemă mare cunoscută (subtitrările acoperă 20% din tabla kanban în s6, pe 9:16, unde scena rămâne pe captura desktop), care cere o decizie de om |
+| `npm run e2e:real -- --url <site public> --fresh --lang en` | trece, 427 s (cu alte procese pornite în paralel pe laptop, deci nu e un benchmark curat; linia de bază din 2026-10-11: 316 s), pe același site public real (adresa dată la rulare, niciun nume în cod): v2 **95,1, FIX** (linia de bază: 91,4), 0 critice, 1 problemă mare: drepturile capturilor site-ului, acum o singură întrebare (înainte: 3). Pe 9:16 se folosesc capturile de telefon, iar problemele de lizibilitate (~3,7 px) au dispărut; pe 16:9 rămân s3/s4 la ~4,1 px (medie). Rămân pentru om și Claude: hook-ul de 4,5 s, energia plată, contrastul adresei (3,89:1), ritmul lent pentru TikTok. Reclama iese „concept”, iar exportul final e refuzat, cum cere regula 3 |
 
 ## 1. Instalare și mediu
 
@@ -45,7 +45,10 @@ Inventarul complet de design și producție (200 de elemente, cu stare și prior
 - [✓] Captură reală cu Playwright: capturi 2×, pagină întreagă, mobil, zone din DOM, date de pagină, CSS, forma interfeței (colțuri, umbre, spațiere). Înregistrare cadru cu cadru → MP4.
 - [✓] Butoanele includ linkurile stilizate ca butoane (CTA-ul real al majorității site-urilor); titlurile din meniu și subsol nu intră în datele paginii (verificat pe un site real).
 - [✓] Logo-ul din pagină (SVG inline cu culoarea lui sau imaginea din antet), doar cu semnal clar; deduplicat cu logo-ul dat de utilizator (test de integrare).
-- [✓] `--third-party` la captură: site-ul altcuiva intră cu drepturi neconfirmate (poarta de drepturi, regula 3).
+- [✓] `--third-party` la captură (și în Studio): site-ul altcuiva intră cu drepturi neconfirmate (poarta de drepturi, regula 3). Capturile unui site sunt o singură întrebare (`mms rights <proiect> --source <site>`), cu o singură problemă în raport (test unitar + rularea pe site-ul real).
+- [✓] Captura de telefon pentru formatele verticale: la un proiect cu 9:16 sau 4:5, fiecare captură desktop se face și pe telefon; compilatorul o folosește pe vertical doar dacă pagina e adaptată pentru telefon (depășirea orizontală, vizibilă sau ascunsă, e detectată) și arată toate zonele demonstrate în scenă. Teste unitare și de integrare; pe site-ul real, problemele de lizibilitate de pe 9:16 au dispărut (vezi porțile).
+- [✓] Politica de adrese (SSRF): o pagină publică nu atinge rețeaua locală (resurse, WebSocket, service workers, pași `goto`, logo-ul); o redirecționare spre o adresă locală oprește captura fără să salveze ceva; metadatele norilor nu se deschid niciodată (teste unitare + test de integrare fără internet).
+- [!] Limitele politicii de adrese: cererea GET a unei redirecționări spre o adresă locală a plecat deja când e observată (Playwright nu trece pașii redirecționării prin filtru), iar DNS rebinding nu e prins (`docs/DECIZII.md`, punctul 69).
 - [~] Autentificare interactivă (`mms login`, profil persistent): implementată, **netestată automat** (cere un om).
 - [✓] Ingestie: sha256 și duplicate, ffprobe, fontkit, SVG, miniatură, punct focal, paletă, dHash, rolul.
 - [✓] Date personale: email, telefon, card (Luhn), IBAN (mod 97), CNP (cifra de control), nume după salut; din DOM și din OCR. Decizia „estompează / lasă vizibile”; validatorul blochează capturile fără decizie (teste unitare).
@@ -93,7 +96,8 @@ Inventarul complet de design și producție (200 de elemente, cu stare și prior
 - [✓] Culorile de text lizibile din nuanța brandului: textul secundar ≥ 4,5:1, cuvântul rostit din subtitrări ≥ 3:1 pe fundalul lor (cadre verificate pe produsul real).
 - [✓] Profiluri de platformă (durată, hook, subtitrări, densitate) pentru TikTok, Reels, Shorts, YouTube, feed, LinkedIn, X, generic; ajustabile per proiect.
 - [!] Zonele sigure ale platformelor vin din surse secundare (încredere medie). Verifică-le în Ads Manager înainte de o campanie mare.
-- [!] Pe 9:16, capturile desktop ale unui site rămân mici: interfața se vede la ~4 px la testul de 360 px (problemă medie raportată), iar sub captură rămâne mult spațiu gol. Remediul real e o captură pe mobil pentru formatele verticale (vezi „Ce lipsește”).
+- [~] Pe 9:16 se folosește captura de telefon a aceleiași pagini (punctul 3). Rămâne captura desktop, cu motivul în raportul compilării, când pagina nu e adaptată pentru telefon sau când zonele demonstrate nu apar pe ecranul de telefon (de ex. o tablă kanban sub ecran); atunci interfața poate rămâne mică.
+- [!] Pe 16:9, o captură desktop pe toată lățimea rămâne la ~4 px la testul de 360 px (problemă medie raportată pe site-ul real, s3/s4). Remediul ar fi un decupaj în jurul zonei și pe orizontal; nu e făcut (vezi „Ce lipsește”).
 - [!] Pe 9:16, o scenă cu interfață lată poate să nu lase loc subtitrărilor fără să acopere zona demonstrată; atunci problema rămâne raportată pentru o decizie de om (mutarea materialului sau fără subtitrări pe scenă).
 
 ## 9. Audio
@@ -101,7 +105,7 @@ Inventarul complet de design și producție (200 de elemente, cu stare și prior
 - [✓] WAV, filtre, loudness BS.1770-4, true peak 4×, limitator, ducking cu rampă de 500 ms (și pentru efectele sonore, −4 dB sub voce), verificarea tăcerilor.
 - [✓] 35 de efecte sonore sintetizate; muzică originală; beat grid cu încredere; structura muzicii (secțiuni, drop-uri); cue sheet; subtitrări.
 - [✓] Voce Windows offline (inclusiv română); vocea utilizatorului din fișier. Mixul e în cache pe conținut (`audioKey`).
-- [~] ElevenLabs și OpenAI TTS: implementate, **netestate** (fără chei). macOS `say` și `espeak`: netestate.
+- [~] ElevenLabs și OpenAI TTS: implementate, **netestate** (fără chei). macOS `say` și `espeak`: netestate. Modelul vocii din cloud intră în cheia de cache, apelurile au timeout de 90 s și un buget pe rulare (`MMS_MAX_PAID_CALLS`, test unitar); fiecare sinteză și refolosire din cache intră în jurnalul proiectului (`mms usage`).
 - [!] Detecția tempo-ului e verificată pe muzică sintetizată și pe un fișier de 112 BPM. Pe piese reale fără tobe poate greși; sub încrederea 0,35 nu aliniază tăieturi și nu inventează structură. Tempo-ul se poate fixa în brief.
 - [!] Drepturile comerciale ale vocilor TTS de sistem nu sunt clare (docs/LICENTE.md).
 - [!] Sunetul nu poate fi judecat de AI: notele utilizatorului pe timestamp sunt singura verificare reală (regula 15).
@@ -129,14 +133,16 @@ Inventarul complet de design și producție (200 de elemente, cu stare și prior
 - [✓] Preview MP4 (H.264, yuv420p, BT.709, AAC), foaie de contact, cadre, raport (cadre negre, flash-uri, înghețări); preview-ul identic se refolosește din cache.
 - [✓] Randarea se poate opri (semnalul ajunge la Remotion) și poate randa doar un interval de cadre, la scară redusă (pentru verificarea mișcării).
 - [✓] Export final: doar cu „render final”, fără blocaje, cu mix „ok”, fără suprascriere. Pachetul de postare testat prin `mms post-pack`.
-- [~] Exportul final propriu-zis nu a fost rulat pe proiectul demo: regula 6 cere ca utilizatorul să scrie „render final”. Poarta e testată.
+- [✓] Drumul complet până la exportul final, pe produsul demo fictiv (`npm run e2e -- --export`, aprobarea de test): două MP4-uri finale verificate cu ffprobe (rezoluție, FPS, durată, H.264, pistă audio) și cu analiza video. O reclamă reală cere „render final” de la om (regula 6); poarta e testată separat.
+- [✓] Bundle-urile vechi de randare se șterg singure (cel curent + ultimele 2 + cele folosite în ultimele 2 ore); `mms cache [--prune]`. Pe laptopul de test: 1498 MB → 254 MB.
+- [✓] Jurnalul operațiilor (`mms usage <proiect>`): sinteze de voce (din cloud sau locale, refolosite din cache), randări de preview și finale, cu durata și unitățile. Pe testul cap-coadă: 7 sinteze locale (4,7 s), 2 preview-uri și 2 exporturi (1382 de cadre fiecare, ~114 s).
 - [!] Viteza de randare: ~2,5–3,5× durata reclamei pe acest laptop.
 
 ## 13. Studio (interfața locală)
 
 - [✓] Proiecte, brief, materiale, research, brand, **Concept**, script, storyboard, **Preview & timeline cu editorul scenei**, audio, **Calitate**, critică, versiuni, export. Verificat cu Playwright: tab-urile noi se încarcă fără erori, iar o editare (+0,5 s) și undo rulează cap-coadă din interfață.
 - [✓] Joburi cu etapă, progres, oprire, timeout pe tip, manifest pe disc și reluarea celor întrerupte (test de integrare).
-- [✓] Protecții: doar 127.0.0.1, doar Host local, Origin local + antetul `X-MMS` pe cererile care modifică, tipuri de fișier permise și maximum 500 MB la încărcare (test de integrare).
+- [✓] Protecții: doar 127.0.0.1, doar Host local, Origin local + antetul `X-MMS` pe cererile care modifică, tipuri de fișier permise și maximum 500 MB la încărcare (test de integrare). Id-urile de proiect și de versiune din URL nu pot ieși din folderele lor (test unitar).
 - [~] Timeline-ul nu are tragere de clipuri cu mouse-ul: editarea se face din panoul scenei (operațiile reale), din storyboard, comenzi sau Claude.
 - [✓] Remotion Studio pe un proiect sau pe catalog (`npm run remotion`).
 - [!] Remotion Studio ascultă pe toate interfețele de rețea (limită a Remotion 4.0.534): pornește-l doar la nevoie.
@@ -159,7 +165,8 @@ Inventarul complet de design și producție (200 de elemente, cu stare și prior
 | [ ] | Test pe o a doua aplicație reală (ordinea de construcție, pasul 10) | Rulează `/make-ad` pe un produs real ales de tine; rezultatul se compară cu produsul demo |
 | [ ] | Reparația proiectului de test anterior (Spotify v5) | După testul pe a doua aplicație; proiectul nu e în acest repo |
 | [ ] | Importul celor 96 de sunete din proiectul anterior | Ca materiale ale tale, după verificarea licenței (poarta de drepturi) |
-| [ ] | Capturi pe mobil pentru formatele verticale (pe un site real, captura desktop e ilizibilă pe 9:16) | Captura și pe viewport mobil, iar compilatorul alege pe vertical captura mobilă a aceleiași pagini, cu zonele ei |
+| [ ] | Interfața desktop pe 16:9 la testul de 360 px (~4 px pe site-ul real) | Decupaj în jurul zonei demonstrate și pe orizontal (ca `portraitCrop`), cu referințele vizuale ale rețetelor actualizate după verificarea cadrelor |
+| [ ] | Licența proiectului: repo-ul e public, fără fișier de licență (drepturi rezervate) | Decizia autorului (`docs/LICENTE.md`) |
 | [ ] | Spațierea brandului ca unitate în rețete; grila de coloane | `docs/INVENTAR.md`, design vizual |
 | [ ] | Elementele P2/P3 lipsă (blend, anticipație, L-cut, iconițe, ambianță, compresie pe voce…) | `docs/INVENTAR.md`; doar când un proiect le cere |
 | [~] | `install.sh`, vocile cu chei API, OCR pe macOS/Linux | Pe un Mac și cu chei reale |

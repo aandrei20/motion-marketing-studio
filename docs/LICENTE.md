@@ -61,4 +61,4 @@ Recomandare: pentru reclame publicate comercial, folosește vocea ta sau un furn
 
 ## Licența proiectului
 
-Toate drepturile rezervate (repo privat), conform deciziei din `PLAN.md` (Faza 0). Dacă repo-ul devine public, licența se alege atunci.
+Toate drepturile rezervate, conform deciziei din `PLAN.md` (Faza 0). Între timp repo-ul a devenit public pe GitHub, fără fișier de licență: codul se poate citi, dar nu se poate folosi, modifica sau redistribui fără acordul autorului. Decizia din Faza 0 spunea că licența se alege când repo-ul devine public; alegerea ei (de exemplu una open-source sau păstrarea drepturilor rezervate) e a autorului și nu s-a făcut automat.

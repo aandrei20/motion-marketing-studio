@@ -19,8 +19,11 @@ Nimic din acestea nu instalează ceva (regula 11). Dacă lipsește o dependenț�
 
 | Fișier | Ce acoperă |
 | --- | --- |
-| `core.test.ts` | aleatorul cu sămânță, timecode-urile, formatele și zonele sigure, contrastul WCAG, așezarea textului (mărime, rânduri, majuscule românești) |
-| `store-validate.test.ts` | versiunile imuabile, aprobările cu fraza exactă, validatorul timeline-ului (goluri, flash-uri, cifre fără sursă, zone sigure, footage real, date personale), camera, coperta și variantele de hook |
+| `core.test.ts` | aleatorul cu sămânță, timecode-urile, formatele și zonele sigure, contrastul WCAG, așezarea textului (mărime, rânduri, majuscule românești), curățarea cache-ului de bundle-uri |
+| `security.test.ts` | politica de adrese a capturii (rețea locală, metadate, protocoale, date de autentificare în adresă, pașii `goto`), id-urile de proiect și de versiune care nu ies din folderele lor |
+| `counterpart.test.ts` | captura de telefon pentru vertical: aceeași pagină, același tip, zonele demonstrate, drepturi refuzate, pagină neadaptată, date personale fără decizie |
+| `usage.test.ts` | jurnalul operațiilor (apeluri, cache, eșecuri, unități), bugetul de apeluri plătite, modelul vocii în cheia de cache |
+| `store-validate.test.ts` | versiunile imuabile, aprobările cu fraza exactă, validatorul timeline-ului (goluri, flash-uri, cifre fără sursă, zone sigure, footage real, date personale, drepturile cerute o dată pe site), camera, coperta și variantele de hook |
 | `registry.test.ts` | fiecare capabilitate are fișă completă, parametri zod, sunet declarat, exemplu |
 | `creative.test.ts` | direcțiile, întrebările A–H, șabloanele, scriptul (cuvintele utilizatorului păstrate), storyboard-ul |
 | `creative-director.test.ts` | conceptele (scor pe 10 criterii, conceptul utilizatorului are prioritate), intake-ul inteligent |
@@ -36,9 +39,11 @@ Nimic din acestea nu instalează ceva (regula 11). Dacă lipsește o dependenț�
 
 | Fișier | Ce acoperă |
 | --- | --- |
-| `pipeline.test.ts` | fluxul pe produsul demo: timeline-uri valide, mix verificat; aceleași tăieturi în alte formate și FPS-uri; iterația și variantele de hook nu ating versiunea veche; recompilarea pe o versiune înghețată; bucla „fast” (fără randare, 11 categorii, pase 0–9); editarea cu undo/redo, impactul, rollback-ul și instantaneele |
+| `pipeline.test.ts` | fluxul pe produsul demo: timeline-uri valide, mix verificat; pe 9:16 capturile de telefon (sau motivul pentru care rămâne desktopul), pe 16:9 cele desktop; aceleași tăieturi în alte formate și FPS-uri; iterația și variantele de hook nu ating versiunea veche; recompilarea pe o versiune înghețată; bucla „fast” (fără randare, 11 categorii, pase 0–9); editarea cu undo/redo, impactul, rollback-ul și instantaneele |
 | `studio-lint.test.ts` | serverul Studio: interfața, proiect + brief + aprobarea cu fraza exactă, fișiere cu Range; protecțiile (Host local, Origin local, antetul `X-MMS`, tipurile de fișier la încărcare), oprirea, manifestul și reluarea joburilor; regulile lint-ului |
 | `assets-ocr.test.ts` | OCR-ul offline pe o captură dată de utilizator: zone de text folosibile pentru zoom (doar pe Windows) |
+| `capture-page.test.ts` | datele paginii din captură (butoane, titluri, logo) și recunoașterea unei pagini neadaptate pentru telefon (depășire vizibilă sau ascunsă cu `overflow: hidden`) |
+| `capture-network.test.ts` | filtrul de rețea pe o pagină publică (fără internet): resursele și WebSocket-urile spre rețeaua locală sunt oprite înainte să plece; o redirecționare spre o adresă locală oprește captura |
 
 ## Testele de randare (`tests/render/`)
 
@@ -66,7 +71,9 @@ Pe produsul demo fictiv (`examples/demo-product`), proiectul `e2e-kolibri`:
 
 captură reală → research → brand → script și storyboard (curate sau `--auto`) → voce → timeline → mix → bucla de calitate (standard; `fast` cu `--no-render`) → corecturi automate (`--autofix`) → final QA pe preview-ul randat o singură dată.
 
-Opțiuni: `--fresh` (șterge doar proiectul `e2e-kolibri`), `--auto`, `--no-render`, `--autofix`.
+Opțiuni: `--fresh` (șterge doar proiectul `e2e-kolibri`), `--auto`, `--no-render`, `--autofix`, `--export`.
+
+Cu `--export`, testul merge până la MP4-ul final al produsului demo fictiv: aprobarea „render final” o înregistrează testul (ca aprobarea brief-ului), iar fiecare export se verifică cu ffprobe (rezoluția și FPS-ul formatului, durata timeline-ului, H.264, pistă audio) și cu analiza video (fără cadre negre, maximum 2 flash-uri pe secundă). Pe o reclamă reală, fraza o scrie omul (regula 6, `docs/DECIZII.md` punctul 76).
 
 ## Testul pe un produs real (`npm run e2e:real`)
 
@@ -89,7 +96,7 @@ Limba: `--lang` alege limba reclamei (implicit `ro`). Dacă e alta decât a site
 - **Autentificarea interactivă** (`mms login`): cere un om.
 - **Comenzile Claude Code** (`/make-ad` etc.): sunt instrucțiuni pentru Claude, cer o sesiune.
 - **Revizuirea vizuală a lui Claude**: se face în sesiune, pe pachetul `critique-pack`; testele verifică doar pachetul și primirea observațiilor.
-- **Exportul final**: cere „render final” de la utilizator (regula 6). Poarta e testată (refuză fără aprobare); randarea folosește același motor ca preview-ul.
+- **Exportul final al unei reclame reale**: cere „render final” de la utilizator (regula 6). Poarta e testată (refuză fără aprobare), iar drumul complet până la MP4 se verifică pe produsul demo fictiv cu `npm run e2e -- --export`.
 - **Testul pe produsul real** cere internet și depinde de site (se poate schimba oricând): nu intră în `npm run check`. Rezultatul ultimei rulări e în `docs/IMPLEMENTATION_STATUS.md`.
 
 ## Când pică o poartă

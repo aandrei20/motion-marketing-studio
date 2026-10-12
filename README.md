@@ -99,10 +99,11 @@ Un brief complet de exemplu: [`examples/demo-product/brief.json`](examples/demo-
 
 ## 8. Materialele
 
-- **Captură reală** (Studio → Materiale, sau `npm run mms -- capture <proiect> --url <adresă> [--full] [--viewport mobile] [--record --type "#cautare=text"]`).
+- **Captură reală** (Studio → Materiale, sau `npm run mms -- capture <proiect> --url <adresă> [--full] [--viewport mobile] [--record --type "#cautare=text"]`). Dacă proiectul are un format vertical (9:16, 4:5), fiecare captură desktop se face automat și pe telefon; pe vertical se folosește varianta de telefon când pagina e adaptată pentru telefon și arată zona demonstrată (altfel raportul compilării spune de ce rămâne desktopul). `--no-mobile` oprește varianta de telefon.
+- **Ce adrese se capturează**: http, https sau un fișier local (o machetă). Aplicația ta de pe localhost se poate captura; o pagină de pe internet nu poate deschide rețeaua ta locală (captura se oprește și nu salvează nimic), iar serviciile interne de metadate nu se deschid niciodată.
 - **Pagini cu cont**: `npm run mms -- login --url <adresă> --profile <nume>` deschide un browser; te autentifici tu, sesiunea rămâne doar pe calculatorul tău. Apoi capturi cu `--profile <nume>`.
 - **Fișierele tale** (logo, capturi, video, muzică, voce, fonturi, PDF, referințe): Studio → Materiale → Încarcă, sau `npm run mms -- add-asset <proiect> <fișier> [--role logo]`. Duplicatele se recunosc după conținut.
-- **Drepturi**: pentru materialele altcuiva ești întrebat o dată „Ai dreptul să-l folosești?”. Fără confirmare, preview-ul e marcat „concept” și exportul final e blocat.
+- **Drepturi**: pentru materialele altcuiva ești întrebat o dată „Ai dreptul să-l folosești?”; pentru capturile unui site, o dată pe site (`npm run mms -- rights <proiect> --source <site> confirmed`). Fără confirmare, preview-ul e marcat „concept” și exportul final e blocat.
 - **Date personale** găsite în capturi (emailuri, telefoane, carduri, IBAN, CNP, nume din salut; și în imaginile tale, prin OCR offline pe Windows) sunt marcate; se estompează doar cu acordul tău.
 - **Video de referință**: `npm run mms -- reference <proiect> <assetId>` extrage ritmul (tăieturi, durata cadrelor), mișcarea, culoarea și tempo-ul muzicii, ca direcție creativă (nu se copiază nimic).
 
@@ -138,9 +139,12 @@ Exportul se oprește dacă există blocaje de validare, materiale fără dreptur
 npm run check          # typecheck + reguli + teste unitare și de integrare (~2 min)
 npm run test:render    # catalogul întreg, determinism, MP4 real, regresia vizuală (~5 min)
 npm run e2e -- --fresh # producție completă pe produsul demo fictiv, cu preview MP4 (~4–7 min)
+npm run e2e -- --fresh --export   # plus exportul final al produsului fictiv, verificat (rezoluție, FPS, durată, audio)
 npm run e2e:real -- --url https://site-public.example --fresh --lang en   # același flux pe un site real (internet)
 npm run doctor         # instalarea
 ```
+
+Întreținere: `npm run mms -- cache [--prune]` (mărimea cache-ului; bundle-urile vechi de randare se șterg și singure), `npm run mms -- usage <proiect>` (vocile din cloud, sintezele locale și randările: câte, din cache, durata; apelurile plătite ale unei rulări sunt limitate de `MMS_MAX_PAID_CALLS`).
 
 ## 13. Arhitectura (pe scurt)
 
@@ -180,4 +184,4 @@ Primul pas: `npm run doctor`. Problemele frecvente și soluțiile: [`docs/DEPANA
 
 Documentație: [Fluxul de lucru](docs/FLUX.md) · [Arhitectura](docs/ARHITECTURA.md) · [Calitatea](docs/CALITATE.md) · [Testarea](docs/TESTARE.md) · [Biblioteca](docs/BIBLIOTECA.md) · [Inventarul](docs/INVENTAR.md) · [Sistemul](docs/SISTEM.md) · [Decizii](docs/DECIZII.md) · [Licențe](docs/LICENTE.md) · [Stare](docs/IMPLEMENTATION_STATUS.md) · [Audit](docs/AUDIT.md) · [Plan](PLAN.md) · [Reguli](CLAUDE.md)
 
-Licență: toate drepturile rezervate (repo privat). Componentele terțe au licențele lor: [`docs/LICENTE.md`](docs/LICENTE.md).
+Licență: toate drepturile rezervate. Repo-ul e public pe GitHub, dar nu are un fișier de licență: codul se poate citi, nu și folosi, modifica sau redistribui fără acordul autorului. Componentele terțe au licențele lor: [`docs/LICENTE.md`](docs/LICENTE.md).

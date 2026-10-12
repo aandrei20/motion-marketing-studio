@@ -6,12 +6,12 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 164 | 85 | 49 | 26 | 4 |
+| IMPLEMENTED | 165 | 85 | 50 | 26 | 4 |
 | PARTIAL | 24 | 0 | 10 | 9 | 5 |
 | MISSING | 12 | 0 | 0 | 9 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
-| **toate** | **200** | 85 | 59 | 44 | 12 |
+| **toate** | **201** | 85 | 60 | 44 | 12 |
 
 ## Design vizual (33)
 
@@ -267,18 +267,19 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Profiluri configurabile: TikTok, Reels, Shorts, YouTube, LinkedIn, X, Feed | P0 | IMPLEMENTED | `module:src/platform/profiles.ts#platformProfile`, `check:platform.profile` | — |
 | Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#portraitCrop`, `module:src/recipes/kit.ts#zones`, `check:platform.reframing` | — |
 
-## Materiale și media (11)
+## Materiale și media (12)
 
 | Element | Prioritate | Stare | Implementare | Ce lipsește / pasul următor |
 | --- | --- | --- | --- | --- |
 | Capturi reale (2×, pagină întreagă, mobil) | P0 | IMPLEMENTED | `module:src/capture/capture.ts#capture` | — |
 | Înregistrări de ecran la FPS constant | P0 | IMPLEMENTED | `module:src/capture/capture.ts#capture` | — |
+| Pe formatele verticale, captura de telefon a aceleiași pagini (doar pagini adaptate pentru telefon și doar cu zonele demonstrate în scenă) | P1 | IMPLEMENTED | `module:src/pipeline/steps.ts#withPhoneTwins`, `module:src/assets/counterpart.ts#chooseCounterpart`, `check:ui.legibility` | — |
 | Logo-ul din pagină (SVG inline cu culoarea lui sau imaginea din antet), doar cu semnal clar | P1 | IMPLEMENTED | `module:src/capture/capture.ts#capture`, `module:src/assets/ingest.ts#ingestCapture` | — |
 | Paginile citite la research devin materiale, cu drepturile capturilor de pe același site | P1 | IMPLEMENTED | `module:src/research/crawl.ts#crawlSite` | — |
 | Ingestie: hash, duplicate, ffprobe, paletă, dHash, rol | P0 | IMPLEMENTED | `module:src/assets/ingest.ts#ingestFile` | — |
 | Fonturi (fontkit) | P1 | IMPLEMENTED | `module:src/assets/ingest.ts#ingestFile` | — |
 | Video și fotografii | P1 | IMPLEMENTED | `cap:media.video`, `cap:media.image` | — |
-| Poarta de drepturi | P0 | IMPLEMENTED | `module:src/assets/ingest.ts#setRights`, `check:timeline.validate` | — |
+| Poarta de drepturi (capturile unui site: o singură întrebare) | P0 | IMPLEMENTED | `module:src/assets/ingest.ts#setRights`, `module:src/assets/source.ts#captureSource`, `check:timeline.validate` | — |
 | Text din imagini (OCR offline): zone de zoom pe capturile utilizatorului, date personale din imagini | P2 | PARTIAL | `module:src/assets/ocr.ts#ocrImage`, `module:src/core/schema/assets.ts#assetRegions` | Disponibil doar pe Windows (Windows.Media.Ocr); pe macOS/Linux materialul nu primește zone din OCR. **Următorul pas:** Pe macOS: Vision framework printr-un script Swift, cu aceeași ieșire JSON. |
 | Calitatea materialului față de folosire (mărire peste rezoluție) | P1 | IMPLEMENTED | `check:ui.legibility` | — |
 | Materiale generate | P3 | PARTIAL | `module:src/core/schema/assets.ts#AssetOrigin` | Originea „generated” există; grafica lui Claude e cod (capabilități), nu fișiere generate. **Următorul pas:** Doar dacă apare un generator cu licență clară. |
