@@ -98,7 +98,7 @@ Fiecare intrare (`src/motion/types.ts`) are: `id`, `kind` (layer/modifier/camera
 
 ## Rețetele
 
-O rețetă (`src/recipes/recipes.ts`, `defineRecipe`) are: `id`, `roles` (pentru ce roluri narative e potrivită), `slots` (materialele cerute: screenshot, înregistrare, logo, imagine, pagină întreagă), `minSec` (+ `minSecFor` calculat din text), `capabilities` (pe care le poate folosi) și `params` (zod). `build(ctx, params)` întoarce straturile, camera (preset + parametri), punctul de interes și sunetele proprii.
+O rețetă (`src/recipes/`, câte un fișier pe grup: `text`, `reveal`, `ui`, `proof`, `cta`; lista în `recipes.ts`; `defineRecipe`) are: `id`, `roles` (pentru ce roluri narative e potrivită), `slots` (materialele cerute: screenshot, înregistrare, logo, imagine, pagină întreagă), `minSec` (+ `minSecFor` calculat din text), `capabilities` (pe care le poate folosi) și `params` (zod). `build(ctx, params)` întoarce straturile, camera (preset + parametri), punctul de interes și sunetele proprii.
 
 Contextul (`RecipeContext`) dă: dimensiunile, orientarea, zona sigură (cu zonele excluse ale platformei), durata, scena, direcția, textul (titlu, secundar, elemente, accente, voce), materialele rezolvate (cu zonele din captură), logo-ul, paleta, bătăile din scenă, zona de interes, nivelul de efecte, capabilitățile interzise și dacă există subtitrări.
 
@@ -123,7 +123,7 @@ Un șablon (`templates/<id>.json`, schema în `src/creative/templates.ts`) descr
 - Server Node fără framework (`src/studio/server.ts`), doar pe 127.0.0.1: API JSON, fișiere cu Range (pentru video/audio în Player), joburi rulate pe rând (o randare odată), evenimente SSE.
 - Protecții: se acceptă doar Host-ul local (contra DNS rebinding); cererile care modifică cer Origin local și antetul `X-MMS` (contra CSRF); încărcările acceptă doar tipuri de fișier cunoscute, maximum 500 MB; scrierile JSON sunt atomice.
 - Joburile (`src/studio/jobs.ts`) au etapă, progres, timeout pe tip și oprire (semnalul ajunge până la randarea Remotion). Fiecare job are un manifest în `.cache/jobs/`; un job întrerupt de oprirea procesului apare „întrerupt” și se poate relua cu aceiași parametri.
-- Interfața (`src/studio/ui/`) e construită cu esbuild la pornire și folosește `@remotion/player` cu aceeași `TimelineComposition` ca randarea. Fișierele se servesc prin `/files/<cale publică>` (contextul `AssetBaseContext`).
+- Interfața (`src/studio/ui/`: `App.tsx`, un fișier pe panou în `panels/`, piesele comune în `common.tsx`, preview-ul și calitatea separat) e construită cu esbuild la pornire și folosește `@remotion/player` cu aceeași `TimelineComposition` ca randarea. Fișierele se servesc prin `/files/<cale publică>` (contextul `AssetBaseContext`).
 - Timeline-ul din interfață arată datele reale (scene, straturi, voce, efecte, subtitrări, bătăi; clic = salt). Scena de sub cursor se editează în panoul alăturat prin operațiile de editare, cu undo/redo; o versiune înghețată duce editarea în versiunea următoare. Nu există tragere de clipuri cu mouse-ul.
 
 ## Formate și zone de siguranță

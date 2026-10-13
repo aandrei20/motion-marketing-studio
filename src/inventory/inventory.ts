@@ -3,7 +3,7 @@
  * cu stare (IMPLEMENTED / PARTIAL / MISSING / REDUNDANT / PLANNED), prioritate (P0 esențial … P3 nișă) și
  * trimiteri verificabile la implementare:
  *   cap:<id>       capabilitate de mișcare din registry (src/motion/registry.ts)
- *   recipe:<id>    rețetă (src/recipes/recipes.ts)
+ *   recipe:<id>    rețetă (lista din src/recipes/recipes.ts)
  *   sfx:<id>       efect sonor sintetizat (src/audio/sfx.ts)
  *   check:<id>     verificare a buclei de calitate (src/quality/checks.ts)
  *   op:<op>        operație de editare (src/core/schema/edit.ts)
