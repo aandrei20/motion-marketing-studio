@@ -30,9 +30,9 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Adâncime: prim-plan, plan mediu, fundal (parallax) | P0 | IMPLEMENTED | `module:src/motion/camera/rig.ts#layerTransform`, `cap:camera.parallax-drift` | — |
 | Punct focal (din captură, automat sau dat de utilizator) | P0 | IMPLEMENTED | `module:src/assets/analyze.ts#focalPoint`, `cap:camera.focus-track` | — |
 | Ritm vizual (alternanță calm/activ) | P1 | PARTIAL | `check:motion.grammar`, `check:critique.rubric` | Se detectează lipsa de odihnă vizuală și monotonia; nu se planifică alternanța în storyboard. **Următorul pas:** Profil de energie țintă pe scene, folosit de constructorul de storyboard. |
-| Încadrare (rame de dispozitiv, decupaj pe vertical) | P0 | IMPLEMENTED | `cap:frame.browser`, `cap:frame.phone`, `module:src/recipes/kit.ts#portraitCrop` | — |
+| Încadrare (rame de dispozitiv, decupaj pe vertical) | P0 | IMPLEMENTED | `cap:frame.browser`, `cap:frame.phone`, `module:src/recipes/kit.ts#focusCrop` | — |
 | Zone de siguranță și zone excluse pe platformă | P0 | IMPLEMENTED | `module:src/core/formats.ts#resolveSafeZone`, `check:timeline.validate` | — |
-| Decupare (zonă din captură, crop pe format) | P0 | IMPLEMENTED | `cap:media.screen`, `module:src/recipes/kit.ts#portraitCrop` | — |
+| Decupare (zonă din captură, crop pe format) | P0 | IMPLEMENTED | `cap:media.screen`, `module:src/recipes/kit.ts#focusCrop` | — |
 | Măști și decupaje animate | P1 | IMPLEMENTED | `cap:mod.mask-reveal`, `cap:text.mask-reveal`, `cap:tr.mask-iris` | — |
 | Gradiente | P1 | IMPLEMENTED | `cap:bg.gradient`, `cap:bg.mesh` | — |
 | Umbre (straturi și text) | P1 | IMPLEMENTED | `cap:mod.shadow`, `module:src/motion/typography/shared.tsx#TextBase` | — |
@@ -265,7 +265,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Zone sigure și zonele butoanelor platformei | P0 | IMPLEMENTED | `module:src/core/formats.ts#resolveSafeZone`, `check:timeline.validate` | — |
 | Zone pentru subtitrări (fără ocluzie) | P0 | IMPLEMENTED | `module:src/timeline/compile.ts#captionSegments`, `check:ui.caption-occlusion` | — |
 | Profiluri configurabile: TikTok, Reels, Shorts, YouTube, LinkedIn, X, Feed | P0 | IMPLEMENTED | `module:src/platform/profiles.ts#platformProfile`, `check:platform.profile` | — |
-| Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#portraitCrop`, `module:src/recipes/kit.ts#zones`, `check:platform.reframing` | — |
+| Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#focusCrop`, `module:src/recipes/kit.ts#zones`, `check:platform.reframing` | — |
 
 ## Materiale și media (12)
 

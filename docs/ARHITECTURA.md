@@ -102,7 +102,7 @@ O rețetă (`src/recipes/`, câte un fișier pe grup: `text`, `reveal`, `ui`, `p
 
 Contextul (`RecipeContext`) dă: dimensiunile, orientarea, zona sigură (cu zonele excluse ale platformei), durata, scena, direcția, textul (titlu, secundar, elemente, accente, voce), materialele rezolvate (cu zonele din captură), logo-ul, paleta, bătăile din scenă, zona de interes, nivelul de efecte, capabilitățile interzise și dacă există subtitrări.
 
-Unelte din `src/recipes/kit.ts`: `zones()` (unde stă textul și materialul pe fiecare orientare/compoziție), `layer()` (creează un strat; textul fix evită automat butoanele platformei), `screenParams()`, `regionFocus()` (unde ajunge pe ecran o zonă din captură și ce zoom o încadrează), `bestRegion()` (zona care se potrivește unui text), `portraitCrop()` (adaptorul pentru vertical), `directionBase()` (fundalul și texturile direcției).
+Unelte din `src/recipes/kit.ts`: `zones()` (unde stă textul și materialul pe fiecare orientare/compoziție), `layer()` (creează un strat; textul fix evită automat butoanele platformei), `screenParams()`, `regionFocus()` (unde ajunge pe ecran o zonă din captură și ce zoom o încadrează), `bestRegion()` (zona care se potrivește unui text), `focusCrop()` (decupajul în jurul zonei demonstrate: pe vertical cardul înalt, pe orizontal mărirea interfeței până la ~7 px la testul de 360 px), `directionBase()` (fundalul și texturile direcției).
 
 ## Șabloanele
 

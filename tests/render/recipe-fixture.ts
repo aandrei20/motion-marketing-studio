@@ -51,7 +51,12 @@ export function recipeFixture(projectsDir: string, format: FormatSpec = makeForm
           deviceScaleFactor: 2,
           capturedAt: t0,
           fullPage: false,
-          regions: [{ id: "cautare", label: "Caută sarcini", kind: "input", rect: { x: 1100, y: 150, w: 900, h: 90 }, text: "Caută" }],
+          // regiunile reale ale capturii (aceleași coordonate ca la captura produsului demo)
+          regions: [
+            { id: "cautare", label: "Caută sarcini", kind: "input", rect: { x: 560, y: 48, w: 866, h: 96 }, text: "Caută" },
+            { id: "salut", label: "Bună dimineața, Ana", kind: "heading", rect: { x: 560, y: 196, w: 612, h: 80 } },
+            { id: "sarcina-noua", label: "+ Sarcină nouă", kind: "button", rect: { x: 2296, y: 53, w: 300, h: 86 } },
+          ],
         },
       }),
       asset("tall", files.tall, "screenshot", 2880, 4944, {

@@ -147,7 +147,7 @@ export const INVENTORY: InventoryItem[] = [
       "Încadrare (rame de dispozitiv, decupaj pe vertical)",
       "P0",
       "IMPLEMENTED",
-      ["cap:frame.browser", "cap:frame.phone", "module:src/recipes/kit.ts#portraitCrop"],
+      ["cap:frame.browser", "cap:frame.phone", "module:src/recipes/kit.ts#focusCrop"],
     ],
     [
       "safe-areas",
@@ -156,7 +156,7 @@ export const INVENTORY: InventoryItem[] = [
       "IMPLEMENTED",
       ["module:src/core/formats.ts#resolveSafeZone", "check:timeline.validate"],
     ],
-    ["cropping", "Decupare (zonă din captură, crop pe format)", "P0", "IMPLEMENTED", ["cap:media.screen", "module:src/recipes/kit.ts#portraitCrop"]],
+    ["cropping", "Decupare (zonă din captură, crop pe format)", "P0", "IMPLEMENTED", ["cap:media.screen", "module:src/recipes/kit.ts#focusCrop"]],
     ["masking", "Măști și decupaje animate", "P1", "IMPLEMENTED", ["cap:mod.mask-reveal", "cap:text.mask-reveal", "cap:tr.mask-iris"]],
     ["gradients", "Gradiente", "P1", "IMPLEMENTED", ["cap:bg.gradient", "cap:bg.mesh"]],
     ["shadows", "Umbre (straturi și text)", "P1", "IMPLEMENTED", ["cap:mod.shadow", "module:src/motion/typography/shared.tsx#TextBase"]],
@@ -662,7 +662,7 @@ export const INVENTORY: InventoryItem[] = [
       "Reîncadrare pe format (adaptoare de layout, decupaj, camera pe zona media) + verificarea că zona demonstrată rămâne în cadru și în zona sigură",
       "P0",
       "IMPLEMENTED",
-      ["module:src/recipes/kit.ts#portraitCrop", "module:src/recipes/kit.ts#zones", "check:platform.reframing"],
+      ["module:src/recipes/kit.ts#focusCrop", "module:src/recipes/kit.ts#zones", "check:platform.reframing"],
     ],
   ]),
   ...area("asset-media", [

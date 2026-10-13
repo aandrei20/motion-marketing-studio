@@ -291,4 +291,50 @@ describe("așezarea elementelor peste capturi", () => {
     const m = afterPush(material, focus, target, z);
     expect(m.y).toBeGreaterThanOrEqual(title.y + title.h - 24);
   });
+  it("decupajul în jurul zonei demonstrate: doar când camera nu ajunge, cu zona întreagă și fără text tăiat", async () => {
+    const { focusCrop } = await import("../../src/recipes/kit");
+    type Ctx = Parameters<typeof focusCrop>[0];
+    type A = Parameters<typeof focusCrop>[1];
+    const ctx = (orientation: string, W: number, H: number) => ({ orientation, W, H }) as unknown as Ctx;
+    const r = (id: string, kind: string, x: number, y: number, w: number, h: number) => ({ id, label: id, kind, rect: { x, y, w, h } }) as A["regions"][number];
+    const field = r("camp", "input", 1400, 300, 500, 90);
+    const heading = r("titlu", "heading", 560, 200, 610, 80);
+    const a = {
+      w: 2880,
+      h: 1800,
+      focal: { x: 0.5, y: 0.4 },
+      regions: [field, heading],
+      asset: { capture: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 } },
+    } as unknown as A;
+    const zone = { x: 856, y: 109, w: 1016, h: 733 };
+    // camera ajunge singură la ~7 px la testul de 360 px: captura rămâne întreagă
+    expect(focusCrop(ctx("landscape", 1920, 1080), a, zone, field, 2)).toBeUndefined();
+    // camera e limitată (titlul de lângă captură): decupaj care mărește interfața și păstrează zona întreagă
+    const c = focusCrop(ctx("landscape", 1920, 1080), a, zone, field, 1.17)!;
+    expect(c.w).toBeLessThan(a.w * 0.6);
+    expect(c.w / c.h).toBeCloseTo(zone.w / zone.h, 3);
+    expect(c.x).toBeLessThanOrEqual(field.rect.x);
+    expect(c.x + c.w).toBeGreaterThanOrEqual(field.rect.x + field.rect.w);
+    // marginea stângă nu trece prin titlul paginii
+    const cutsHeading = c.x > heading.rect.x && c.x < heading.rect.x + heading.rect.w;
+    expect(cutsHeading).toBe(false);
+    // fără zonă demonstrată, pe orizontal nu se decupează nimic
+    expect(focusCrop(ctx("landscape", 1920, 1080), a, zone, null, 1)).toBeUndefined();
+    // pe vertical, captura lată devine cardul înalt din jurul zonei (ca înainte)
+    const v = focusCrop(ctx("portrait", 1080, 1920), a, { x: 60, y: 560, w: 960, h: 1100 }, field)!;
+    expect(v.x).toBeLessThanOrEqual(field.rect.x);
+    expect(v.x + v.w).toBeGreaterThanOrEqual(field.rect.x + field.rect.w);
+  });
+  it("partea folosită a unei coloane: până sub ultimul card din ea și sub locul unde ajunge cardul mutat", async () => {
+    const { usedPart } = await import("../../src/recipes/kit");
+    type R = Parameters<typeof usedPart>[1];
+    const r = (id: string, x: number, y: number, w: number, h: number) => ({ id, label: id, kind: "custom", rect: { x, y, w, h } }) as R;
+    const col = r("coloana", 1063, 368, 471, 1040);
+    const cards = [r("c1", 1093, 454, 411, 188), r("c2", 1093, 666, 411, 188)];
+    expect(usedPart([col, ...cards], col).rect).toEqual({ ...col.rect, h: 666 + 188 + 24 - 368 });
+    // cardul adus mai jos de ultimul lungește partea folosită
+    expect(usedPart([col, ...cards], col, [{ x: 1093, y: 900, w: 411, h: 156 }]).rect.h).toBe(900 + 156 + 24 - 368);
+    // fără elemente în interior, coloana rămâne întreagă
+    expect(usedPart([col], col)).toBe(col);
+  });
 });

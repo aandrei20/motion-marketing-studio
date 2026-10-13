@@ -348,6 +348,21 @@ export const norm = (s: string) =>
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9 ]+/g, " ");
 
+/**
+ * Partea folosită a unui container (o coloană, o listă, un panou): de la marginea lui de sus până sub ultimul
+ * element capturat din el și sub dreptunghiurile `include` (de ex. locul unde ajunge un card), plus o margine.
+ * O coloană înaltă, goală în partea de jos, nu e toată „zona demonstrată”: camera, decupajul, conturul și
+ * subtitrările se raportează la partea cu conținut. Fără elemente în interior, containerul rămâne întreg.
+ */
+export function usedPart(regions: Region[], box: Region, include: Rect[] = [], pad = 24): Region {
+  const r0 = box.rect;
+  const within = (q: Rect) => q.x >= r0.x - 1 && q.y >= r0.y - 1 && q.x + q.w <= r0.x + r0.w + 1 && q.y + q.h <= r0.y + r0.h + 1;
+  const inner = regions.filter((r) => r.id !== box.id && within(r.rect)).map((r) => r.rect);
+  if (!inner.length) return box;
+  const bottom = Math.max(...[...inner, ...include].map((q) => q.y + q.h));
+  return { ...box, rect: { ...r0, h: Math.min(r0.h, bottom - r0.y + pad) } };
+}
+
 /** Zona din captură care se potrivește cel mai bine cu un text (cuvinte comune, ignorând diacriticele). */
 export function bestRegion(regions: Region[], text: string, kinds: Region["kind"][] = ["input", "button", "custom", "heading"]): Region | null {
   const words = new Set(
@@ -369,22 +384,84 @@ export function bestRegion(regions: Region[], text: string, kinds: Region["kind"
 }
 
 /**
- * Adaptor de layout pentru vertical: o captură de desktop (orizontală) într-o zonă înaltă devine un
- * card decupat în jurul zonei de interes, cu raportul zonei, ca interfața să fie mare și lizibilă.
+ * Decupajul unei capturi de desktop în jurul zonei demonstrate, cu raportul zonei din cadru, ca interfața să fie
+ * mare și lizibilă. Pe vertical, captura orizontală devine un card înalt în jurul zonei de interes. Pe orizontal
+ * și pătrat, o captură întreagă lasă textul interfeței la ~4 px la testul de 360 px: decupajul se face doar când
+ * scena demonstrează o zonă pe care camera nu o poate apropia destul (de regulă: titlul de lângă captură limitează
+ * push-ul) și o mărește până la ~7 px, cu zona întreagă (plus margine) în cadru și cel puțin 40% din lățimea
+ * paginii, ca să rămână contextul. Pixelii rămân cei reali: se alege doar ce parte se vede.
  */
-export function portraitCrop(ctx: RecipeContext, a: ResolvedAsset, zone: Rect, region: Region | null): Rect | undefined {
-  if (ctx.orientation !== "portrait" || a.w / a.h < 1.1) return undefined;
+export function focusCrop(ctx: RecipeContext, a: ResolvedAsset, zone: Rect, region: Region | null, camZoom = 1): Rect | undefined {
   const aspect = zone.w / zone.h;
-  let w = Math.min(a.w, Math.max(a.w * 0.36, (region?.rect.w ?? a.w * 0.3) * 1.5));
+  const desktop = (a.asset.capture?.viewport.width ?? 0) >= 900 || a.w / a.h >= 1.1;
+  if (ctx.orientation === "portrait") {
+    // captura lată se decupează mereu; cea de pagină întreagă (înaltă) doar în jurul unei zone demonstrate
+    if (a.w / a.h < 1.1 && !(desktop && region)) return undefined;
+    let w = Math.min(a.w, Math.max(a.w * 0.36, (region?.rect.w ?? a.w * 0.3) * 1.5));
+    let h = w / aspect;
+    if (h > a.h) {
+      h = a.h;
+      w = h * aspect;
+    }
+    return placeCrop(a, region, w, h, 0.42);
+  }
+  if (!region || !desktop) return undefined;
+  const dpr = a.asset.capture?.deviceScaleFactor ?? 1;
+  // dacă push-ul camerei (`camZoom`, cel atins fără decupaj) duce deja textul peste pragul verificării ui.legibility
+  // (5 px la 360), captura rămâne întreagă: camera arată zona cu tot contextul, fără margini tăiate
+  if ((15 * dpr * (zone.w / a.w) * camZoom * 360) / Math.min(ctx.W, ctx.H) >= 5) return undefined;
+  // lățimea vizibilă la care textul tipic al interfeței (15 px CSS) ajunge la ~7 px la testul de 360 px
+  const legibleW = (zone.w * 15 * dpr * 360) / (7 * Math.min(ctx.W, ctx.H));
+  // zona demonstrată încape întreagă, cu margine, pe ambele axe
+  const fitW = Math.max(region.rect.w * 1.3, region.rect.h * 1.25 * aspect);
+  let w = Math.min(a.w, Math.max(legibleW, fitW, a.w * 0.4));
+  // un decupaj de peste 92% din lățime nu schimbă lizibilitatea, doar taie marginile
+  if (w >= a.w * 0.92) return undefined;
   let h = w / aspect;
   if (h > a.h) {
     h = a.h;
     w = h * aspect;
   }
+  return clearCutEdges(placeCrop(a, region, w, h, 0.45), a, region);
+}
+
+/**
+ * Marginile verticale ale unui decupaj nu trec prin textul capturat (titluri, butoane, câmpuri, carduri): fiecare
+ * margine care taie o astfel de regiune se mută ca s-o includă sau s-o lase afară, cu deplasarea cea mai mică
+ * la care zona demonstrată rămâne întreagă în cadru. Containerele late (peste 40% din decupaj) se pot tăia.
+ * Dacă nicio poziție nu le ocolește pe toate, decupajul rămâne centrat pe zonă.
+ */
+function clearCutEdges(c: Rect, a: ResolvedAsset, focus: Region): Rect {
+  const m = 12;
+  const f = focus.rect;
+  // textul propriu-zis (titluri, butoane, câmpuri, linkuri) contează la orice lățime; cardurile și panourile, doar
+  // cele înguste (cele late sunt containere, iar marginea trece oricum prin ele)
+  const textual = (r: Region) =>
+    ["heading", "button", "input", "link", "text"].includes(r.kind) || (r.kind !== "image" && r.kind !== "pii" && r.rect.w < c.w * 0.4);
+  const text = a.regions.filter((r) => r.id !== focus.id && textual(r) && r.rect.y < c.y + c.h && r.rect.y + r.rect.h > c.y);
+  const ok = (x: number) => x >= 0 && x + c.w <= a.w && f.x >= x + m && f.x + f.w <= x + c.w - m;
+  const cuts = (x: number) => text.filter((r) => (r.rect.x < x && r.rect.x + r.rect.w > x) || (r.rect.x < x + c.w && r.rect.x + r.rect.w > x + c.w));
+  let x = c.x;
+  for (let pass = 0; pass < 3 && cuts(x).length; pass++) {
+    const options = cuts(x).flatMap((r) => [
+      r.rect.x - m, // marginea stângă înainte de regiune
+      r.rect.x + r.rect.w + m, // marginea stângă după regiune
+      r.rect.x - m - c.w, // marginea dreaptă înainte de regiune
+      r.rect.x + r.rect.w + m - c.w, // marginea dreaptă după regiune
+    ]);
+    const best = options.filter(ok).sort((p, q) => Math.abs(p - c.x) - Math.abs(q - c.x))[0];
+    if (best === undefined) break;
+    x = best;
+  }
+  return { ...c, x };
+}
+
+/** Așază fereastra de decupaj centrată pe zonă (sus/jos după `bias`), fără să iasă din captură. */
+function placeCrop(a: ResolvedAsset, region: Region | null, w: number, h: number, bias: number): Rect {
   const cx = region ? region.rect.x + region.rect.w / 2 : a.focal.x * a.w;
   const cy = region ? region.rect.y + region.rect.h / 2 : a.focal.y * a.h;
   const x = Math.min(Math.max(0, cx - w / 2), a.w - w);
-  const y = Math.min(Math.max(0, cy - h * 0.42), a.h - h);
+  const y = Math.min(Math.max(0, cy - h * bias), a.h - h);
   return { x, y, w, h };
 }
 

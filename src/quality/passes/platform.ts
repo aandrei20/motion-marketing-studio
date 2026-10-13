@@ -168,7 +168,7 @@ export const PLATFORM_CHECKS: CheckDef[] = [
               dimension: "reframing",
               severity: "high",
               problem: `Pe ${fid}, zona demonstrată din ${s.id} iese din cadru (${Math.round(inFrame * 100)}% vizibilă).`,
-              recommendation: "Decupează captura în jurul zonei pe acest format (portraitCrop) sau mută camera pe ea.",
+              recommendation: "Decupează captura în jurul zonei pe acest format (focusCrop) sau mută camera pe ea.",
               confidence: 0.8,
             });
           else if (inSafe < 0.7)

@@ -16,14 +16,15 @@ import {
   mediaBounds,
   norm,
   padRect,
-  portraitCrop,
+  focusCrop,
   regionFocus,
   revealRegion,
   screenParams,
   screenRectInScene,
+  usedPart,
   zones,
 } from "./kit";
-import { defineRecipe, type RecipeCue } from "./types";
+import { defineRecipe, type RecipeContext, type RecipeCue } from "./types";
 import { cam, headline, pick, readingSegments, subline } from "./parts";
 
 export const uiSpotlight = defineRecipe({
@@ -42,20 +43,25 @@ export const uiSpotlight = defineRecipe({
     const layers = directionBase(ctx);
     const a = ctx.slot("screen")!;
     const region = ctx.focusRegion ?? bestRegion(a.regions, `${ctx.text.headline} ${ctx.text.sub}`);
-    const crop = portraitCrop(ctx, a, z0.media, region);
-    const sp = screenParams(a, crop ? { shadow: true, crop, frame: "none", radius: cardRadius(ctx) } : { shadow: true });
-    Object.assign(sp, revealRegion(sp, region, z0.media));
-    const children: TimelineLayer[] = [];
-    const t1 = Math.round(ctx.duration * 0.28);
-    const focus = region ? regionFocus(ctx, z0.media, sp, region) : undefined;
-    const screenRect = screenRectInScene(sp, z0.media);
     const textRects = [z0.text, z0.sub];
     // zoom-ul dorit, limitat ca materialul mărit să nu intre peste titlu; dacă limita lasă un zoom neglijabil,
     // camera nu mai traversează captura spre zonă (ar goli cadrul), ci face doar un push lent pe centru
-    const wanted = focus ? 1 + (focus.zoom - 1) * p.zoom * (crop ? 0.25 : 1) : 1.08;
-    const limited = focus ? limitZoomForText(screenRect, focus, focus.target, wanted, textRects) : wanted;
-    const aimAtRegion = !!focus && (limited >= 1.15 || wanted < 1.15);
-    const to = aimAtRegion ? limited : 1.06;
+    const push = (sp: Record<string, unknown>, cropped: boolean) => {
+      const focus = region ? regionFocus(ctx, z0.media, sp, region) : undefined;
+      const wanted = focus ? 1 + (focus.zoom - 1) * p.zoom * (cropped ? 0.25 : 1) : 1.08;
+      const limited = focus ? limitZoomForText(screenRectInScene(sp, z0.media), focus, focus.target, wanted, textRects) : wanted;
+      const aimAtRegion = !!focus && (limited >= 1.15 || wanted < 1.15);
+      return { focus, aimAtRegion, to: aimAtRegion ? limited : 1.06 };
+    };
+    const whole = screenParams(a, { shadow: true });
+    Object.assign(whole, revealRegion(whole, region, z0.media));
+    // decupajul se face pe vertical sau când push-ul pe captura întreagă nu face interfața lizibilă
+    const crop = focusCrop(ctx, a, z0.media, region, push(whole, false).to);
+    const sp = crop ? screenParams(a, { shadow: true, crop, frame: "none", radius: cardRadius(ctx) }) : whole;
+    const children: TimelineLayer[] = [];
+    const t1 = Math.round(ctx.duration * 0.28);
+    const { focus, aimAtRegion, to } = push(sp, !!crop);
+    const screenRect = screenRectInScene(sp, z0.media);
     const center = { x: ctx.W / 2, y: ctx.H / 2 };
     if (region && focus) {
       const full = { x: 0, y: 0, w: a.w, h: a.h };
@@ -77,7 +83,7 @@ export const uiSpotlight = defineRecipe({
           distance,
           size: 38,
           bounds,
-          prefer: crop ? ["top", "bottom", "right", "left"] : ["right", "left", "top", "bottom"],
+          prefer: crop && ctx.orientation === "portrait" ? ["top", "bottom", "right", "left"] : ["right", "left", "top", "bottom"],
         });
         children.push(layer(ctx, "ui.callout", region.rect, { text: label, side, distance }, { from: t1 + 10 }));
       }
@@ -101,6 +107,10 @@ export const uiSpotlight = defineRecipe({
     };
   },
 });
+
+/** Contextul rețetei fără consumul id-urilor: măsoară un strat fără să schimbe id-urile (și sămânța) celorlalte. */
+const probe = (ctx: RecipeContext): RecipeContext => ({ ...ctx, uid: () => "probă" });
+const measure = (l: TimelineLayer | null): Rect[] => (l ? [l.box] : []);
 
 /**
  * Push spre o zonă, cu zoom limitat ca materialul să nu intre peste text. Dacă limita lasă un zoom neglijabil,
@@ -140,9 +150,12 @@ export const uiWalkthrough = defineRecipe({
     const sp = screenParams(a, { shadow: true }, ctx.fps);
     if (a.kind === "video") {
       // regiunile vin din captura statică a aceleiași pagini (scene.focus), la aceeași rezoluție
-      const crop = portraitCrop(ctx, a, z0.media, ctx.focusRegion);
-      if (crop) Object.assign(sp, { crop, frame: "none", radius: cardRadius(ctx) });
-      else Object.assign(sp, revealRegion(sp, ctx.focusRegion, z0.media));
+      const hBox = measure(headline(probe(ctx), z0.text));
+      const whole = { ...sp, ...revealRegion(sp, ctx.focusRegion, z0.media) };
+      const f0 = ctx.focusRegion ? regionFocus(ctx, z0.media, whole, ctx.focusRegion, 0.5) : undefined;
+      const push0 = f0 ? pushClearOfText(whole, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, hBox) : null;
+      const crop = focusCrop(ctx, a, z0.media, ctx.focusRegion, push0?.to ?? 1);
+      Object.assign(sp, crop ? { crop, frame: "none", radius: cardRadius(ctx) } : whole);
       const screenLayer = layer(ctx, "media.screen", z0.media, sp, {
         z: 20,
         role: "hero",
@@ -151,8 +164,7 @@ export const uiWalkthrough = defineRecipe({
       layers.push(screenLayer);
       const h = headline(ctx, z0.text);
       if (h) layers.push(h);
-      const f0 = ctx.focusRegion && !crop ? regionFocus(ctx, z0.media, sp, ctx.focusRegion, 0.5) : undefined;
-      const push = f0 ? pushClearOfText(sp, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, h ? [h.box] : []) : null;
+      const push = crop ? null : push0;
       return {
         layers,
         camera: push?.focus ? cam("camera.push", { from: 1, to: push.to, start: 0.1, end: 0.6 }) : cam("camera.push", { from: 1, to: 1.08, ease: "linear" }),
@@ -161,8 +173,11 @@ export const uiWalkthrough = defineRecipe({
     }
     if (p.drag) {
       const from = a.regions.find((r) => r.id === p.drag!.from);
-      const to = a.regions.find((r) => r.id === p.drag!.to);
-      if (from && to) {
+      const target0 = a.regions.find((r) => r.id === p.drag!.to);
+      if (from && target0) {
+        // cardul ajunge sus în coloana-țintă; zona demonstrată e partea ei cu conținut, plus locul cardului
+        const landing = { x: target0.rect.x + (target0.rect.w - from.rect.w) / 2, y: target0.rect.y + Math.min(90, target0.rect.h * 0.08) };
+        const to = usedPart(a.regions, target0, [{ ...landing, w: from.rect.w, h: from.rect.h }]);
         const union = {
           id: "union",
           label: "",
@@ -174,12 +189,15 @@ export const uiWalkthrough = defineRecipe({
             h: Math.max(from.rect.y + from.rect.h, to.rect.y + to.rect.h) - Math.min(from.rect.y, to.rect.y),
           },
         };
-        const crop = portraitCrop(ctx, a, z0.media, union);
-        if (crop) Object.assign(sp, { crop, frame: "none", radius: cardRadius(ctx) });
-        else Object.assign(sp, revealRegion(sp, union, z0.media));
+        const hBox = measure(headline(probe(ctx), z0.text, { maxSize: 110 }));
+        const whole = { ...sp, ...revealRegion(sp, union, z0.media) };
+        const f0 = regionFocus(ctx, z0.media, whole, union, 0.6);
+        const push0 = pushClearOfText(whole, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, hBox);
+        const crop = focusCrop(ctx, a, z0.media, union, push0.to);
+        Object.assign(sp, crop ? { crop, frame: "none", radius: cardRadius(ctx) } : whole);
         const pick = Math.round(ctx.fps * 0.5);
         const drop = Math.round(ctx.duration * 0.62);
-        const target = { x: to.rect.x + (to.rect.w - from.rect.w) / 2, y: to.rect.y + Math.min(90, to.rect.h * 0.08) };
+        const target = landing;
         const grab = { x: from.rect.x + from.rect.w * 0.3, y: from.rect.y + from.rect.h * 0.4 };
         const children: TimelineLayer[] = [
           layer(
@@ -220,8 +238,7 @@ export const uiWalkthrough = defineRecipe({
         );
         const h = headline(ctx, z0.text, { maxSize: 110 });
         if (h) layers.push(h);
-        const f0 = crop ? undefined : regionFocus(ctx, z0.media, sp, union, 0.6);
-        const push = f0 ? pushClearOfText(sp, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, h ? [h.box] : []) : null;
+        const push = crop ? null : push0;
         return {
           layers,
           camera: push?.focus ? cam("camera.push", { from: 1, to: push.to, start: 0.05, end: 0.5 }) : cam("camera.push", { from: 1, to: 1.06, ease: "linear" }),
@@ -231,13 +248,13 @@ export const uiWalkthrough = defineRecipe({
     }
     const named = p.regions.map((id) => a.regions.find((r) => r.id === id)).filter((r): r is NonNullable<typeof r> => !!r);
     const input = a.regions.find((r) => r.kind === "input");
-    const picks = named.length
+    let picks = named.length
       ? named
       : [
           ctx.focusRegion ?? input ?? bestRegion(a.regions, ctx.text.headline),
           bestRegion(a.regions, ctx.text.items.join(" ") || ctx.text.sub, ["button", "custom"]),
         ].filter((r, i, arr): r is NonNullable<typeof r> => !!r && arr.findIndex((x) => x?.id === r.id) === i);
-    if (ctx.orientation === "portrait" && a.w / a.h > 1.1 && picks.length) {
+    if (picks.length) {
       const xs = picks.flatMap((r) => [r.rect.x, r.rect.x + r.rect.w]);
       const ys = picks.flatMap((r) => [r.rect.y, r.rect.y + r.rect.h]);
       const union = {
@@ -246,19 +263,20 @@ export const uiWalkthrough = defineRecipe({
         kind: "custom" as const,
         rect: { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) },
       };
-      const crop = portraitCrop(ctx, a, z0.media, union);
-      if (crop) Object.assign(sp, { crop, frame: "none", radius: cardRadius(ctx) });
-    }
-    if (picks.length && !sp.crop) {
-      const ys = picks.flatMap((r) => [r.rect.y, r.rect.y + r.rect.h]);
-      Object.assign(
-        sp,
-        revealRegion(
-          sp,
-          { id: "union", label: "", kind: "custom", rect: { x: 0, y: Math.min(...ys), w: a.w, h: Math.max(...ys) - Math.min(...ys) } },
-          z0.media,
-        ),
-      );
+      // fără decupaj, pagina se derulează la rândurile zonelor, iar camera urmărește fiecare zonă cu zoom-ul ei
+      const rows = { id: "union", label: "", kind: "custom" as const, rect: { x: 0, y: union.rect.y, w: a.w, h: union.rect.h } };
+      const whole = { ...sp, ...revealRegion(sp, rows, z0.media) };
+      const camZoom = Math.max(...picks.map((r) => 1 + (regionFocus(ctx, z0.media, whole, r, 0.5).zoom - 1) * 0.7));
+      let crop = focusCrop(ctx, a, z0.media, union, camZoom);
+      const shows = (c: Rect, r: (typeof picks)[number]) =>
+        r.rect.x >= c.x && r.rect.y >= c.y && r.rect.x + r.rect.w <= c.x + c.w && r.rect.y + r.rect.h <= c.y + c.h;
+      if (crop && !picks.every((r) => shows(crop!, r))) {
+        // zonele nu încap împreună în decupaj (de ex. un câmp în stânga și un buton în dreapta, pe vertical):
+        // decupajul urmează prima zonă, iar cursorul le vizitează doar pe cele care se văd întregi
+        crop = focusCrop(ctx, a, z0.media, picks[0], camZoom);
+        if (crop) picks = [picks[0], ...picks.slice(1).filter((r) => shows(crop!, r))];
+      }
+      Object.assign(sp, crop ? { crop, frame: "none", radius: cardRadius(ctx) } : whole);
     }
     const n = Math.max(1, picks.length);
     const seg = Math.floor((ctx.duration * 0.85) / n);
