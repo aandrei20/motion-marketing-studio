@@ -42,6 +42,36 @@ describe("randare video", () => {
     expect(check.maxFlashesPerSec).toBeLessThanOrEqual(2);
   }, 900_000);
 
+  it("o randare oprită la jumătate nu lasă fișiere, iar reluarea produce un MP4 valid", async () => {
+    const store = await import("../../src/projects/store");
+    const t = store.loadTimeline("rt", store.loadProject("rt").currentVersion!, "9x16");
+    const { renderTimelineVideo } = await import("../../src/renderer/node/render");
+    const dir = path.join(tmp, "oprire");
+    const out = path.join(dir, "clip.mp4");
+    const ac = new AbortController();
+    const err = await renderTimelineVideo(t, {
+      out,
+      frameRange: [0, 299],
+      signal: ac.signal,
+      onProgress: (p) => {
+        if (p.renderedFrames >= 40) ac.abort("test");
+      },
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect((err as { code?: string } | null)?.code).toBe("CANCELLED");
+    expect(fs.existsSync(out)).toBe(false);
+    expect(fs.readdirSync(dir)).toEqual([]);
+    // reluarea pornește curat și produce un fișier complet
+    await renderTimelineVideo(t, { out, frameRange: [0, 89] });
+    const { probe } = await import("../../src/assets/analyze");
+    const pr = await probe(out);
+    expect(pr.codec).toBe("h264");
+    expect(pr.durationSec).toBeGreaterThan(2.9);
+    expect(fs.readdirSync(dir)).toEqual(["clip.mp4"]);
+  }, 600_000);
+
   it("același cadru randat de două ori e identic", async () => {
     const store = await import("../../src/projects/store");
     const t = store.loadTimeline("rt", store.loadProject("rt").currentVersion!, "16x9");

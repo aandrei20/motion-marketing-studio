@@ -247,7 +247,8 @@ function versionBundle(id: string, v: string) {
   const renders = fs.existsSync(rendersDir)
     ? fs
         .readdirSync(rendersDir)
-        .filter((f) => /\.(mp4|png|json)$/.test(f))
+        // fișierele care încep cu „.” sunt randări în curs (temporare)
+        .filter((f) => !f.startsWith(".") && /\.(mp4|png|json)$/.test(f))
         .map((f) => `projects/${id}/versions/${v}/renders/${f}`)
     : [];
   return {

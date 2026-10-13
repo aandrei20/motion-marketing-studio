@@ -18,6 +18,7 @@ import { readWav, writeWav } from "../audio/wav";
 import { inferBrand } from "../brand/infer";
 import { capture, type CaptureRequestInput, type CaptureResult, type PageData } from "../capture/capture";
 import { MmsError } from "../core/errors";
+import { enforceCacheBudget, evictableCacheDirs } from "../core/prune";
 import { recordUsage } from "../core/usage";
 import { readJson, writeJson } from "../core/json";
 import { PATHS, projectPublicPath, publicToAbs } from "../core/paths";
@@ -693,6 +694,12 @@ export async function stepPreview(
   linkOrCopy(sheet, `${cacheBase}.contact.png`);
   writeJson(`${cacheBase}.check.json`, check);
   if (!opts.frameRange) finishPreview(check);
+  // cache-urile care se pot reface rămân sub buget (MMS_CACHE_MAX_GB, implicit 10 GB)
+  const budget = enforceCacheBudget({ dirs: evictableCacheDirs(PATHS) });
+  if (budget.removed)
+    log(
+      `Cache peste buget: șterse ${budget.removed} fișiere refăcute la nevoie (${(budget.before / 1024 ** 3).toFixed(1)} → ${(budget.after / 1024 ** 3).toFixed(1)} GB).`,
+    );
   return { file, contactSheet: sheet, check, renderMs: r.durationMs, reused: false };
 
   function finishPreview(c: { problems: string[] }): void {

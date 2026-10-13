@@ -6,8 +6,9 @@ import { makeCancelSignal, openBrowser, renderMedia, renderStill, selectComposit
 import { optionalEnv } from "../../core/env";
 import { MmsError, throwIfCancelled } from "../../core/errors";
 import { PATHS, publicToAbs } from "../../core/paths";
-import { USED_MARKER, pruneOldDirs } from "../../core/prune";
-import type { Timeline, TimelineLayer } from "../../core/schema";
+import { assertDiskSpace, pruneOldDirs, USED_MARKER } from "../../core/prune";
+import type { Timeline } from "../../core/schema";
+import { timelineAssets } from "../../timeline/assets";
 
 const ENTRY = path.join(PATHS.root, "src", "renderer", "remotion", "index.ts");
 
@@ -70,26 +71,6 @@ function markUsed(dir: string): void {
 /** Șterge bundle-urile vechi (vezi `pruneOldDirs`); codul curent își păstrează bundle-ul. */
 export function pruneBundles(keep = renderCodeHash()): string[] {
   return pruneOldDirs(BUNDLES, { keep: [keep] });
-}
-
-/** Toate căile publice referite de timeline (straturi, copii, fonturi, audio). */
-export function timelineAssets(t: Timeline): string[] {
-  const out = new Set<string>();
-  const visit = (l: TimelineLayer) => {
-    l.assets.forEach((a) => {
-      out.add(a);
-    });
-    l.children.forEach(visit);
-  };
-  t.scenes.forEach((s) => {
-    s.layers.forEach(visit);
-  });
-  t.overlays.forEach(visit);
-  t.fonts.forEach((f) => {
-    out.add(f.src);
-  });
-  if (t.audio.src) out.add(t.audio.src);
-  return [...out];
 }
 
 /**
@@ -168,40 +149,57 @@ export interface RenderVideoOptions {
 
 export async function renderTimelineVideo(t: Timeline, o: RenderVideoOptions): Promise<{ out: string; durationMs: number }> {
   const started = Date.now();
-  const { serveUrl, inputProps, composition, puppeteerInstance } = await prepare(t);
   fs.mkdirSync(path.dirname(o.out), { recursive: true });
+  // MP4-ul (H.264, CRF 16–23) are cel mult ~0,6 MB pe secundă și megapixel; estimarea e de trei ori mai largă
+  const frames = o.frameRange ? o.frameRange[1] - o.frameRange[0] + 1 : t.durationInFrames;
+  const scale = o.scale ?? 1;
+  assertDiskSpace(path.dirname(o.out), (frames / t.fps) * ((t.width * t.height * scale * scale) / 1e6) * 0.6 * 1024 ** 2 * 3, "randarea video");
+  const { serveUrl, inputProps, composition, puppeteerInstance } = await prepare(t);
   const cancel = makeCancelSignal();
   if (o.signal) {
     if (o.signal.aborted) cancel.cancel();
     o.signal.addEventListener("abort", () => cancel.cancel(), { once: true });
   }
-  await renderMedia({
-    cancelSignal: cancel.cancelSignal,
-    serveUrl,
-    composition,
-    inputProps,
-    codec: "h264",
-    outputLocation: path.resolve(o.out),
-    crf: o.crf ?? 17,
-    pixelFormat: "yuv420p",
-    colorSpace: "bt709",
-    imageFormat: "jpeg",
-    jpegQuality: 95,
-    audioCodec: "aac",
-    audioBitrate: "320k",
-    x264Preset: "medium",
-    frameRange: o.frameRange ?? null,
-    concurrency: o.concurrency ?? null,
-    muted: o.muted ?? false,
-    enforceAudioTrack: !o.muted,
-    scale: o.scale ?? 1,
-    overwrite: false,
-    puppeteerInstance,
-    chromiumOptions: { gl: GL },
-    logLevel: "error",
-    licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null,
-    onProgress: (p) => o.onProgress?.({ progress: p.progress, renderedFrames: p.renderedFrames, encodedFrames: p.encodedFrames }),
-  });
+  // randarea scrie într-un fișier temporar, redenumit doar la final: o oprire (job anulat, crash, lipsă de
+  // spațiu) nu lasă niciodată un MP4 pe jumătate la calea finală
+  if (fs.existsSync(o.out))
+    throw new MmsError("RENDER_EXISTS", `Fișierul ${o.out} există deja și nu se suprascrie.`, "Alege alt nume sau creează o versiune nouă.");
+  const partial = path.join(path.dirname(o.out), `.${path.basename(o.out)}.${process.pid}.partial.mp4`);
+  fs.rmSync(partial, { force: true });
+  try {
+    await renderMedia({
+      cancelSignal: cancel.cancelSignal,
+      serveUrl,
+      composition,
+      inputProps,
+      codec: "h264",
+      outputLocation: path.resolve(partial),
+      crf: o.crf ?? 17,
+      pixelFormat: "yuv420p",
+      colorSpace: "bt709",
+      imageFormat: "jpeg",
+      jpegQuality: 95,
+      audioCodec: "aac",
+      audioBitrate: "320k",
+      x264Preset: "medium",
+      frameRange: o.frameRange ?? null,
+      concurrency: o.concurrency ?? null,
+      muted: o.muted ?? false,
+      enforceAudioTrack: !o.muted,
+      scale: o.scale ?? 1,
+      overwrite: false,
+      puppeteerInstance,
+      chromiumOptions: { gl: GL },
+      logLevel: "error",
+      licenseKey: optionalEnv("REMOTION_LICENSE_KEY") ?? null,
+      onProgress: (p) => o.onProgress?.({ progress: p.progress, renderedFrames: p.renderedFrames, encodedFrames: p.encodedFrames }),
+    });
+    fs.renameSync(partial, o.out);
+  } catch (e) {
+    fs.rmSync(partial, { force: true });
+    if (o.signal?.aborted) throw new MmsError("CANCELLED", "Randarea a fost oprită; nu a rămas niciun fișier pe jumătate.", "Pornește-o din nou când vrei.");
+    throw e;
+  }
   return { out: o.out, durationMs: Date.now() - started };
 }
 

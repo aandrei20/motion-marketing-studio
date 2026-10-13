@@ -690,7 +690,7 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
       return;
     }
     case "cache": {
-      const { cacheReport } = await import("../core/prune");
+      const { cacheBudgetBytes, cacheReport, enforceCacheBudget, evictableCacheDirs } = await import("../core/prune");
       if (a.flags.prune) {
         const { pruneBundles } = await import("../renderer/node/render");
         const removed = pruneBundles();
@@ -698,6 +698,10 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
           removed.length
             ? `Șterse ${removed.length} bundle-uri vechi.`
             : "Niciun bundle de șters (se păstrează cel curent, ultimele 2 și cele folosite în ultimele 2 ore).",
+        );
+        const b = enforceCacheBudget({ dirs: evictableCacheDirs(PATHS) });
+        log(
+          `Cache-urile care se pot reface: ${(b.after / 1024 ** 2).toFixed(0)} MB (buget ${(cacheBudgetBytes() / 1024 ** 3).toFixed(0)} GB)${b.removed ? `, șterse ${b.removed} fișiere` : ""}.`,
         );
       }
       const rows = cacheReport(PATHS.cache);

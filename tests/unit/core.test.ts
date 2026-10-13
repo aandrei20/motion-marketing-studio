@@ -7,7 +7,8 @@ import { formatTimecode, parseTimeToSec } from "../../src/core/time";
 import { makeFormat, resolveSafeZone, rectInside } from "../../src/core/formats";
 import { contrastRatio, readableOn } from "../../src/motion/core/color";
 import { layoutText, type Measure } from "../../src/motion/core/text-layout";
-import { USED_MARKER, dirSize, pruneOldDirs } from "../../src/core/prune";
+import { MmsError } from "../../src/core/errors";
+import { assertDiskSpace, dirSize, enforceCacheBudget, pruneOldDirs, USED_MARKER } from "../../src/core/prune";
 
 describe("determinism", () => {
   it("aceeași cheie dă aceeași valoare", () => {
@@ -112,5 +113,39 @@ describe("curățarea cache-ului", () => {
     expect(fs.readdirSync(dir).sort()).toEqual(["a", "b", "curent"]);
     expect(dirSize(dir)).toBe(3000);
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("bugetul cache-ului și spațiul pe disc", () => {
+  it("șterge întâi fișierele folosite cel mai demult, până la 80% din buget", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mms-budget-"));
+    const now = Date.now();
+    for (let i = 0; i < 10; i++) {
+      const f = path.join(dir, i < 5 ? "renders" : "quality", `f${i}.bin`);
+      fs.mkdirSync(path.dirname(f), { recursive: true });
+      fs.writeFileSync(f, Buffer.alloc(1000));
+      const t = new Date(now - (10 - i) * 60_000);
+      fs.utimesSync(f, t, t);
+    }
+    const r = enforceCacheBudget({ dirs: [path.join(dir, "renders"), path.join(dir, "quality")], maxBytes: 6000 });
+    expect(r).toEqual({ before: 10_000, after: 4000, removed: 6 });
+    // rămân cele mai recente
+    expect(fs.readdirSync(path.join(dir, "quality")).sort()).toEqual(["f6.bin", "f7.bin", "f8.bin", "f9.bin"]);
+    expect(enforceCacheBudget({ dirs: [path.join(dir, "quality")], maxBytes: 6000 }).removed).toBe(0);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  it("refuză o randare care ar umple discul, cu o rezervă de 1 GB", () => {
+    const GB = 1024 ** 3;
+    expect(() => assertDiskSpace(".", 0.5 * GB, "randarea video", 3 * GB)).not.toThrow();
+    let err: unknown = null;
+    try {
+      assertDiskSpace(".", 0.5 * GB, "randarea video", 1.2 * GB);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(MmsError);
+    expect((err as MmsError).code).toBe("DISK_SPACE");
+    // fără măsurătoare nu blochează
+    expect(() => assertDiskSpace(".", 100 * GB, "randarea video", null)).not.toThrow();
   });
 });
