@@ -37,3 +37,12 @@ export type Origin = z.infer<typeof Origin>;
 
 export const VersionId = z.string().regex(/^v[0-9]+$/, "versiunile sunt v1, v2, v3…");
 export type VersionId = z.infer<typeof VersionId>;
+
+/**
+ * Așezarea scenei. „auto” = o alege compilatorul pe fiecare format (planificatorul de compoziție, src/recipes/layout.ts),
+ * dintre așezările pe care rețeta le suportă, ca textul să nu stea în același loc în scene la rând.
+ */
+export const CompositionKind = z.enum(["auto", "thirds-left", "thirds-right", "center", "split", "full-bleed", "stacked"]);
+export type CompositionKind = z.infer<typeof CompositionKind>;
+/** O așezare concretă (după planificare). */
+export type ConcreteComposition = Exclude<CompositionKind, "auto">;

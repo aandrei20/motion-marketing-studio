@@ -1,19 +1,24 @@
-/** Rețeta de dezvăluire a produsului: logo-ul, lumina din spate și sloganul. */
+/** Rețeta de dezvăluire a produsului: logo-ul, lumina din spate, sloganul și, opțional, produsul real care urcă de jos. */
 import { z } from "zod";
 import type { Rect } from "../core/schema";
-import { directionBase, layer } from "./kit";
+import { directionBase, frameFor, layer, screenParams } from "./kit";
 import { defineRecipe } from "./types";
 import { cam, pick } from "./parts";
 
 export const productReveal = defineRecipe({
   id: "product-reveal",
   title: "Revelarea produsului (logo)",
-  description: "Logo-ul apare din particule sau cu un pop, raze de lumină în spate, sloganul se dezvăluie sub el. Momentul „iată soluția”.",
+  description:
+    "Logo-ul apare din particule sau cu un pop, raze de lumină în spate, sloganul se dezvăluie sub el; cu o captură, produsul real urcă de jos, sub slogan. Momentul „iată soluția”.",
   tags: ["reveal", "logo", "launch", "cinematic", "premium", "solution"],
   roles: ["reveal", "solution", "outro"],
-  slots: [{ name: "logo", kind: "logo", required: false }],
+  slots: [
+    { name: "logo", kind: "logo", required: false },
+    { name: "screen", kind: "screenshot", required: false },
+  ],
   minSec: 2,
   capabilities: [
+    "media.screen",
     "logo.particles",
     "logo.reveal",
     "logo.light-pass",
@@ -24,6 +29,7 @@ export const productReveal = defineRecipe({
     "text.big-word",
     "camera.pull",
   ],
+  anchor: () => "middle",
   params: z.object({ style: z.enum(["particles", "pop", "light-pass"]).default("pop") }),
   build: (ctx, p) => {
     const s = ctx.safe.rect;
@@ -93,9 +99,28 @@ export const productReveal = defineRecipe({
           ctx,
           pick(ctx, "text.mask-reveal", "text.word-reveal"),
           { x: s.x, y: top, w: s.w, h: Math.min(h, s.h * 0.34) },
-          { text: tagline, emphasis: ctx.text.emphasis, align: "center", maxSize: portrait ? 120 : 104, minSize: 34, stagger: 5 },
+          // sloganul stă lipit sub logo (sus în cutie), nu plutește în mijlocul spațiului rămas
+          { text: tagline, emphasis: ctx.text.emphasis, align: "center", vAlign: "top", maxSize: portrait ? 120 : 104, minSize: 34, stagger: 5 },
           { from: Math.round(ctx.fps * 1.0), z: 50, depth: 0, role: "hero" },
         ),
+      );
+    }
+    const screen = ctx.slot("screen");
+    if (screen) {
+      // produsul real urcă de jos după slogan și rămâne tăiat de marginea cadrului: răspunsul are și o imagine,
+      // nu doar un logo pe fundal gol; stă sub zona textului, ca decor (nu e citit, deci poate trece sub butoanele
+      // platformei)
+      const box: Rect = portrait
+        ? { x: ctx.W * 0.12, y: s.y + s.h * 0.84, w: ctx.W * 0.76, h: ctx.H - (s.y + s.h * 0.84) + ctx.H * 0.08 }
+        : { x: ctx.W * 0.2, y: s.y + s.h * 0.84, w: ctx.W * 0.6, h: ctx.H * 0.62 };
+      layers.push(
+        layer(ctx, "media.screen", box, screenParams(screen, { frame: frameFor(screen), shadow: true }, ctx.fps), {
+          from: Math.round(ctx.fps * 1.2),
+          z: 8,
+          depth: 0.8,
+          role: "background",
+          modifiers: [{ capability: "mod.enter", params: { style: "rise", distance: 320, spring: "soft", exit: "none" } }],
+        }),
       );
     }
     return { layers, camera: cam("camera.pull", { from: 1.18, to: 1, end: 0.9, ease: "out" }) };

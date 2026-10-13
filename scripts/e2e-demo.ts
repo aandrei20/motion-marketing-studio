@@ -1,6 +1,6 @@
 /**
  * Testul de acceptanță cap-coadă pe produsul demo FICTIV (examples/demo-product):
- * intrare → captură reală → research → brand → script → storyboard → voce → timeline → audio →
+ * intrare → captură reală → research → brand → concept → script → storyboard → voce → timeline → audio →
  * bucla de calitate adaptivă (fără randare / cadre-cheie) → [corecturi automate] → un singur preview
  * randat pentru om (MP4) → final QA pe video.
  *
@@ -23,6 +23,7 @@ import { readJsonLoose } from "../src/core/json";
 import { makeFormat } from "../src/core/formats";
 import { PATHS } from "../src/core/paths";
 import { Brief, Script, Storyboard } from "../src/core/schema";
+import { ensureConcepts } from "../src/creative/concepts";
 import { validateScript } from "../src/creative/script";
 import { runQuality } from "../src/quality/run";
 import { autoFixLoop } from "../src/quality/autofix";
@@ -135,6 +136,11 @@ export async function runE2E(o: E2EOptions = {}): Promise<{ id: string; versionI
   stepBrand(ID).notes.forEach((n) => {
     log(`   ${n}`);
   });
+
+  // conceptul: cel al utilizatorului (povestea din brief) are prioritate (regula 14), ca în fluxul /make-ad
+  const concepts = ensureConcepts(ID);
+  const chosen = concepts.concepts.find((x) => x.id === concepts.selectedId);
+  log(`   Concept: ${chosen ? `„${chosen.title}” (${chosen.origin === "user" ? "al utilizatorului" : chosen.origin}, ${chosen.total}/100)` : "niciunul"}`);
 
   log("4. Script și storyboard");
   if (args.has("--auto")) {

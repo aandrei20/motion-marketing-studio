@@ -1,7 +1,7 @@
 /** Piesele comune ale rețetelor: titlul și subtitlul măsurate, camera, segmentele de citire, loviturile pe beat. */
 import { readingSec } from "../editing/grammar";
 import type { Rect, TimelineLayer } from "../core/schema";
-import { layer, textParams } from "./kit";
+import { layer, textHugsMedia, textParams } from "./kit";
 import type { RecipeContext } from "./types";
 
 export const cam = (capability: string, params: Record<string, unknown> = {}) => ({ capability, params });
@@ -26,6 +26,7 @@ export function headline(
     from?: number;
     maxSize?: number;
     align?: "left" | "center" | "right";
+    vAlign?: "top" | "middle" | "bottom";
     exit?: "snap" | "none";
     uppercase?: boolean;
     text?: string;
@@ -35,6 +36,8 @@ export function headline(
   if (!t) return null;
   const capability = pick(ctx, opts.capability ?? headlineAnimation(ctx), "text.word-reveal");
   const short = t.split(/\s+/).length <= 3;
+  // sub material (vertical, „thirds-right”), titlul stă lipit de material, nu în mijlocul cutiei
+  const vAlign = opts.vAlign ?? (textHugsMedia(ctx) ? "top" : undefined);
   return layer(
     ctx,
     capability,
@@ -43,6 +46,7 @@ export function headline(
       maxSize: opts.maxSize ?? (ctx.orientation === "portrait" ? (short ? 170 : 130) : short ? 150 : 116),
       minSize: 34,
       align: opts.align ?? "left",
+      ...(vAlign ? { vAlign } : {}),
       exit: opts.exit ?? "snap",
       uppercase: opts.uppercase,
     }),

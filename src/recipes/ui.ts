@@ -21,9 +21,11 @@ import {
   revealRegion,
   screenParams,
   screenRectInScene,
+  textHugsMedia,
   usedPart,
   zones,
 } from "./kit";
+import { anchorOf } from "./layout";
 import { defineRecipe, type RecipeContext, type RecipeCue } from "./types";
 import { cam, headline, pick, readingSegments, subline } from "./parts";
 
@@ -37,6 +39,7 @@ export const uiSpotlight = defineRecipe({
   slots: [{ name: "screen", kind: "screenshot", required: true }],
   minSec: 2.2,
   capabilities: ["media.screen", "ui.spotlight", "ui.highlight", "ui.callout", "mod.enter", "mod.shadow", "camera.push"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({ callout: z.boolean().default(true), zoom: z.number().min(0).max(1).default(0.75) }),
   build: (ctx, p) => {
     const z0 = zones(ctx);
@@ -137,6 +140,7 @@ export const uiWalkthrough = defineRecipe({
   slots: [{ name: "screen", kind: "screen", required: true }],
   minSec: 3,
   capabilities: ["media.screen", "ui.cursor", "ui.typing", "ui.highlight", "ui.drag", "camera.focus-track", "camera.push"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({
     typeText: z.string().default(""),
     regions: z.array(z.string()).default([]),
@@ -350,6 +354,9 @@ export const featureMontage = defineRecipe({
   minSec: 2,
   minSecFor: (t) => (t.items.length ? t.items : [t.headline ?? ""]).reduce((s, x) => s + readingSec(x) + 0.25, 0),
   capabilities: ["media.screen", "text.pop", "text.word-reveal", "camera.beat-punch", "mod.enter"],
+  layouts: ["thirds-left", "thirds-right"],
+  // pe orizontal, montajul pune textul sus și materialul mare dedesubt, oricare ar fi așezarea
+  anchor: (c, o) => (o === "landscape" ? "top" : anchorOf(c, o)),
   params: z.object({ maxCuts: z.number().int().min(2).max(6).default(4) }),
   build: (ctx, p) => {
     const z0 = zones(ctx, ctx.orientation === "landscape" ? "stacked" : ctx.scene.composition);
@@ -401,7 +408,15 @@ export const featureMontage = defineRecipe({
             ctx,
             pick(ctx, ctx.dir.text.list, "text.word-reveal"),
             z0.text,
-            { text: items[i], emphasis: ctx.text.emphasis, maxSize: 110, minSize: 34, align: "left", exitFrames: 3 },
+            {
+              text: items[i],
+              emphasis: ctx.text.emphasis,
+              maxSize: 110,
+              minSize: 34,
+              align: "left",
+              vAlign: textHugsMedia(ctx) ? "top" : "middle",
+              exitFrames: 3,
+            },
             { from, duration: dur, z: 50, depth: 0, role: "hero" },
           ),
         );
@@ -420,6 +435,7 @@ export const scrollTour = defineRecipe({
   slots: [{ name: "page", kind: "tall-screenshot", required: true }],
   minSec: 2.5,
   capabilities: ["media.screen", "camera.push", "text.word-reveal", "logo.reveal"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({ to: z.number().min(0).max(1).default(0.45) }),
   build: (ctx, p) => {
     const z0 = zones(ctx);
@@ -477,6 +493,7 @@ export const deviceHero = defineRecipe({
   slots: [{ name: "screen", kind: "screenshot", required: true }],
   minSec: 2.2,
   capabilities: ["media.device-3d", "fx.glow-orbs", "camera.parallax-drift", "mod.reflection"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({ device: z.enum(["auto", "phone", "laptop"]).default("auto") }),
   build: (ctx, p) => {
     const z0 = zones(ctx);
@@ -511,6 +528,7 @@ export const stack3d = defineRecipe({
   slots: [{ name: "screens", kind: "screenshot", required: true, multiple: true }],
   minSec: 2.5,
   capabilities: ["media.stack-3d", "text.mask-reveal"],
+  anchor: (_c, o) => (o === "portrait" ? "top" : "bottom"),
   params: z.object({}),
   build: (ctx) => {
     const z0 = zones(ctx, ctx.orientation === "portrait" ? "stacked" : "full-bleed");
@@ -543,6 +561,7 @@ export const beforeAfter = defineRecipe({
   ],
   minSec: 2.5,
   capabilities: ["media.compare", "text.word-reveal"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({}),
   build: (ctx) => {
     const z0 = zones(ctx);

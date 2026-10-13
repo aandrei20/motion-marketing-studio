@@ -6,7 +6,7 @@ import type { CheckDef } from "../checks";
 export const MOTION_CHECKS: CheckDef[] = [
   {
     id: "motion.grammar",
-    version: 3,
+    version: 4,
     pass: "motion",
     title: "Gramatica mișcării: odihnă vizuală, varietate de animații, tranziții",
     categories: ["motion"],
@@ -17,9 +17,9 @@ export const MOTION_CHECKS: CheckDef[] = [
       const out: IssueDraft[] = [];
       const body = t.scenes.filter((s) => s.meta.narrativeRole !== "cta");
       const moving = body.filter((s) => s.camera.keys.length > 1 || s.camera.handheld > 0 || s.camera.punches.length > 0);
-      // odihna se pune pe o scenă fără demonstrație (nu pe hook și nu pe o funcție: acolo push-ul face interfața lizibilă,
-      // iar o cameră fixă ar fi întoarsă de verificarea de lizibilitate)
-      const calm = body.filter((s, i) => i > 0 && !["feature", "demo", "solution"].includes(s.meta.narrativeRole));
+      // odihna se pune pe o scenă fără demonstrație (nu pe hook, nu pe dezvăluire și nu pe o funcție: acolo push-ul face
+      // interfața lizibilă, iar o cameră fixă ar fi întoarsă de verificarea de lizibilitate); aceeași regulă ca în compilator
+      const calm = body.filter((s, i) => i > 0 && !["hook", "reveal", "feature", "demo", "solution"].includes(s.meta.narrativeRole));
       const rest = calm[Math.floor(calm.length / 2)];
       if (body.length >= 4 && moving.length === body.length)
         out.push({

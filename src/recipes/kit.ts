@@ -2,7 +2,8 @@
  * Unelte comune pentru rețete: zone de layout pe format, constructori de straturi, ecrane cu
  * zone din captură, fundalul și texturile direcției.
  */
-import type { CompositionKind, Rect, Region, TimelineLayer } from "../core/schema";
+import type { ConcreteComposition, Rect, Region, TimelineLayer } from "../core/schema";
+import { textBottom } from "./layout";
 import { screenMapping, screenPointToBox } from "../motion/media/media";
 import type { RecipeContext, ResolvedAsset } from "./types";
 
@@ -37,7 +38,7 @@ export function columns(ctx: Pick<RecipeContext, "W" | "H" | "shape" | "safe">, 
 }
 
 /** Zonele de așezare în zona de siguranță, pe orientare și compoziție. */
-export function zones(ctx: RecipeContext, comp: CompositionKind = ctx.scene.composition): Zones {
+export function zones(ctx: RecipeContext, comp: ConcreteComposition = ctx.scene.composition): Zones {
   const z = zonesRaw(ctx, comp);
   if (!ctx.captions || comp === "full-bleed") return z;
   // banda subtitrărilor (jos în zona sigură) rămâne liberă
@@ -48,7 +49,7 @@ export function zones(ctx: RecipeContext, comp: CompositionKind = ctx.scene.comp
   return { ...z, media: ctx.orientation === "portrait" ? z.media : clip(z.media), text: clip(z.text), sub: clip(z.sub) };
 }
 
-function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
+function zonesRaw(ctx: RecipeContext, comp: ConcreteComposition): Zones {
   const s = ctx.safe.rect;
   const full = r(0, 0, ctx.W, ctx.H);
   if (ctx.orientation === "portrait") {
@@ -60,6 +61,7 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
         text: r(s.x, s.y + s.h * 0.2, s.w, s.h * 0.28),
         sub: r(s.x, s.y + s.h * 0.5, s.w, s.h * 0.12),
       };
+    if (comp === "thirds-right") return textBelow(ctx, full, 0.2, 0.08);
     return {
       full,
       text: r(s.x, s.y, s.w, s.h * 0.2),
@@ -69,6 +71,7 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
   }
   if (ctx.orientation === "square") {
     if (comp === "full-bleed") return { full, media: full, text: r(s.x, s.y + s.h * 0.66, s.w, s.h * 0.22), sub: r(s.x, s.y + s.h * 0.88, s.w, s.h * 0.1) };
+    if (comp === "thirds-right") return textBelow(ctx, full, 0.22, 0.08);
     return { full, text: r(s.x, s.y, s.w, s.h * 0.24), sub: r(s.x, s.y + s.h * 0.24, s.w, s.h * 0.08), media: r(s.x, s.y + s.h * 0.34, s.w, s.h * 0.66) };
   }
   // orizontal
@@ -100,6 +103,36 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
   const t = g.span(7, 5);
   const m = g.span(0, 7);
   return { full, text: r(t.x + u, textY, t.w - u, textH), sub: r(t.x + u, subY, t.w - u, subH), media: r(s.x * 0.5, mediaY, m.w + s.x * 0.5, mediaH) };
+}
+
+/**
+ * Pe vertical și pe pătrat, „thirds-right”: materialul sus, textul dedesubt, lipit de el (titlul aliniat sus în
+ * cutie, subtitlul la o unitate sub titlu), cu tot grupul deasupra benzii subtitrărilor. Materialul poate urca puțin
+ * în marginea de sus a zonei sigure (nu e text), cum coboară sub ea în așezarea cu textul sus.
+ */
+function textBelow(ctx: RecipeContext, full: Rect, maxTextShare: number, maxSubShare: number): Zones {
+  const s = ctx.safe.rect;
+  const u = spaceUnit(ctx);
+  // textul ia doar locul de care are nevoie: fără subtitlu, banda lui rămâne materialului; un titlu de 1–2 cuvinte
+  // încape pe un rând (mărimea lui e limitată oricum de lățime)
+  const words = ctx.text.headline.split(/\s+/).filter(Boolean).length;
+  const textShare = words <= 2 ? maxTextShare * 0.75 : maxTextShare;
+  const subShare = ctx.text.sub ? maxSubShare : 0;
+  const subY = textBottom(ctx) - s.h * subShare;
+  const textY = subY - s.h * textShare;
+  const mediaY = s.y - ctx.safe.top * (ctx.orientation === "portrait" ? 0.25 : 0);
+  const mediaX = ctx.orientation === "portrait" ? s.x * 0.5 : s.x;
+  return {
+    full,
+    media: r(mediaX, mediaY, ctx.W - 2 * mediaX, textY - u - mediaY),
+    text: r(s.x, textY, s.w, s.h * textShare),
+    sub: r(s.x, subY, s.w, s.h * subShare),
+  };
+}
+
+/** Pe vertical și pe pătrat, cu textul sub material, titlul stă lipit de material (sus în cutia lui). */
+export function textHugsMedia(ctx: Pick<RecipeContext, "orientation" | "scene">): boolean {
+  return ctx.orientation !== "landscape" && ctx.scene.composition === "thirds-right";
 }
 
 function collectAssets(v: unknown, out: Set<string>): void {

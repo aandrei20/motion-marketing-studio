@@ -78,7 +78,13 @@ const area = (a: Area, rows: Spec[]): InventoryItem[] =>
 export const INVENTORY: InventoryItem[] = [
   ...area("visual-design", [
     ["layout", "Layout pe orientare și compoziție", "P0", "IMPLEMENTED", ["module:src/recipes/kit.ts#zones"]],
-    ["composition", "Compoziție (treimi, centru, split, full-bleed, stivă)", "P0", "IMPLEMENTED", ["module:src/recipes/kit.ts#zones", "check:visual.pixels"]],
+    [
+      "composition",
+      "Compoziție (treimi, centru, split, full-bleed, stivă), aleasă pe scenă și format",
+      "P0",
+      "IMPLEMENTED",
+      ["module:src/recipes/kit.ts#zones", "module:src/recipes/layout.ts#planCompositions", "op:set-composition", "check:visual.pixels", "check:visual.text-placement"],
+    ],
     [
       "grids",
       "Grilă de layout (coloane, linie de bază)",
@@ -135,10 +141,13 @@ export const INVENTORY: InventoryItem[] = [
       "visual-rhythm",
       "Ritm vizual (alternanță calm/activ)",
       "P1",
-      "PARTIAL",
-      ["check:motion.grammar", "check:critique.rubric"],
-      "Se detectează lipsa de odihnă vizuală și monotonia; nu se planifică alternanța în storyboard.",
-      "Profil de energie țintă pe scene, folosit de constructorul de storyboard.",
+      "IMPLEMENTED",
+      [
+        "module:src/recipes/layout.ts#planCompositions",
+        "module:src/timeline/compile.ts#compileTimeline",
+        "check:motion.grammar",
+        "check:visual.text-placement",
+      ],
     ],
     [
       "framing",

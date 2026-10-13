@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { NormPoint, Slug } from "./common";
+import { CompositionKind, NormPoint, Slug } from "./common";
 import { CreativeDirection } from "./brief";
 
 export const NarrativeRole = z.enum([
@@ -25,8 +25,6 @@ export type EmotionalRole = z.infer<typeof EmotionalRole>;
 export const ShotType = z.enum(["establishing", "hero", "close-up", "insert", "montage", "wide", "detail", "title"]);
 export type ShotType = z.infer<typeof ShotType>;
 
-export const CompositionKind = z.enum(["thirds-left", "thirds-right", "center", "split", "full-bleed", "stacked"]);
-export type CompositionKind = z.infer<typeof CompositionKind>;
 
 export const CapabilityUse = z.object({
   capability: z.string().min(1),
@@ -96,7 +94,7 @@ export const StoryboardScene = z.object({
     })
     .default({ sfx: "auto", silence: false }),
   beat: z.object({ snap: z.enum(["none", "beat", "bar"]).default("beat") }).default({ snap: "beat" }),
-  composition: CompositionKind.default("thirds-left"),
+  composition: CompositionKind.default("auto"),
   cta: z.enum(["none", "setup", "payoff", "hold"]).default("none"),
   notes: z.string().default(""),
   /** blocată de utilizator: corecturile automate nu o modifică */

@@ -2,6 +2,7 @@
 import { z } from "zod";
 import type { Rect } from "../core/schema";
 import { directionBase, layer, screenParams, textParams, zones } from "./kit";
+import { textOnlyPlacement } from "./layout";
 import { defineRecipe } from "./types";
 import { cam, headline, pick, subline } from "./parts";
 
@@ -14,6 +15,7 @@ export const steps = defineRecipe({
   slots: [{ name: "screen", kind: "screenshot", required: false }],
   minSec: 3,
   capabilities: ["data.timeline", "text.word-reveal", "media.screen"],
+  anchor: () => "top",
   params: z.object({}),
   build: (ctx) => {
     const s = ctx.safe.rect;
@@ -55,6 +57,7 @@ export const proofMetric = defineRecipe({
   slots: [],
   minSec: 2.2,
   capabilities: ["text.counter", "text.mask-reveal", "text.body", "fx.glow-orbs"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({
     mode: z.enum(["metric", "quote"]).default("metric"),
     value: z.number().optional(),
@@ -68,22 +71,22 @@ export const proofMetric = defineRecipe({
     const s = ctx.safe.rect;
     const layers = directionBase(ctx);
     const notes: string[] = [];
+    // locul ales de planificator (sus-stânga, jos sau în dreapta), cu loc dedesubt pentru atribuire
+    const place = textOnlyPlacement(ctx, ctx.scene.composition, { room: 0.1 });
     if (p.mode === "metric" && p.value !== undefined && p.claimId) {
-      const box: Rect =
-        ctx.orientation === "portrait" ? { x: s.x, y: s.y + s.h * 0.2, w: s.w, h: s.h * 0.34 } : { x: s.x, y: s.y + s.h * 0.18, w: s.w * 0.7, h: s.h * 0.5 };
+      const box = place.box;
       layers.push(
         layer(
           ctx,
           "text.counter",
           box,
-          { value: p.value, prefix: p.prefix, suffix: p.suffix, decimals: p.decimals, label: ctx.text.headline, claimId: p.claimId, align: "left" },
+          { value: p.value, prefix: p.prefix, suffix: p.suffix, decimals: p.decimals, label: ctx.text.headline, claimId: p.claimId, align: place.align },
           { z: 40, depth: 0, role: "hero" },
         ),
       );
     } else {
       if (p.mode === "metric") notes.push("Fără cifră verificată (value + claimId): dovada se afișează ca text.");
-      const box: Rect =
-        ctx.orientation === "portrait" ? { x: s.x, y: s.y + s.h * 0.18, w: s.w, h: s.h * 0.4 } : { x: s.x, y: s.y + s.h * 0.15, w: s.w * 0.8, h: s.h * 0.5 };
+      const box = place.box;
       layers.push(
         layer(
           ctx,
@@ -92,7 +95,9 @@ export const proofMetric = defineRecipe({
           textParams(ctx, p.mode === "quote" ? `„${ctx.text.headline}”` : ctx.text.headline, {
             maxSize: 100,
             minSize: 34,
-            font: p.mode === "quote" ? "display" : "display",
+            font: "display",
+            align: place.align,
+            vAlign: place.vAlign,
           }),
           { z: 40, depth: 0, role: "hero" },
         ),
@@ -104,7 +109,7 @@ export const proofMetric = defineRecipe({
             ctx,
             "text.body",
             { x: box.x, y: box.y + box.h + 12, w: box.w, h: s.h * 0.08 },
-            { text: attr, emphasis: [], color: "textMuted", maxSize: 44, minSize: 28 },
+            { text: attr, emphasis: [], color: "textMuted", maxSize: 44, minSize: 28, align: place.align },
             { from: 10, z: 41, depth: 0 },
           ),
         );
@@ -124,6 +129,7 @@ export const launchBurst = defineRecipe({
   slots: [{ name: "logo", kind: "logo", required: false }],
   minSec: 1.8,
   capabilities: ["text.big-word", "fx.burst", "logo.reveal", "camera.shake"],
+  anchor: () => "middle",
   params: z.object({}),
   build: (ctx) => {
     const s = ctx.safe.rect;
@@ -167,6 +173,7 @@ export const technicalDemo = defineRecipe({
   slots: [],
   minSec: 3,
   capabilities: ["ui.terminal", "ui.code", "text.word-reveal", "camera.push"],
+  layouts: ["thirds-left", "thirds-right"],
   params: z.object({
     mode: z.enum(["terminal", "code"]).default("terminal"),
     entries: z.array(z.object({ cmd: z.string(), output: z.array(z.string()).default([]) })).default([]),

@@ -30,6 +30,23 @@ describe("lanțul de producție pe produsul demo", () => {
       expect(t.width).toBe(f.width);
       // fără goluri între scene
       for (let i = 1; i < t.scenes.length; i++) expect(t.scenes[i].from).toBeLessThanOrEqual(t.scenes[i - 1].from + t.scenes[i - 1].durationInFrames);
+      // tăieturile cad pe bătăi (cel mult 3 cadre), inclusiv unde bătaia cea mai apropiată ar fi scurtat scena sub minim
+      const bg = t.audio.beatGrid!;
+      const beat = (60 / bg.bpm) * t.fps;
+      for (const s of t.scenes.slice(1)) {
+        const cut = s.from + Math.floor((s.transitionIn?.durationInFrames ?? 0) / 2);
+        const off = (((cut - bg.offsetSec * t.fps) % beat) + beat) % beat;
+        expect(Math.min(off, beat - off), `tăietura spre ${s.id}`).toBeLessThanOrEqual(3);
+      }
+      // textul principal nu stă în același loc în scene la rând (planificatorul de compoziție)
+      const { textPlace } = await import("../../src/quality/passes/visual");
+      const places = t.scenes
+        .filter((s) => s.meta.narrativeRole !== "cta")
+        .map((s) => {
+          const hero = s.layers.find((l) => l.depth === 0 && l.role === "hero" && String(l.params.text ?? "") !== "");
+          return hero ? textPlace(t, hero) : "";
+        });
+      for (let i = 2; i < places.length; i++) expect(places[i] === places[i - 1] && places[i] === places[i - 2], `${f.id}: ${places.join(", ")}`).toBe(false);
     }
     const mix = JSON.parse(fs.readFileSync(path.join(tmp, r.id, "versions", r.versionId, "audio", "mix-report.json"), "utf8"));
     expect(mix.ok).toBe(true);
@@ -288,13 +305,14 @@ describe("lanțul de producție pe produsul demo", () => {
     const target = before.scenes[1].id;
     const e = applyEdit(id, [
       { op: "scene-extend", sceneId: target, deltaSec: 0.6 },
-      { op: "set-camera", sceneId: target, capability: "camera.static", params: {} },
+      // scena 2 e momentul de odihnă al compilatorului (cameră fixă): editarea îi dă o mișcare explicită
+      { op: "set-camera", sceneId: target, capability: "camera.parallax-drift", params: {} },
     ]);
     // versiunea înghețată nu se atinge; editarea merge în versiunea următoare
     expect(e.versionId).not.toBe(parent);
     expect(fingerprint(store.loadStoryboard(id, parent))).toBe(fingerprint(before));
     const edited = store.loadStoryboard(id, e.versionId);
-    expect(edited.scenes[1].camera?.capability).toBe("camera.static");
+    expect(edited.scenes[1].camera?.capability).toBe("camera.parallax-drift");
     // vocea trece în versiunea nouă (amprenta ei decide la compilare dacă se refolosește)
     expect(fs.existsSync(path.join(tmp, id, "versions", e.versionId, "audio", "voice-key.json"))).toBe(true);
     await steps.stepCompile(id, e.versionId);

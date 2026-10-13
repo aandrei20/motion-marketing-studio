@@ -154,6 +154,10 @@ export function applyEditOps(input: Storyboard, ops: EditOp[], o: ApplyEditsOpti
         applied.push({ op, description: `Scena ${op.sceneId}: rețeta ${op.recipe}.` });
         break;
       }
+      case "set-composition":
+        sceneOf(op.sceneId).composition = op.composition;
+        applied.push({ op, description: `Scena ${op.sceneId}: așezarea ${op.composition === "auto" ? "aleasă de compilator" : op.composition}.` });
+        break;
       case "beat-snap":
         sceneOf(op.sceneId).beat = { snap: op.snap };
         applied.push({ op, description: `Scena ${op.sceneId}: tăietura ${op.snap === "none" ? "liberă" : `pe ${op.snap === "bar" ? "măsură" : "bătaie"}`}.` });

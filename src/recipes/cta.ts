@@ -19,6 +19,7 @@ export const ctaEnd = defineRecipe({
   ],
   minSec: 3,
   capabilities: ["logo.reveal", "shape.panel", "text.word-reveal", "text.body", "fx.light-sweep", "media.screen", "mod.reflection", "camera.static"],
+  anchor: () => "middle",
   params: z.object({ url: z.string().default("") }),
   build: (ctx, p) => {
     const s = ctx.safe.rect;

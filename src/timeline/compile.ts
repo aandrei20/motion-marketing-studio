@@ -38,6 +38,7 @@ import { layoutText } from "../motion/core/text-layout";
 import { libraryFont, toTimelineFont } from "../motion/fonts-library";
 import { getCamera, getCapability, getLayer, getModifier, getTransition } from "../motion/registry";
 import { spaceUnit } from "../recipes/kit";
+import { planCompositions } from "../recipes/layout";
 import { getRecipe } from "../recipes/recipes";
 import type { RecipeContext, ResolvedAsset } from "../recipes/types";
 import { nodeMeasure } from "./measure-node";
@@ -308,9 +309,14 @@ export function compileTimeline(input: CompileInput): CompileResult {
       if (dropEnd !== null && dropEnd - start0 >= minRef[i] && Math.abs(dropEnd - end) <= Math.max(6, dur0 * 0.35)) end = dropEnd;
       else {
         const grid = snap === "bar" ? beatRef.filter((_, k) => k % (input.beatGrid?.beatsPerBar ?? 4) === 0) : beatRef;
-        const nearest = grid.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), grid[0]);
-        const newEnd = Math.round(nearest + d / 2);
-        if (newEnd - start0 >= minRef[i] && Math.abs(newEnd - end) <= Math.max(4, dur0 * 0.25)) end = newEnd;
+        // cea mai apropiată bătaie care lasă scena peste minimul ei (voce, citire, hold); dacă cea mai apropiată ar
+        // scurta-o prea mult, tăietura trece pe bătaia următoare, cât timp mutarea rămâne mică față de scenă
+        const newEnd = [...grid]
+          .sort((a, b) => Math.abs(a - cut) - Math.abs(b - cut))
+          .map((f) => Math.round(f + d / 2))
+          .filter((e) => Math.abs(e - end) <= Math.max(4, dur0 * 0.25))
+          .find((e) => e - start0 >= minRef[i]);
+        if (newEnd !== undefined) end = newEnd;
       }
     }
     durRef[i] = end - cursor;
@@ -351,11 +357,17 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const cues: AudioCue[] = [];
   const voiceCues: Array<{ lineId: string; at: number; src: string; durationSec: number; words: VoiceWord[] }> = [];
   let uidCounter = 0;
-  // ce trebuie tăieturilor din interiorul scenelor (pasul 5b): focusul rețetei, camera explicită, bătăile
+  // ce trebuie tăieturilor din interiorul scenelor (pasul 5c): focusul rețetei, camera explicită, bătăile
   const innerInfo = new Map<
     string,
     { focus: { x: number; y: number; zoom: number; target?: { x: number; y: number } } | undefined; explicit: boolean; beats: number[] }
   >();
+  // așezarea fiecărei scene pe acest format: „auto” devine o așezare a rețetei cu textul în alt loc decât în
+  // scena anterioară (planificatorul de compoziție); o așezare scrisă în storyboard rămâne
+  const compositions = planCompositions(
+    plans.map((p) => ({ composition: p.sc.composition, recipe: p.recipe })),
+    orientation,
+  );
   plans.forEach((plan, i) => {
     const sc: StoryboardScene = plan.sc;
     const duration = durFrames[i];
@@ -427,7 +439,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
       orientation,
       safe,
       duration,
-      scene: sc,
+      scene: { ...sc, composition: compositions[i] },
       dir,
       energy: sc.energy,
       text: {
@@ -692,7 +704,32 @@ export function compileTimeline(input: CompileInput): CompileResult {
   }
   const finalCues = [...cues.filter((c) => c.kind !== "sfx"), ...sfx].sort((a, b) => a.atFrame - b.atFrame || a.id.localeCompare(b.id));
 
-  // 5a. varietate: o scenă cu aceeași rețetă și aceeași mișcare de cameră ca precedenta își inversează mișcarea
+  // 5a. odihna vizuală: dacă toate scenele corpului reclamei mișcă camera, cea mai calmă scenă fără demonstrație
+  // (nu hook-ul, nu dezvăluirea, nu CTA-ul, nu o funcție: acolo push-ul face interfața lizibilă) primește cameră
+  // fixă, ca mișcarea celorlalte să aibă contrast; textul ei se animă în continuare. Camera aleasă explicit rămâne.
+  const body = scenes.filter((s) => s.meta.narrativeRole !== "cta");
+  const moves = (s: TimelineScene) => s.camera.keys.length > 1 || s.camera.handheld > 0 || s.camera.punches.length > 0;
+  if (body.length >= 4 && body.every(moves)) {
+    const calm = body.filter(
+      (s, i) =>
+        i > 0 && !["hook", "reveal", "feature", "demo", "solution"].includes(s.meta.narrativeRole) && !innerInfo.get(s.id)?.explicit && !innerInfo.get(s.id)?.focus,
+    );
+    const rest = calm.reduce<TimelineScene | null>((b, s) => (!b || s.meta.energy < b.meta.energy ? s : b), null);
+    if (rest) {
+      const still = getCamera("camera.static");
+      const keys = still.build(still.params.parse({}) as never, {
+        duration: rest.durationInFrames,
+        width: W,
+        height: H,
+        focus: null,
+        focusZoom: 1,
+        energy: rest.meta.energy,
+      }).keys;
+      rest.camera = { ...rest.camera, keys, handheld: 0, shake: [], punches: [] };
+    }
+  }
+
+  // 5b. varietate: o scenă cu aceeași rețetă și aceeași mișcare de cameră ca precedenta își inversează mișcarea
   // (pull-out în loc de push): același zoom maxim, deci aceeași geometrie față de titlu; camera aleasă explicit rămâne
   scenes.forEach((sc, i) => {
     const prev = scenes[i - 1];
@@ -700,7 +737,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     sc.camera = { ...sc.camera, keys: varyCamera(sc.camera.keys, prev.camera.keys, sc.durationInFrames) };
   });
 
-  // 5b. tăieturi directe în interiorul scenelor mai lungi decât planul tipic al platformei (punch-in, pe cuvânt)
+  // 5c. tăieturi directe în interiorul scenelor mai lungi decât planul tipic al platformei (punch-in, pe cuvânt)
   const maxShotSec = platformProfile(format.platform, project).avgShotSec[1];
   // banda implicită a subtitrărilor (aceeași ca la pasul 6), cu marginea folosită la ocolirea zonelor
   const capBand = (() => {

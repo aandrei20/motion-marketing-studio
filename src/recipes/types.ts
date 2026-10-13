@@ -1,7 +1,8 @@
 import type { z } from "zod";
-import type { Asset, CameraKey, Claim, NarrativeRole, Palette, Rect, Region, StoryboardScene, TimelineLayer } from "../core/schema";
+import type { Asset, CameraKey, Claim, ConcreteComposition, NarrativeRole, Palette, Rect, Region, StoryboardScene, TimelineLayer } from "../core/schema";
 import type { ResolvedSafeZone, Orientation } from "../core/formats";
 import type { DirectionProfile } from "../creative/directions";
+import type { TextAnchor } from "./layout";
 
 export interface ResolvedAsset {
   asset: Asset;
@@ -22,7 +23,8 @@ export interface RecipeContext {
   safe: ResolvedSafeZone;
   /** durata scenei în cadre */
   duration: number;
-  scene: StoryboardScene;
+  /** scena, cu așezarea deja aleasă de planificator pentru formatul curent */
+  scene: Omit<StoryboardScene, "composition"> & { composition: ConcreteComposition };
   dir: DirectionProfile;
   energy: number;
   text: { headline: string; sub: string; items: string[]; emphasis: string[]; vo: string };
@@ -82,6 +84,10 @@ export interface RecipeDef<S extends z.ZodType = z.ZodType> {
   minSecFor?: (text: { headline?: string; sub?: string; items: string[] }) => number;
   /** capabilitățile pe care le poate folosi (legătura cu registry-ul) */
   capabilities: string[];
+  /** așezările suportate, în ordinea preferinței, dintre care alege planificatorul pentru „auto” (src/recipes/layout.ts) */
+  layouts?: ConcreteComposition[];
+  /** locul textului principal, când nu rezultă din așezare (rețetele cu așezare proprie) */
+  anchor?: (comp: ConcreteComposition, o: Orientation) => TextAnchor;
   params: S;
   build: (ctx: RecipeContext, params: z.infer<S>) => RecipeOutput;
 }

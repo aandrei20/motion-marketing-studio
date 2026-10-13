@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CompositionKind } from "./common";
 
 /**
  * Operațiile de editare pe storyboard (sursa de adevăr; timeline-ul se recompilează din el).
@@ -30,6 +31,8 @@ export const EditOp = z.discriminatedUnion("op", [
   SceneRef.extend({ op: z.literal("set-camera"), capability: z.string().min(1), params: Params.default({}) }),
   SceneRef.extend({ op: z.literal("set-recipe"), recipe: z.string().min(1), params: Params.default({}) }),
   SceneRef.extend({ op: z.literal("beat-snap"), snap: z.enum(["none", "beat", "bar"]) }),
+  /** așezarea scenei („auto” = o alege compilatorul, cu textul în alt loc decât în scena anterioară) */
+  SceneRef.extend({ op: z.literal("set-composition"), composition: CompositionKind }),
   /** materialul dintr-un slot al rețetei (id de asset sau „tag:<etichetă>”) */
   SceneRef.extend({ op: z.literal("replace-asset"), slot: z.string().min(1), assetId: z.string().min(1) }),
   /** parametri pe un strat al rețetei (slot = capabilitatea sau o parte din id-ul stratului) */

@@ -4943,6 +4943,7 @@
         "license": "proprietar, același cu repo-ul"
       },
       "recipes": [
+        "product-reveal",
         "ui-spotlight",
         "ui-walkthrough",
         "feature-montage",
@@ -12357,7 +12358,7 @@
     {
       "id": "product-reveal",
       "title": "Revelarea produsului (logo)",
-      "description": "Logo-ul apare din particule sau cu un pop, raze de lumină în spate, sloganul se dezvăluie sub el. Momentul „iată soluția”.",
+      "description": "Logo-ul apare din particule sau cu un pop, raze de lumină în spate, sloganul se dezvăluie sub el; cu o captură, produsul real urcă de jos, sub slogan. Momentul „iată soluția”.",
       "tags": [
         "reveal",
         "logo",
@@ -12376,10 +12377,16 @@
           "name": "logo",
           "kind": "logo",
           "required": false
+        },
+        {
+          "name": "screen",
+          "kind": "screenshot",
+          "required": false
         }
       ],
       "minSec": 2,
       "capabilities": [
+        "media.screen",
         "logo.particles",
         "logo.reveal",
         "logo.light-pass",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "templateId": "feature-showcase",
+  "templateId": "saas",
   "rationale": [
     "Storyboard scris de directorul creativ (Claude) pe baza brief-ului, a afirmațiilor confirmate și a capturilor reale.",
     "Hook-ul utilizatorului rămâne cuvânt cu cuvânt; fraza obligatorie apare pe ecran și în voce.",
@@ -66,7 +66,8 @@
         }
       },
       "slots": {
-        "logo": "tag:logo"
+        "logo": "tag:logo",
+        "screen": "tag:app"
       },
       "text": {
         "headline": "Planifică săptămâna în 5 minute"
