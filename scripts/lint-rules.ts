@@ -3,7 +3,7 @@
  *  - regula 4: niciun nume de produs în src/ și library/ (lista fixă + numele produselor din projects/)
  *  - regula 19: nicio cheie API în fișierele urmărite de Git
  *  - regula 18: fără Math.random() / Date.now() în codul de randare (src/motion, src/renderer/composition)
- *  - fără atribuire de co-autori/contributori în commit-urile noi (după ATTRIBUTION_BASE; istoria veche nu se rescrie)
+ *  - fără atribuire de co-autori/contributori în commit-uri (după ATTRIBUTION_BASE; tot istoricul dacă baza nu mai e în el)
  * Rulează: npm run lint
  */
 import { execSync } from "node:child_process";
@@ -19,7 +19,10 @@ export interface LintProblem {
 }
 
 const FIXED_NAMES = ["Spotify", "Kolibri"];
-/** ultimul commit dinaintea regulii „fără co-autori”; istoria de dinainte nu se rescrie */
+/**
+ * ultimul commit dinaintea regulii „fără co-autori”; dacă istoricul a fost curățat (baza nu mai e strămoș al lui HEAD
+ * sau lipsește din clonă), se verifică tot istoricul, ca regula să nu se oprească în tăcere
+ */
 const ATTRIBUTION_BASE = "f6cb12c";
 
 function productNames(): string[] {
@@ -97,8 +100,15 @@ export function lintRules(): LintProblem[] {
     if (/^\.env$/.test(path.basename(rel))) problems.push({ rule: "regula 19: .env urmărit de Git", file: rel, line: 0, text: "" });
   }
   // atribuire: niciun commit nou nu adaugă co-autori sau contributori (decizia utilizatorului, 2026-10-08)
+  let range = "HEAD";
   try {
-    const body = execSync(`git log ${ATTRIBUTION_BASE}..HEAD --format=%H%n%B%n--end--`, {
+    execSync(`git merge-base --is-ancestor ${ATTRIBUTION_BASE} HEAD`, { cwd: PATHS.root, stdio: "ignore" });
+    range = `${ATTRIBUTION_BASE}..HEAD`;
+  } catch {
+    /* baza nu e în istoria lui HEAD: se verifică tot istoricul */
+  }
+  try {
+    const body = execSync(`git log ${range} --format=%H%n%B%n--end--`, {
       cwd: PATHS.root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -110,7 +120,7 @@ export function lintRules(): LintProblem[] {
         problems.push({ rule: "fără co-autori/contributori în commit-uri", file: `commit ${sha.slice(0, 8)}`, line: 0, text: l.trim().slice(0, 60) });
     }
   } catch {
-    /* fără git sau baza nu există în acest clone: verificarea nu se aplică */
+    /* fără git: verificarea nu se aplică */
   }
   return problems;
 }

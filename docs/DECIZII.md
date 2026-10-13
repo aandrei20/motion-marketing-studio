@@ -98,7 +98,7 @@ Fiecare decizie are motivul ei. Deciziile de produs (ce face studioul, regulile)
 
 ## Contribuitori
 
-56. **Fără co-autori și fără atribuiri automate.** Commit-urile nu au trailere `Co-authored-by` sau „Generated with”, iar repo-ul nu are fișier sau secțiune de contribuitori. `.claude/settings.json` dezactivează atribuirea, iar `npm run lint` refuză commit-urile noi cu astfel de trailere (de la `f6cb12c` încoace). Istoricul mai vechi nu a fost rescris.
+56. **Fără co-autori și fără atribuiri automate.** Commit-urile nu au trailere `Co-authored-by` sau „Generated with”, iar repo-ul nu are fișier sau secțiune de contribuitori. `.claude/settings.json` dezactivează atribuirea, iar `npm run lint` refuză commit-urile noi cu astfel de trailere (de la `f6cb12c` încoace). Istoricul mai vechi nu a fost rescris; dacă va fi curățat (iar `f6cb12c` nu mai e în istoria lui `HEAD`), lint-ul verifică tot istoricul, ca regula să nu se oprească în tăcere într-o clonă nouă.
 
 ## Testul pe un produs real (după primele rulări pe un site public)
 
