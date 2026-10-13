@@ -14,8 +14,9 @@ export default defineConfig({
       exclude: ["src/motion/**", "src/renderer/composition/**", "src/renderer/remotion/**", "src/studio/ui/**"],
       reporter: ["text-summary", "json-summary"],
       reportsDirectory: ".cache/coverage",
-      // pragul minim e măsurarea din 2026-10-13 (linii 70,9%, ramuri 57,2%): acoperirea poate doar să crească
-      thresholds: { lines: 70, statements: 68, functions: 73, branches: 57 },
+      // pragul minim e măsurarea din 2026-10-13 fără vocea „Microsoft Andrei”, ca pe CI (linii 70,3%, funcții 72,4%,
+      // ramuri 57,5%); cu vocea instalată se acoperă mai mult. Acoperirea poate doar să crească
+      thresholds: { lines: 70, statements: 68, functions: 72, branches: 57 },
     },
   },
 });

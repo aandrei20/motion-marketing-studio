@@ -175,7 +175,7 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 ## 16. Inginerie
 
 - [✓] CI pe Windows: `npm audit`, typecheck, lint, testele cu acoperire, testul cap-coadă fără randare, randarea cu randare software.
-- [✓] Biome (lint și formatare) fără erori; acoperirea codului Node cu prag minim (linii 70%, ramuri 57%).
+- [✓] Biome (lint și formatare) fără erori; acoperirea codului Node cu prag minim (linii 70%, funcții 72%, ramuri 57%), măsurat fără voce, ca pe CI.
 - [✓] Fișierele mari împărțite: panourile Studio, rețetele, verificările buclei de calitate (fără schimbări de logică).
 
 ## Ce lipsește, concret, și pasul următor
