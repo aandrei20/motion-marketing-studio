@@ -900,6 +900,19 @@ export function groupText(layers: TimelineLayer[], unit: number): TimelineLayer[
     const y = Math.round(bottom + unit);
     const end = l.box.y + l.box.h;
     if (y + st.h > end) return l;
+    // între titlu și subtitlu nu stă nimic altceva (de ex. butonul de pe CTA, sub care stă adresa): altfel rămâne pe loc
+    const top = Math.min(y, l.box.y);
+    const blocked = layers.some(
+      (o) =>
+        o !== hero &&
+        o !== l &&
+        o.role !== "background" &&
+        o.role !== "overlay" &&
+        Math.min(o.box.x + o.box.w, l.box.x + l.box.w) > Math.max(o.box.x, l.box.x) &&
+        o.box.y < Math.max(y + st.h, l.box.y) &&
+        o.box.y + o.box.h > top,
+    );
+    if (blocked) return l;
     return { ...l, box: { ...l.box, y, h: end - y }, params: { ...l.params, vAlign: "top" } };
   });
 }

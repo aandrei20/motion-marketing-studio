@@ -128,13 +128,21 @@ export interface LayerOpts {
  * Textul fixat pe ecran (adâncime 0) nu are voie să intre sub butoanele platformei (de ex. coloana din
  * dreapta pe TikTok): cutia se îngustează până la marginea zonei excluse.
  */
-export function avoidExclusions(ctx: RecipeContext, box: Rect): Rect {
+export function avoidExclusions(ctx: Pick<RecipeContext, "W" | "safe">, box: Rect, keepCenter = false): Rect {
   let b = { ...box };
   for (const ex of ctx.safe.exclusions) {
     const overlapY = b.y < ex.y + ex.h && b.y + b.h > ex.y;
     const overlapX = b.x < ex.x + ex.w && b.x + b.w > ex.x;
     if (!overlapY || !overlapX) continue;
-    if (ex.x + ex.w >= ctx.W - 1) b = { ...b, w: Math.max(40, ex.x - b.x - 8) };
+    const cx = b.x + b.w / 2;
+    // un element centrat se îngustează simetric, ca centrul (și alinierea cu restul compoziției) să rămână pe loc
+    if (keepCenter && ex.x + ex.w >= ctx.W - 1 && ex.x - 8 - cx >= 60) {
+      const half = ex.x - 8 - cx;
+      b = { ...b, x: cx - half, w: 2 * half };
+    } else if (keepCenter && ex.x <= 1 && cx - (ex.x + ex.w + 8) >= 60) {
+      const half = cx - (ex.x + ex.w + 8);
+      b = { ...b, x: cx - half, w: 2 * half };
+    } else if (ex.x + ex.w >= ctx.W - 1) b = { ...b, w: Math.max(40, ex.x - b.x - 8) };
     else if (ex.x <= 1) b = { ...b, x: ex.x + ex.w + 8, w: Math.max(40, b.x + b.w - (ex.x + ex.w + 8)) };
   }
   return b;
@@ -250,7 +258,7 @@ export function calloutSide(
 }
 
 export function layer(ctx: RecipeContext, capability: string, box: Rect, params: Record<string, unknown>, o: LayerOpts = {}): TimelineLayer {
-  if (capability.startsWith("text.") && (o.depth ?? 1) === 0) box = avoidExclusions(ctx, box);
+  if (capability.startsWith("text.") && (o.depth ?? 1) === 0) box = avoidExclusions(ctx, box, params.align === "center");
   const assets = new Set<string>();
   collectAssets(params, assets);
   for (const c of o.children ?? [])

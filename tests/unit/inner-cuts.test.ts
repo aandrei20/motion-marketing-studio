@@ -172,5 +172,8 @@ describe("spațierea din brand", () => {
     // un titlu care umple cutia ar împinge subtitlul sub zona lui: rămâne pe loc
     const full = text("t", "hero", "text.word-reveal", { x: 96, y: 200, w: 700, h: 400 }, 7, 100);
     expect(groupText([full, sub], 24)[1]).toBe(sub);
+    // un buton între titlu și text (adresa de sub butonul CTA): textul rămâne pe loc, nu urcă peste buton
+    const button = layer({ id: "b", capability: "shape.panel", role: "hero", depth: 0, box: { x: 200, y: 470, w: 500, h: 120 } });
+    expect(groupText([hero, button, sub], 24)[2]).toBe(sub);
   });
 });

@@ -26,7 +26,22 @@ export const ctaEnd = defineRecipe({
     const logo = ctx.slot("logo") ?? ctx.logo;
     const portrait = ctx.orientation === "portrait";
     const logoSize = Math.min(s.w * 0.3, s.h * (portrait ? 0.14 : 0.24));
-    const top = s.y + s.h * (portrait ? 0.14 : 0.08);
+    let top = s.y + s.h * (portrait ? 0.14 : 0.08);
+    const cta = ctx.text.sub || ctx.text.items[0] || "";
+    let bw = Math.min(s.w * (portrait ? 0.9 : 0.5), 960);
+    const bh = Math.min(s.h * (portrait ? 0.13 : 0.12), 180);
+    // butonul nu stă sub zonele excluse ale platformei (de ex. coloana de acțiuni TikTok): grupul urcă exact cât
+    // trebuie, dacă are loc deasupra; altfel butonul se îngustează simetric, ca să rămână centrat
+    const btnY = (t: number) => t + logoSize + s.h * 0.04 + s.h * (portrait ? 0.16 : 0.2) + s.h * 0.05;
+    for (const ex of ctx.safe.exclusions) {
+      const x0 = ctx.W / 2 - bw / 2;
+      if (!cta || x0 >= ex.x + ex.w || x0 + bw <= ex.x) continue;
+      const y0 = btnY(top);
+      if (y0 >= ex.y + ex.h || y0 + bh <= ex.y) continue;
+      const up = y0 + bh + 8 - ex.y;
+      if (top - up >= s.y) top -= up;
+      else bw = Math.max(s.w * 0.4, 2 * Math.min(ctx.W / 2 - (ex.x <= 1 ? ex.x + ex.w + 8 : 0), ex.x + ex.w >= ctx.W - 1 ? ex.x - 8 - ctx.W / 2 : bw / 2));
+    }
     if (logo)
       layers.push(
         layer(
@@ -48,10 +63,7 @@ export const ctaEnd = defineRecipe({
         { from: 6, z: 50, depth: 0, role: "hero" },
       ),
     );
-    const cta = ctx.text.sub || ctx.text.items[0] || "";
     if (cta) {
-      const bw = Math.min(s.w * (portrait ? 0.9 : 0.5), 960);
-      const bh = Math.min(s.h * (portrait ? 0.13 : 0.12), 180);
       const btn: Rect = { x: ctx.W / 2 - bw / 2, y: headBox.y + headBox.h + s.h * 0.05, w: bw, h: bh };
       layers.push(
         layer(ctx, "shape.panel", btn, { color: "primary", radius: buttonRadius(ctx, bh), from: "scale" }, { from: 12, z: 45, depth: 0, role: "hero" }),
@@ -83,7 +95,9 @@ export const ctaEnd = defineRecipe({
             ctx,
             "text.body",
             { x: s.x, y: btn.y + btn.h + s.h * 0.03, w: s.w, h: s.h * 0.06 },
-            { text: p.url, emphasis: [], color: "textMuted", align: "center", maxSize: 44, minSize: 28, exit: "none" },
+            // culoarea principală a textului: fundalul din spate e luminat neuniform (gradient, lumină), iar culoarea
+            // estompată cădea sub 4,5:1 pe zonele luminoase; ierarhia o dă mărimea mai mică
+            { text: p.url, emphasis: [], color: "text", align: "center", maxSize: 44, minSize: 28, exit: "none" },
             { from: 20, z: 46, depth: 0 },
           ),
         );
