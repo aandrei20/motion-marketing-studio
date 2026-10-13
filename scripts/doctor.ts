@@ -118,6 +118,22 @@ async function main() {
   } catch {
     add("warn", "Spațiu liber", "nu pot măsura");
   }
+  // cache și proiecte
+  try {
+    const { cacheBudgetBytes, dirSize } = await import("../src/core/prune");
+    const size = dirSize(PATHS.cache);
+    const budget = cacheBudgetBytes();
+    if (size > budget * 1.5)
+      add("warn", "Cache", `${(size / 1024 ** 3).toFixed(1)} GB (buget ${(budget / 1024 ** 3).toFixed(0)} GB)`, "npm run mms -- cache --prune");
+    else add("ok", "Cache", `${(size / 1024 ** 3).toFixed(1)} GB (buget ${(budget / 1024 ** 3).toFixed(0)} GB)`);
+    const { checkAllProjects } = await import("../src/projects/check");
+    const problems = checkAllProjects();
+    if (problems.length)
+      add("warn", "Proiecte", `${problems.length} probleme în ${new Set(problems.map((p) => p.projectId)).size} proiecte`, "npm run mms -- check-projects");
+    else add("ok", "Proiecte", "toate se citesc cu schemele de acum");
+  } catch (e) {
+    add("warn", "Cache și proiecte", `nu pot verifica: ${(e as Error).message}`);
+  }
   // voce
   try {
     const { listVoices } = await import("../src/audio/voice");

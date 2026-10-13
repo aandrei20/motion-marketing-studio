@@ -172,6 +172,7 @@ BIBLIOTECĂ
 ÎNTREȚINERE
   cache [--prune]                        mărimea cache-ului; --prune șterge bundle-urile vechi de randare
   usage [<id>]                           jurnalul operațiilor: voci (plătite / locale / din cache), randări
+  check-projects [<id>]                  proiectele existente față de schemele de acum (și fișierele lipsă)
 `;
 
 async function main(): Promise<void> {
@@ -675,6 +676,17 @@ De confirmat (${g.toConfirm.length}): ${g.toConfirm.map((c) => c.id).join(", ")}
     case "sfx":
       for (const s of SFX) log(`${s.id.padEnd(14)} ${s.category.padEnd(11)} ${s.title}`);
       return;
+    case "check-projects": {
+      const { checkAllProjects, checkProjectFiles } = await import("../projects/check");
+      const problems = id ? checkProjectFiles(id) : checkAllProjects();
+      if (!problems.length) {
+        log(id ? `Proiectul ${id} e valid: toate fișierele se citesc cu schemele de acum, iar materialele există.` : "Toate proiectele sunt valide.");
+        return;
+      }
+      for (const x of problems) log(`[${x.projectId}] ${x.file}: ${x.problem}`);
+      process.exitCode = 1;
+      return;
+    }
     case "usage": {
       const { loadUsage, summarizeUsage } = await import("../core/usage");
       const rows = summarizeUsage(loadUsage(id));
