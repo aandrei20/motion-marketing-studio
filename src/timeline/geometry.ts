@@ -6,7 +6,7 @@
  */
 import type { Rect, Timeline, TimelineLayer, TimelineScene } from "../core/schema";
 import { layerZoom, sampleCamera } from "../motion/camera/rig";
-import { screenPointToBox } from "../motion/media/media";
+import { screenMapping, screenPointToBox } from "../motion/media/media";
 
 export function screenRect(
   t: Pick<Timeline, "width" | "height" | "fps">,
@@ -23,6 +23,20 @@ export function screenRect(
   const fy = H / 2 + (s.fy - H / 2) * d;
   const z = layerZoom(s, d);
   return { x: W / 2 + z * (layer.box.x - fx), y: H / 2 + z * (layer.box.y - fy), w: layer.box.w * z, h: layer.box.h * z };
+}
+
+/**
+ * Partea vizibilă a unui strat în scenă: la o captură (`media.screen`), ecranul cu rama lui (bara browserului
+ * deasupra, marginea telefonului în jur), nu toată cutia stratului, care e transparentă în rest.
+ */
+export function visibleBox(l: Pick<TimelineLayer, "capability" | "box" | "params">): Rect {
+  if (l.capability !== "media.screen") return l.box;
+  const s = screenMapping(l.params as unknown as Parameters<typeof screenMapping>[0], l.box).geo.screen;
+  // rama din jurul ecranului, după tipul ei (frames.tsx): bara browserului sus, marginea telefonului în jur, baza laptopului jos
+  const frame = String((l.params as { frame?: string }).frame ?? "none");
+  const [top, side, bottom] =
+    frame === "browser" || frame === "desktop" ? [0.06, 0, 0] : frame === "phone" ? [0.04, 0.04, 0.04] : frame === "laptop" ? [0.03, 0.03, 0.08] : [0, 0, 0];
+  return { x: l.box.x + s.x - s.w * side, y: l.box.y + s.y - s.w * top, w: s.w * (1 + 2 * side), h: s.h + s.w * (top + bottom) };
 }
 
 export function area(r: Rect): number {

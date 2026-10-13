@@ -2,7 +2,7 @@
 import type { TimelineLayer } from "../../core/schema";
 import { READABLE_TEXT_CAPS } from "../../motion/text-caps";
 import type { IssueDraft } from "../issues";
-import { area, focusRects, holdFrame, overlapArea, screenRect } from "../../timeline/geometry";
+import { area, focusRects, holdFrame, overlapArea, screenRect, visibleBox } from "../../timeline/geometry";
 import { boxAt, captionBoxes } from "../../timeline/validate";
 import type { CheckDef } from "../checks";
 
@@ -103,7 +103,7 @@ export const UI_CHECKS: CheckDef[] = [
   },
   {
     id: "ui.material-over-text",
-    version: 1,
+    version: 2,
     pass: "ui",
     title: "Materialul mărit de cameră nu intră peste titlu (geometria pe ecran la zoom-ul maxim al scenei)",
     categories: ["ui"],
@@ -126,7 +126,9 @@ export const UI_CHECKS: CheckDef[] = [
         let hit: TimelineLayer | null = null;
         for (const tx of texts) {
           if (tx.from > local || tx.from + tx.durationInFrames <= local) continue;
-          const covered = media.reduce((m, l) => Math.max(m, overlapArea(screenRect(t, s, l, local), tx.box)), 0) / Math.max(1, area(tx.box));
+          // la o captură contează ecranul cu rama, nu toată cutia (transparentă în rest)
+          const covered =
+            media.reduce((m, l) => Math.max(m, overlapArea(screenRect(t, s, { ...l, box: visibleBox(l) }, local), tx.box)), 0) / Math.max(1, area(tx.box));
           if (covered > worst) [worst, hit] = [covered, tx];
         }
         if (worst > 0.12 && hit)

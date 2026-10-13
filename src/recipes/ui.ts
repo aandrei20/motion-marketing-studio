@@ -22,6 +22,7 @@ import {
   screenParams,
   screenRectInScene,
   textHugsMedia,
+  textTolerance,
   usedPart,
   zones,
 } from "./kit";
@@ -52,7 +53,7 @@ export const uiSpotlight = defineRecipe({
     const push = (sp: Record<string, unknown>, cropped: boolean) => {
       const focus = region ? regionFocus(ctx, z0.media, sp, region) : undefined;
       const wanted = focus ? 1 + (focus.zoom - 1) * p.zoom * (cropped ? 0.25 : 1) : 1.08;
-      const limited = focus ? limitZoomForText(screenRectInScene(sp, z0.media), focus, focus.target, wanted, textRects) : wanted;
+      const limited = focus ? limitZoomForText(screenRectInScene(sp, z0.media), focus, focus.target, wanted, textRects, textTolerance(ctx)) : wanted;
       const aimAtRegion = !!focus && (limited >= 1.15 || wanted < 1.15);
       return { focus, aimAtRegion, to: aimAtRegion ? limited : 1.06 };
     };
@@ -125,8 +126,9 @@ function pushClearOfText(
   f: ReturnType<typeof regionFocus>,
   wanted: number,
   text: Rect[],
+  tol = 24,
 ): { to: number; focus?: ReturnType<typeof regionFocus> } {
-  const to = limitZoomForText(screenRectInScene(sp, box), f, f.target, wanted, text);
+  const to = limitZoomForText(screenRectInScene(sp, box), f, f.target, wanted, text, tol);
   return to >= 1.15 || wanted < 1.15 ? { to, focus: { ...f, zoom: to } } : { to: 1.06 };
 }
 
@@ -157,7 +159,7 @@ export const uiWalkthrough = defineRecipe({
       const hBox = measure(headline(probe(ctx), z0.text));
       const whole = { ...sp, ...revealRegion(sp, ctx.focusRegion, z0.media) };
       const f0 = ctx.focusRegion ? regionFocus(ctx, z0.media, whole, ctx.focusRegion, 0.5) : undefined;
-      const push0 = f0 ? pushClearOfText(whole, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, hBox) : null;
+      const push0 = f0 ? pushClearOfText(whole, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, hBox, textTolerance(ctx)) : null;
       const crop = focusCrop(ctx, a, z0.media, ctx.focusRegion, push0?.to ?? 1);
       Object.assign(sp, crop ? { crop, frame: "none", radius: cardRadius(ctx) } : whole);
       const screenLayer = layer(ctx, "media.screen", z0.media, sp, {
@@ -196,7 +198,7 @@ export const uiWalkthrough = defineRecipe({
         const hBox = measure(headline(probe(ctx), z0.text, { maxSize: 110 }));
         const whole = { ...sp, ...revealRegion(sp, union, z0.media) };
         const f0 = regionFocus(ctx, z0.media, whole, union, 0.6);
-        const push0 = pushClearOfText(whole, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, hBox);
+        const push0 = pushClearOfText(whole, z0.media, f0, 1 + (f0.zoom - 1) * 0.6, hBox, textTolerance(ctx));
         const crop = focusCrop(ctx, a, z0.media, union, push0.to);
         Object.assign(sp, crop ? { crop, frame: "none", radius: cardRadius(ctx) } : whole);
         const pick = Math.round(ctx.fps * 0.5);
@@ -337,7 +339,7 @@ export const uiWalkthrough = defineRecipe({
     const material = screenRectInScene(sp, z0.media);
     const text = h ? [h.box] : [];
     const safePoints = points.map((pt) => {
-      const c = clearOfText({ x: pt.x * ctx.W, y: pt.y * ctx.H }, pt.zoom, material, text, ctx.W, ctx.H);
+      const c = clearOfText({ x: pt.x * ctx.W, y: pt.y * ctx.H }, pt.zoom, material, text, ctx.W, ctx.H, textTolerance(ctx));
       return { ...pt, x: c.x / ctx.W, y: c.y / ctx.H };
     });
     return { layers, camera: cam("camera.focus-track", { points: safePoints, normalized: true }) };

@@ -12,6 +12,8 @@ import { zones } from "../../src/recipes/kit";
 import { getRecipe } from "../../src/recipes/recipes";
 import type { RecipeContext } from "../../src/recipes/types";
 import { VISUAL_CHECKS, textPlace } from "../../src/quality/passes/visual";
+import { visibleBox } from "../../src/timeline/geometry";
+import { textTolerance } from "../../src/recipes/kit";
 
 const ui = getRecipe("ui-spotlight");
 const reveal = getRecipe("product-reveal");
@@ -111,6 +113,29 @@ describe("locul textului pe format", () => {
     expect(l.align).toBe("right");
     expect(l.box.x + l.box.w / 2).toBeGreaterThan(1920 / 2);
     expect(textOnlyPlacement(ctxFor(1920, 1080, "youtube", "center"), "center").align).toBe("center");
+  });
+});
+
+describe("materialul față de text", () => {
+  it("toleranța e 0 când textul e lipit sub material, 24 px altfel", () => {
+    expect(textTolerance(ctxFor(1080, 1920, "tiktok", "thirds-right"))).toBe(0);
+    expect(textTolerance(ctxFor(1080, 1920, "tiktok", "thirds-left"))).toBe(24);
+    expect(textTolerance(ctxFor(1920, 1080, "youtube", "thirds-right"))).toBe(24);
+  });
+
+  it("partea vizibilă a unei capturi e ecranul cu rama, nu toată cutia", () => {
+    const box = { x: 60, y: 180, w: 960, h: 900 };
+    const params = { src: "x.png", kind: "image", imageWidth: 2880, imageHeight: 1800, frame: "browser", viewportAspect: 1.6 };
+    const v = visibleBox({ capability: "media.screen", box, params });
+    expect(v.h).toBeLessThan(box.h * 0.8);
+    expect(v.y).toBeGreaterThan(box.y);
+    expect(v.y + v.h).toBeLessThan(box.y + box.h);
+    // fără ramă (cardul decupat de pe vertical): exact ecranul, fără margini inventate
+    const bare = visibleBox({ capability: "media.screen", box, params: { ...params, frame: "none", crop: { x: 0, y: 0, w: 1200, h: 1000 } } });
+    expect(bare.y).toBeGreaterThanOrEqual(box.y);
+    expect(bare.x).toBeGreaterThanOrEqual(box.x);
+    // alte straturi: cutia întreagă
+    expect(visibleBox({ capability: "media.image", box, params: {} })).toEqual(box);
   });
 });
 

@@ -712,7 +712,10 @@ export function compileTimeline(input: CompileInput): CompileResult {
   if (body.length >= 4 && body.every(moves)) {
     const calm = body.filter(
       (s, i) =>
-        i > 0 && !["hook", "reveal", "feature", "demo", "solution"].includes(s.meta.narrativeRole) && !innerInfo.get(s.id)?.explicit && !innerInfo.get(s.id)?.focus,
+        i > 0 &&
+        !["hook", "reveal", "feature", "demo", "solution"].includes(s.meta.narrativeRole) &&
+        !innerInfo.get(s.id)?.explicit &&
+        !innerInfo.get(s.id)?.focus,
     );
     const rest = calm.reduce<TimelineScene | null>((b, s) => (!b || s.meta.energy < b.meta.energy ? s : b), null);
     if (rest) {

@@ -25,7 +25,6 @@ export type EmotionalRole = z.infer<typeof EmotionalRole>;
 export const ShotType = z.enum(["establishing", "hero", "close-up", "insert", "montage", "wide", "detail", "title"]);
 export type ShotType = z.infer<typeof ShotType>;
 
-
 export const CapabilityUse = z.object({
   capability: z.string().min(1),
   params: z.record(z.string(), z.unknown()).default({}),

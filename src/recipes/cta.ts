@@ -1,6 +1,6 @@
 /** Rețeta finalului: apelul la acțiune, cu hold-ul minim. */
 import { z } from "zod";
-import { readableOn } from "../motion/core/color";
+import { contrastRatio, readableOn } from "../motion/core/color";
 import type { Rect } from "../core/schema";
 import { buttonRadius, directionBase, frameFor, layer, screenParams } from "./kit";
 import { defineRecipe } from "./types";
@@ -90,15 +90,23 @@ export const ctaEnd = defineRecipe({
       );
       if (!ctx.forbidden.includes("fx.light-sweep"))
         layers.push(layer(ctx, "fx.light-sweep", btn, { start: 0, end: 0.9, intensity: 0.5 }, { from: 26, duration: 24, z: 47, depth: 0 }));
+      // adresa e text mic (cere 4,5:1): culoarea principală a textului, dacă are marjă față de fundal (≥ 7:1, ca să
+      // reziste vignetei și luminii din spate); altfel culoarea din paletă cu cel mai mare contrast față de fundal
+      const pal = ctx.palette;
+      const vs = (k: "text" | "accent" | "primary" | "secondary") => contrastRatio(pal[k], pal.background);
+      const urlColor =
+        vs("text") >= 7
+          ? "text"
+          : (["accent", "primary", "secondary"] as const).reduce((b, k) => (vs(k) > vs(b) ? k : b), "text" as "text" | "accent" | "primary" | "secondary");
       if (p.url)
         layers.push(
           layer(
             ctx,
             "text.body",
             { x: s.x, y: btn.y + btn.h + s.h * 0.03, w: s.w, h: s.h * 0.06 },
-            // culoarea principală a textului: fundalul din spate e luminat neuniform (gradient, lumină), iar culoarea
-            // estompată cădea sub 4,5:1 pe zonele luminoase; ierarhia o dă mărimea mai mică
-            { text: p.url, emphasis: [], color: "text", align: "center", maxSize: 44, minSize: 28, exit: "none" },
+            // nu culoarea estompată: fundalul din spate e luminat neuniform (gradient, lumină, vignetă), iar ea cădea sub
+            // 4,5:1; ierarhia o dă mărimea mai mică
+            { text: p.url, emphasis: [], color: urlColor, align: "center", maxSize: 44, minSize: 28, exit: "none" },
             { from: 20, z: 46, depth: 0 },
           ),
         );

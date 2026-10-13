@@ -83,7 +83,13 @@ export const INVENTORY: InventoryItem[] = [
       "Compoziție (treimi, centru, split, full-bleed, stivă), aleasă pe scenă și format",
       "P0",
       "IMPLEMENTED",
-      ["module:src/recipes/kit.ts#zones", "module:src/recipes/layout.ts#planCompositions", "op:set-composition", "check:visual.pixels", "check:visual.text-placement"],
+      [
+        "module:src/recipes/kit.ts#zones",
+        "module:src/recipes/layout.ts#planCompositions",
+        "op:set-composition",
+        "check:visual.pixels",
+        "check:visual.text-placement",
+      ],
     ],
     [
       "grids",

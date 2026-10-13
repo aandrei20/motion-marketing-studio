@@ -130,6 +130,14 @@ function textBelow(ctx: RecipeContext, full: Rect, maxTextShare: number, maxSubS
   };
 }
 
+/**
+ * Toleranța (px) cu care materialul mărit de cameră poate atinge marginea zonei de text: 24 px când între ele e
+ * spațiu, 0 când textul e lipit sub material (acolo distanța dintre ele e doar o unitate de spațiere).
+ */
+export function textTolerance(ctx: Pick<RecipeContext, "orientation" | "scene">): number {
+  return textHugsMedia(ctx) ? 0 : 24;
+}
+
 /** Pe vertical și pe pătrat, cu textul sub material, titlul stă lipit de material (sus în cutia lui). */
 export function textHugsMedia(ctx: Pick<RecipeContext, "orientation" | "scene">): boolean {
   return ctx.orientation !== "landscape" && ctx.scene.composition === "thirds-right";
