@@ -19,6 +19,23 @@ export interface Zones {
 
 const r = (x: number, y: number, w: number, h: number): Rect => ({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
 
+/**
+ * Unitatea de spațiere a reclamei: spațierea tipică din CSS-ul brandului (`brand.shape.spacing`), dublată ca să se
+ * vadă la fel într-un cadru de 1080 px, între 16 și 40 px la 1080 și scalată la format. Fără brand: 12 px CSS.
+ */
+export function spaceUnit(ctx: Pick<RecipeContext, "W" | "H" | "shape">): number {
+  const k = Math.min(ctx.W, ctx.H) / 1080;
+  return Math.round(Math.min(40, Math.max(16, (ctx.shape?.spacing ?? 12) * 2)) * k);
+}
+
+/** Grila de coloane a zonei de siguranță: `n` coloane, cu șanțul egal cu unitatea de spațiere a brandului. */
+export function columns(ctx: Pick<RecipeContext, "W" | "H" | "shape" | "safe">, n = 12) {
+  const s = ctx.safe.rect;
+  const gutter = spaceUnit(ctx);
+  const col = (s.w - gutter * (n - 1)) / n;
+  return { gutter, col, span: (from: number, count: number) => ({ x: s.x + from * (col + gutter), w: count * col + (count - 1) * gutter }) };
+}
+
 /** Zonele de așezare în zona de siguranță, pe orientare și compoziție. */
 export function zones(ctx: RecipeContext, comp: CompositionKind = ctx.scene.composition): Zones {
   const z = zonesRaw(ctx, comp);
@@ -65,21 +82,24 @@ function zonesRaw(ctx: RecipeContext, comp: CompositionKind): Zones {
       sub: r(s.x + s.w * 0.15, s.y + s.h * 0.3, s.w * 0.7, s.h * 0.08),
       media: r(s.x + s.w * 0.12, s.y + s.h * 0.4, s.w * 0.76, s.h * 0.6),
     };
-  const textW = s.w * 0.4;
-  const mediaW = s.w * 0.56;
-  return left
-    ? {
-        full,
-        text: r(s.x, s.y + s.h * 0.2, textW, s.h * 0.38),
-        sub: r(s.x, s.y + s.h * 0.6, textW, s.h * 0.18),
-        media: r(s.x + s.w - mediaW, s.y + s.h * 0.06, mediaW + s.x * 0.5, s.h * 0.88),
-      }
-    : {
-        full,
-        text: r(s.x + s.w - textW, s.y + s.h * 0.2, textW, s.h * 0.38),
-        sub: r(s.x + s.w - textW, s.y + s.h * 0.6, textW, s.h * 0.18),
-        media: r(s.x - s.x * 0.5, s.y + s.h * 0.06, mediaW + s.x * 0.5, s.h * 0.88),
-      };
+  // treimi pe grila de 12 coloane: textul pe 5 coloane, materialul pe 7 (cu ieșire spre marginea cadrului); între
+  // ele, șanțul grilei plus încă o unitate în interiorul zonei de text, iar subtitlul la o unitate sub titlu
+  const g = columns(ctx);
+  const u = g.gutter;
+  const textY = s.y + s.h * 0.2;
+  const textH = s.h * 0.38;
+  const subY = textY + textH + u;
+  const subH = s.h * 0.18;
+  const mediaY = s.y + s.h * 0.06;
+  const mediaH = s.h * 0.88;
+  if (left) {
+    const t = g.span(0, 5);
+    const m = g.span(5, 7);
+    return { full, text: r(t.x, textY, t.w - u, textH), sub: r(t.x, subY, t.w - u, subH), media: r(m.x, mediaY, m.w + s.x * 0.5, mediaH) };
+  }
+  const t = g.span(7, 5);
+  const m = g.span(0, 7);
+  return { full, text: r(t.x + u, textY, t.w - u, textH), sub: r(t.x + u, subY, t.w - u, subH), media: r(s.x * 0.5, mediaY, m.w + s.x * 0.5, mediaH) };
 }
 
 function collectAssets(v: unknown, out: Set<string>): void {

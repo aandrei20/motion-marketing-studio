@@ -136,3 +136,41 @@ describe("tăieturile din interiorul scenelor", () => {
     expect(varyCamera(track, track, 150)).toBe(track);
   });
 });
+
+describe("spațierea din brand", () => {
+  it("unitatea vine din spațierea CSS a brandului, iar grila are șanțul egal cu ea", async () => {
+    const { columns, spaceUnit } = await import("../../src/recipes/kit");
+    expect(spaceUnit({ W: 1920, H: 1080, shape: { radius: 8, spacing: 12, shadow: "soft" } })).toBe(24);
+    expect(spaceUnit({ W: 1080, H: 1920, shape: undefined })).toBe(24);
+    // limitele: un brand foarte dens sau foarte aerisit rămâne între 16 și 40 px la 1080
+    expect(spaceUnit({ W: 1920, H: 1080, shape: { radius: 8, spacing: 2, shadow: "soft" } })).toBe(16);
+    expect(spaceUnit({ W: 3840, H: 2160, shape: { radius: 8, spacing: 64, shadow: "soft" } })).toBe(80);
+    const g = columns({ W: 1920, H: 1080, shape: { radius: 8, spacing: 12, shadow: "soft" }, safe: { rect: { x: 96, y: 54, w: 1728, h: 972 } } as never });
+    expect(g.gutter).toBe(24);
+    const all = g.span(0, 12);
+    expect(all.x).toBe(96);
+    expect(all.w).toBeCloseTo(1728, 6);
+    expect(g.span(5, 7).x - (g.span(0, 5).x + g.span(0, 5).w)).toBeCloseTo(24, 6);
+  });
+  it("subtitlul stă la o unitate sub ultimul rând al titlului, fără să coboare din zona lui", async () => {
+    const { groupText } = await import("../../src/timeline/compile");
+    const text = (
+      id: string,
+      role: "hero" | "support",
+      capability: string,
+      box: { x: number; y: number; w: number; h: number },
+      lines: number,
+      fontSize: number,
+    ) => layer({ id, capability, role, depth: 0, box, params: { text: "x", lines: Array(lines).fill("x"), fontSize, lineHeight: 1 } });
+    const hero = text("t", "hero", "text.word-reveal", { x: 96, y: 200, w: 700, h: 400 }, 1, 100);
+    const sub = text("s", "support", "text.body", { x: 96, y: 620, w: 700, h: 160 }, 1, 40);
+    const [, moved] = groupText([hero, sub], 24);
+    // titlul centrat: ultimul rând se termină la 200 + (400 − 100) / 2 + 100 = 450
+    expect(moved.box.y).toBe(474);
+    expect(moved.box.y + moved.box.h).toBe(780);
+    expect(moved.params.vAlign).toBe("top");
+    // un titlu care umple cutia ar împinge subtitlul sub zona lui: rămâne pe loc
+    const full = text("t", "hero", "text.word-reveal", { x: 96, y: 200, w: 700, h: 400 }, 7, 100);
+    expect(groupText([full, sub], 24)[1]).toBe(sub);
+  });
+});

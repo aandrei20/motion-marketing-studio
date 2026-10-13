@@ -6,8 +6,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 165 | 85 | 50 | 26 | 4 |
-| PARTIAL | 24 | 0 | 10 | 9 | 5 |
+| IMPLEMENTED | 166 | 85 | 51 | 26 | 4 |
+| PARTIAL | 23 | 0 | 9 | 9 | 5 |
 | MISSING | 12 | 0 | 0 | 9 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
@@ -19,8 +19,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | --- | --- | --- | --- | --- |
 | Layout pe orientare și compoziție | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#zones` | — |
 | Compoziție (treimi, centru, split, full-bleed, stivă) | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#zones`, `check:visual.pixels` | — |
-| Grilă de layout (coloane, linie de bază) | P2 | PARTIAL | `module:src/recipes/kit.ts#zones` | Zonele au proporții fixe pe orientare; nu există o grilă de coloane din brand. **Următorul pas:** Grilă derivată din brand.shape.spacing, folosită de zones(). |
-| Spațiere consecventă | P1 | PARTIAL | `module:src/recipes/kit.ts#padRect` | Spațierea vine din zone și padding-uri locale, nu din tokenul brandului. **Următorul pas:** Rețetele să folosească brand.shape.spacing ca unitate. |
+| Grilă de layout (coloane, linie de bază) | P2 | PARTIAL | `module:src/recipes/kit.ts#columns`, `module:src/recipes/kit.ts#zones` | Coloanele există: grila de 12 coloane, cu șanțul egal cu unitatea de spațiere a brandului, așază treimile de pe orizontal (verticalul are o singură coloană). Linia de bază nu există. **Următorul pas:** Linia de bază comună pentru textele așezate unul sub altul, doar dacă un proiect o cere. |
+| Spațiere consecventă | P1 | IMPLEMENTED | `module:src/recipes/kit.ts#spaceUnit`, `module:src/recipes/kit.ts#columns`, `module:src/timeline/compile.ts#groupText` | — |
 | Aliniere (stânga, centru, dreapta; sus/mijloc/jos) | P0 | IMPLEMENTED | `module:src/motion/typography/shared.tsx#TextBase` | — |
 | Ierarhie vizuală (un singur erou pe moment) | P0 | IMPLEMENTED | `check:critique.rubric` | — |
 | Scară (text adaptat la cutie cu fontul real) | P0 | IMPLEMENTED | `module:src/motion/core/text-layout.ts#layoutText` | — |

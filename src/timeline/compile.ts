@@ -37,6 +37,7 @@ import { fontSpecFor } from "../motion/typography/shared";
 import { layoutText } from "../motion/core/text-layout";
 import { libraryFont, toTimelineFont } from "../motion/fonts-library";
 import { getCamera, getCapability, getLayer, getModifier, getTransition } from "../motion/registry";
+import { spaceUnit } from "../recipes/kit";
 import { getRecipe } from "../recipes/recipes";
 import type { RecipeContext, ResolvedAsset } from "../recipes/types";
 import { nodeMeasure } from "./measure-node";
@@ -510,10 +511,13 @@ export function compileTimeline(input: CompileInput): CompileResult {
       }));
       return { ...l, children: [...children, ...blur] };
     };
-    const layers = out.layers
-      .map(layoutLayer)
-      .map(blurPii)
-      .map((l) => parseLayer(l, sc.id));
+    const layers = groupText(
+      out.layers
+        .map(layoutLayer)
+        .map(blurPii)
+        .map((l) => parseLayer(l, sc.id)),
+      spaceUnit({ W, H, shape: brand.shape }),
+    );
     // camera
     // o cameră aleasă explicit (editor, corectură automată) păstrează reglajele rețetei când e aceeași mișcare
     // (de ex. zoom-ul limitat ca materialul să nu intre peste titlu); parametrii dați explicit au prioritate
@@ -844,6 +848,36 @@ export function captionSegments(
     else out.push({ from, to, box });
   });
   return moved ? out : [];
+}
+
+/**
+ * Proximitatea textului: subtitlul de sub titlu stă la exact o unitate de spațiere a brandului sub ultimul rând
+ * al titlului (măsurat cu fontul real), nu la marginea cutiei lui. Titlul e centrat vertical în cutie, deci fără
+ * regula asta distanța vizibilă varia cu numărul de rânduri. Subtitlul rămâne în zona lui inițială (sau urcă
+ * spre titlu), deci nu ajunge niciodată peste material.
+ */
+export function groupText(layers: TimelineLayer[], unit: number): TimelineLayer[] {
+  const textOf = (l: TimelineLayer) => {
+    const p = l.params as { lines?: string[]; fontSize?: number; lineHeight?: number; vAlign?: string };
+    if (!p.lines?.length || !p.fontSize) return null;
+    return { h: p.lines.length * p.fontSize * (p.lineHeight ?? 1.04), vAlign: p.vAlign ?? "middle" };
+  };
+  const hero = layers.find((l) => l.depth === 0 && l.role === "hero" && TEXT_CAPS.has(l.capability));
+  const ht = hero && textOf(hero);
+  if (!hero || !ht) return layers;
+  const top = ht.vAlign === "top" ? hero.box.y : ht.vAlign === "bottom" ? hero.box.y + hero.box.h - ht.h : hero.box.y + (hero.box.h - ht.h) / 2;
+  const bottom = top + ht.h;
+  return layers.map((l) => {
+    if (l === hero || l.depth !== 0 || l.capability !== "text.body" || l.role !== "support") return l;
+    const overlapX = Math.min(l.box.x + l.box.w, hero.box.x + hero.box.w) - Math.max(l.box.x, hero.box.x);
+    const st = textOf(l);
+    if (!st || l.box.y < hero.box.y + hero.box.h - 1 || overlapX < Math.min(l.box.w, hero.box.w) * 0.5) return l;
+    // primul rând al subtitlului la o unitate sub titlu; textul rămâne în zona lui (nu coboară spre material)
+    const y = Math.round(bottom + unit);
+    const end = l.box.y + l.box.h;
+    if (y + st.h > end) return l;
+    return { ...l, box: { ...l.box, y, h: end - y }, params: { ...l.params, vAlign: "top" } };
+  });
 }
 
 export { getCapability };

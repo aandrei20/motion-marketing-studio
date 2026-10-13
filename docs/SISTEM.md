@@ -66,7 +66,7 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 | `story.structure` – Structura narativă: hook la început, recompensă înainte de CTA, problemă înaintea soluției | timeline | story, creative | nu (formatul principal) |
 | `story.energy-arc` – Arcul de energie: escaladare, punct culminant, recompensă | timeline | story, creative | nu (formatul principal) |
 | `story.brand-reveal` – Momentul în care apare brandul (logo sau numele produsului) | timeline | story, brand | nu (formatul principal) |
-| `story.pacing` – Ritmul: durata medie a scenelor față de platformă și direcție | timeline | story, motion | da |
+| `story.pacing` – Ritmul: durata medie a planurilor (scene și tăieturile din interiorul lor) față de platformă și direcție | timeline | story, motion | da |
 | `creative.concept` – Conceptul creativ: ales, susținut de dovezi, respectat de storyboard | static | creative | nu (formatul principal) |
 
 ### Pasul 2 – Vizual: contrast real, compoziție, aglomerare
