@@ -79,7 +79,7 @@ O capabilitate sau o rețetă nouă fără referință pică testul („fără r
 
 Pe produsul demo fictiv (`examples/demo-product`), proiectul `e2e-kolibri`:
 
-captură reală → research → brand → script și storyboard (curate sau `--auto`) → voce → timeline → mix → bucla de calitate (standard; `fast` cu `--no-render`) → corecturi automate (`--autofix`) → final QA pe preview-ul randat o singură dată.
+captură reală → research → brand → concept (al utilizatorului, din brief) → script și storyboard (curate sau `--auto`) → voce → timeline → mix → bucla de calitate (standard; `fast` cu `--no-render`) → corecturi automate (`--autofix`) → final QA pe preview-ul randat o singură dată.
 
 Opțiuni: `--fresh` (șterge doar proiectul `e2e-kolibri`), `--auto`, `--no-render`, `--autofix`, `--export`.
 

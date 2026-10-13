@@ -2,9 +2,39 @@
 
 Formatul: o secțiune pe versiune; în fiecare: Adăugat, Schimbat, Reparat. Versiunile stabile primesc o etichetă Git (`v0.1.0`…).
 
+## [Nelansat] – compoziția dinamică (ramura `build/compozitie-dinamica`)
+
+Textul nu mai stă în același loc în fiecare scenă. Motivele: `docs/DECIZII.md`, punctele 98–104.
+
+### Adăugat
+
+- **Planificatorul de compoziție** (`src/recipes/layout.ts`): compoziția `auto` (noua valoare implicită) alege pe fiecare format o așezare a rețetei cu textul în alt loc decât în scena anterioară: stânga ↔ dreapta pe orizontal, sus ↔ jos pe vertical și pe pătrat. Rețetele își declară așezările (`layouts`) sau locul fix al textului (`anchor`).
+- **Textul sub material pe vertical și pe pătrat** (`thirds-right`): materialul sus, titlul lipit sub el, deasupra subtitrărilor.
+- Secvența de fraze își alternează locul de la o frază la alta; hook-ul, problema și dovada urmează locul ales.
+- Verificarea `visual.text-placement`: textul principal în același loc în trei scene la rând e o problemă medie.
+- Dezvăluirea produsului are un slot opțional `screen`: captura reală urcă de jos, sub slogan.
+
+### Schimbat
+
+- Momentul de odihnă vizuală se planifică: când toate scenele mișcă camera, cea mai calmă scenă fără demonstrație primește cameră fixă.
+- Constructorul automat de storyboard scrie compoziția `auto` (înainte: alternanța stânga/dreapta după index, ignorată pe vertical).
+- Sloganul dezvăluirii stă lipit sub logo.
+- Testul cap-coadă pe produsul demo alege conceptul (al utilizatorului, din brief), ca fluxul `/make-ad`.
+- Operația de editare `set-composition` (o scenă trece pe „auto” sau pe o așezare aleasă), propusă de `visual.text-placement` și aplicabilă dintr-un clic.
+
+### Reparat
+
+- Tăietura rămânea pe lângă bătaie când cea mai apropiată bătaie ar fi scurtat scena sub minim; acum trece pe următoarea bătaie validă.
+- Pe vertical, toate rețetele cu interfață ignorau compoziția din storyboard (textul stătea mereu sus).
+- Dezvăluirea lăsa 88% din cadrul vertical fără detaliu.
+- Storyboard-ul demo avea eticheta de structură greșită („feature-showcase” în loc de „saas”).
+- Găsite de testul pe site-ul real:
+  - Cu textul lipit sub material, camera mărea captura până peste primul rând al titlului (toleranța de 24 px); acum toleranța e 0, iar verificarea măsoară ecranul vizibil, nu cutia stratului.
+  - Adresa de pe CTA avea 3,7:1 pe un brand cu fundal alb și text gri; acum ia culoarea din paletă cu contrast suficient.
+
 ## [Nelansat] – consolidarea (ramura `build/consolidare-10`, integrată în `main`)
 
-Etapa „10/10”: cele două tabele din auditul de calitate, vizual și tehnic. Motivele: `docs/DECIZII.md`, punctele 77–96.
+Etapa „10/10”: cele două tabele din auditul de calitate, vizual și tehnic. Motivele: `docs/DECIZII.md`, punctele 77–97.
 
 ### Adăugat
 
@@ -36,6 +66,10 @@ Etapa „10/10”: cele două tabele din auditul de calitate, vizual și tehnic.
 - Două Studio-uri își marcau unul altuia joburile ca „întrerupte”.
 - Pe 9:16, un traseu de cursor cu zone care nu încap împreună tăia butonul pe margine.
 - Fixture-ul regresiei vizuale avea o regiune inventată, peste un spațiu gol.
+- Găsite de testul cap-coadă:
+  - Proximitatea titlu–subtitlu urca adresa de sub butonul CTA peste buton (contrast 1,8:1); acum textul se mută doar dacă între titlu și el nu stă nimic.
+  - Pe TikTok, butonul CTA intra sub coloana de acțiuni, iar textul lui ieșea descentrat. Grupul CTA urcă acum exact cât trebuie ca butonul să iasă din zona exclusă (fără loc, butonul se îngustează simetric), iar orice text centrat se îngustează simetric.
+  - Adresa de pe cardul final cădea sub 4,5:1 pe zonele luminoase ale fundalului; acum folosește culoarea principală a textului.
 
 ## [Nelansat] – `main` (integrat din ramura `build/production-os`)
 
@@ -83,6 +117,7 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
 - Drepturile capturilor se cer o dată pe site, cu același text pe toate formatele (înainte: o problemă pe fiecare captură și format).
 - Storyboard-ul folosește captura desktop când există și varianta de telefon a aceleiași pagini; alegerea pe format o face compilatorul.
 - Produsul demo fictiv are și așezare pentru telefon (doar sub 600 px; desktopul e neschimbat).
+- Fără co-autori și fără atribuiri automate: atribuirea e dezactivată în `.claude/settings.json`, iar `npm run lint` refuză commit-urile noi cu trailere de co-autor. Istoricul vechi nu a fost rescris.
 
 ### Reparat
 
@@ -115,10 +150,6 @@ Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Aud
 - Cheia de cache a vocilor din cloud nu includea modelul (un model nou refolosea vocea veche), iar apelurile nu aveau timeout.
 - Bundle-urile de randare se adunau la fiecare schimbare de cod (1,4 GB pe laptopul de test; 254 MB după curățare).
 - README și `docs/LICENTE.md` spuneau „repo privat”, deși repo-ul e public; licența (toate drepturile rezervate) nu s-a schimbat.
-
-### Contribuitori
-
-- Fără co-autori și fără atribuiri automate: atribuirea e dezactivată în `.claude/settings.json`, iar `npm run lint` refuză commit-urile noi cu trailere de co-autor. Istoricul vechi nu a fost rescris.
 
 ## [0.1.0] – 2026-10-08
 

@@ -74,6 +74,7 @@ Fișier generat din `src/pipeline/graph.ts` și `src/quality/checks.ts` de `npm 
 | Verificare | Metodă | Categorii | Pe format |
 | --- | --- | --- | --- |
 | `visual.pixels` – Cadre-cheie randate: contrast real al textului, compoziție, spațiu gol, aglomerare | stills | visual, typography | da |
+| `visual.text-placement` – Locul textului principal: nu stă în același loc în scene la rând | timeline |  | da |
 
 ### Pasul 3 – Mișcare: gramatică, repetiții, mișcare reală
 

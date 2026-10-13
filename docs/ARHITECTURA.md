@@ -99,7 +99,9 @@ Fiecare intrare (`src/motion/types.ts`) are: `id`, `kind` (layer/modifier/camera
 
 ## Rețetele
 
-O rețetă (`src/recipes/`, câte un fișier pe grup: `text`, `reveal`, `ui`, `proof`, `cta`; lista în `recipes.ts`; `defineRecipe`) are: `id`, `roles` (pentru ce roluri narative e potrivită), `slots` (materialele cerute: screenshot, înregistrare, logo, imagine, pagină întreagă), `minSec` (+ `minSecFor` calculat din text), `capabilities` (pe care le poate folosi) și `params` (zod). `build(ctx, params)` întoarce straturile, camera (preset + parametri), punctul de interes și sunetele proprii.
+O rețetă (`src/recipes/`, câte un fișier pe grup: `text`, `reveal`, `ui`, `proof`, `cta`; lista în `recipes.ts`; `defineRecipe`) are: `id`, `roles` (pentru ce roluri narative e potrivită), `slots` (materialele cerute: screenshot, înregistrare, logo, imagine, pagină întreagă), `minSec` (+ `minSecFor` calculat din text), `capabilities` (pe care le poate folosi), `layouts` (așezările suportate, în ordinea preferinței) sau `anchor` (locul fix al textului) și `params` (zod). `build(ctx, params)` întoarce straturile, camera (preset + parametri), punctul de interes și sunetele proprii.
+
+Așezarea vine din `src/recipes/layout.ts`: pentru compoziția `auto`, `planCompositions()` alege pe fiecare format prima așezare a rețetei cu textul în alt loc decât în scena anterioară (stânga ↔ dreapta pe orizontal, sus ↔ jos pe vertical și pe pătrat); rețeta primește în `ctx.scene.composition` așezarea deja aleasă. `textOnlyPlacement()` dă cutia unui text fără material alături (hook, fraze, problemă, dovadă).
 
 Contextul (`RecipeContext`) dă: dimensiunile, orientarea, zona sigură (cu zonele excluse ale platformei), durata, scena, direcția, textul (titlu, secundar, elemente, accente, voce), materialele rezolvate (cu zonele din captură), logo-ul, paleta, bătăile din scenă, zona de interes, nivelul de efecte, capabilitățile interzise și dacă există subtitrări.
 

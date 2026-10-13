@@ -1,6 +1,6 @@
 # Starea implementării
 
-Actualizat: 2026-10-13 · ramura `main` (după 0.1.0: etapa „Video Production OS”, consolidarea de securitate și costuri, apoi consolidarea „10/10” din `build/consolidare-10`: tabelele vizual și tehnic, deciziile 77–96)
+Actualizat: 2026-10-13 · ramura `main` (după 0.1.0: etapa „Video Production OS”, consolidarea de securitate și costuri, consolidarea „10/10” (deciziile 77–97), apoi compoziția dinamică (deciziile 98–102))
 
 ## Ce înseamnă marcajele
 
@@ -11,7 +11,7 @@ Actualizat: 2026-10-13 · ramura `main` (după 0.1.0: etapa „Video Production 
 | [ ] | Neimplementat |
 | [!] | Risc sau limită importantă, de știut înainte de folosire |
 
-Inventarul complet de design și producție (201 elemente, cu stare și prioritate, verificat de test): `docs/INVENTAR.md`. Toate cele 85 de elemente P0 sunt implementate; 173 de elemente sunt implementate, 22 parțiale și 6 lipsesc (niciunul P0 sau P1). Capabilitățile de sistem (intrări, ieșiri, implementare, teste): `docs/SISTEM.md`.
+Inventarul complet de design și producție (201 elemente, cu stare și prioritate, verificat de test): `docs/INVENTAR.md`. Toate cele 85 de elemente P0 sunt implementate; 174 de elemente sunt implementate, 21 parțiale și 6 lipsesc (niciunul P0 sau P1). Capabilitățile de sistem (intrări, ieșiri, implementare, teste): `docs/SISTEM.md`.
 
 **Porțile de calitate la data de mai sus:**
 
@@ -19,10 +19,10 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 | --- | --- |
 | `npm run typecheck` | trece |
 | `npm run lint` | trece (nume de produs, determinism, secrete, fără co-autori în commit-urile noi) |
-| `npm test` | 148 de teste în 20 de fișiere trec (unitare + integrare), ~80 s |
-| `npm run test:render` | 8 teste trec, 4 min 33 s (rulat după schimbările din 2026-10-12, fără referințe actualizate): toate cele 124 de capabilități randate și comparate cu referința vizuală, determinismul cadrelor (toleranță 2/255), MP4 H.264 + AAC, toate cele 16 rețete pe 16:9 și 9:16 față de referință, testul de sensibilitate al pragurilor |
-| `npm run e2e -- --fresh --autofix --export` | trece, 382 s (din care ~2 min exportul final): 2 formate × 23 s; capturi desktop + variantele de telefon; v1 96,6 → corecturi automate (4 corecturi, vocea refolosită) → v2 97,6; −14,25 LUFS / −1,58 dBTP; 691 de cadre pe format fără cadre negre, flash-uri sau înghețări. Exportul final al produsului fictiv (aprobarea de test): 1080×1920 și 1920×1080 @ 30 fps, 23,04 s, H.264 + AAC, ~21 MB, ~1 min fiecare, verificate cu ffprobe. Verdict **FIX**: rămâne o problemă mare cunoscută (subtitrările acoperă 20% din tabla kanban în s6, pe 9:16, unde scena rămâne pe captura desktop), care cere o decizie de om |
-| `npm run e2e:real -- --url <site public> --fresh --lang en` | trece, 427 s (cu alte procese pornite în paralel pe laptop, deci nu e un benchmark curat; linia de bază din 2026-10-11: 316 s), pe același site public real (adresa dată la rulare, niciun nume în cod): v2 **95,1, FIX** (linia de bază: 91,4), 0 critice, 1 problemă mare: drepturile capturilor site-ului, acum o singură întrebare (înainte: 3). Pe 9:16 se folosesc capturile de telefon, iar problemele de lizibilitate (~3,7 px) au dispărut; pe 16:9 rămân s3/s4 la ~4,1 px (medie). Rămân pentru om și Claude: hook-ul de 4,5 s, energia plată, contrastul adresei (3,89:1), ritmul lent pentru TikTok. Reclama iese „concept”, iar exportul final e refuzat, cum cere regula 3 |
+| `npm test` | 186 de teste în 27 de fișiere trec (unitare + integrare), ~60 s |
+| `npm run test:render` | 9 teste trec, 3 min 10 s: toate cele 126 de capabilități randate și comparate cu referința vizuală, determinismul cadrelor (toleranță 2/255), MP4 H.264 + AAC (și oprirea la jumătate), toate cele 16 rețete pe 16:9 și 9:16 față de referință (actualizată pe 2026-10-13 după verificarea cadrelor: locul textului, dezvăluirea cu produsul), testul de sensibilitate al pragurilor |
+| `npm run e2e -- --fresh --autofix --export` | ultima rulare (2026-10-13, după toate reparațiile): v1 **100/100, PASS** din prima rundă, fără nicio problemă (nici mică), deci fără corecturi automate; conceptul utilizatorului ales (82,1/100); 2 formate × 23,5 s; capturi desktop + variantele de telefon; textul principal alternează locul pe ambele formate; −14,12 LUFS / −1,58 dBTP; 705 cadre pe format fără cadre negre, flash-uri sau înghețări; exportul final 9:16 verificat (1080×1920 @ 30 fps, 23,51 s, H.264 + AAC, 21,6 MB). Exportul 16:9 din această rulare s-a oprit: FFmpeg n-a mai putut porni (0xC0000142), cu memoria calculatorului plină; în rularea anterioară din aceeași zi (aceleași rețete de randare, fără reparațiile de geometrie și de culoare a adresei) exportul 16:9 a trecut (1920×1080 @ 30 fps, 23,51 s, 21,1 MB) |
+| `npm run e2e:real -- --url <site public> --fresh --lang en` | trece, 277 s, pe același site public real (adresa dată la rulare, niciun nume în cod): v2 **96,6, FIX** (linia de bază din 2026-10-11: 91,4; etapa anterioară: 95,1), 0 critice, 1 problemă mare: drepturile capturilor site-ului (o singură întrebare, decizia utilizatorului, regula 3). Textul alternează locul pe ambele formate; materialul mărit nu mai atinge titlul de sub el, iar adresa de pe CTA e lizibilă (punctele 103–104). Rămân pentru om și Claude, din script: hook-ul de 4,3 s și ritmul lent pentru TikTok (replicile lungi citate de pe site), plus lipsa unei scene calme (toate scenele demonstrează funcții). Reclama iese „concept”, iar exportul final e refuzat, cum cere regula 3 |
 
 ## 1. Instalare și mediu
 
@@ -84,6 +84,9 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 - [✓] 126 de capabilități în registry, fiecare cu fișă, parametri zod, sunet declarat și exemplu, toate randate și comparate cu referința vizuală (noi: `mod.blend`, `shape.icon`; anticipația în `mod.enter`).
 - [✓] Tăieturi în interiorul scenelor lungi (punch-in) pe platformele rapide, pe cuvânt; varietatea: animația titlului după energie, camera inversată la rețete repetate; arcul de energie al storyboard-ului automat (punctele 81, 83, 84).
 - [✓] L-cut din storyboard (`audio.lCutSec`): tăietura imaginii mai devreme, vocea pe loc (punctul 87).
+- [✓] Planificatorul de compoziție: compoziția `auto` (implicită) mută textul între scene, stânga ↔ dreapta pe orizontal și sus ↔ jos pe vertical; frazele unei secvențe își alternează locul; verificarea `visual.text-placement` prinde textul ținut în același loc în trei scene la rând (punctul 98, teste unitare + produsul demo pe ambele formate).
+- [✓] Odihna vizuală planificată: când toate scenele mișcă camera, cea mai calmă scenă fără demonstrație primește cameră fixă (punctul 99).
+- [✓] Dezvăluirea cu produsul real (slotul opțional `screen`), sub slogan (punctul 100).
 - [✓] 16 rețete, gramatica de montaj, tăieturi pe beat doar cu tempo sigur, tăieturile spre dezvăluire pe drop-uri.
 - [✓] Camera, callout-urile, limitarea zoom-ului sub text, derularea capturilor de pagină întreagă (0.1.0, teste).
 - [✓] Determinism: timeline identic octet cu octet; cadre identice (toleranță de rasterizare 2/255); recompilarea e verificată și în bucla de calitate (`technical.recompile`).
@@ -95,6 +98,8 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 - [✓] Compilator storyboard → timeline, cu text măsurat cu fonturile reale; subtitrările ocolesc zona demonstrată și nu dublează textul de pe ecran.
 - [✓] Validator: footage real, drepturi, cifre, zone sigure, zone excluse, 360 px, flash-uri, goluri, date personale; fiecare problemă cu corectura propusă.
 - [✓] Formate 9:16, 16:9, 1:1, 4:5, 4K, personalizat; 24–60 fps; aceleași tăieturi în toate formatele.
+- [✓] Pe vertical și pe pătrat, așezarea „thirds-right” pune materialul sus și textul lipit sub el, deasupra subtitrărilor; zona textului se dimensionează după conținut (fără subtitlu, materialul crește).
+- [!] Storyboard-urile scrise înainte de punctul 98 au compoziția salvată explicit (`thirds-left`/`thirds-right`) și rămân cum erau; pentru textul dinamic, compoziția scenelor trebuie să devină `auto` (sau storyboard-ul se regenerează).
 - [✓] Verificarea reîncadrării: zona demonstrată rămâne în cadru și lizibilă pe fiecare format (`platform.reframing`).
 - [✓] Materialul mărit de cameră nu intră peste titlu, nici când camera e aleasă de o corectură sau din editor (zoom-ul limitat al rețetei se păstrează); verificarea `ui.material-over-text` măsoară suprapunerea pe ecran (test de integrare + verificată pe timeline-ul real care avea defectul: 45–46% din titlu acoperit, prins).
 - [✓] Culorile de text lizibile din nuanța brandului: textul secundar ≥ 4,5:1, cuvântul rostit din subtitrări ≥ 3:1 pe fundalul lor (cadre verificate pe produsul real).
@@ -118,7 +123,7 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 
 ## 10. Bucla de calitate (docs/CALITATE.md)
 
-- [✓] Pase 0–9 cu 25 de verificări, fiecare cu metoda și costul ei; adâncimi fast / standard / deep / final; verificările sărite și categoriile neevaluate sunt raportate (teste unitare și de integrare).
+- [✓] Pase 0–9 cu 26 de verificări, fiecare cu metoda și costul ei; adâncimi fast / standard / deep / final; verificările sărite și categoriile neevaluate sunt raportate (teste unitare și de integrare).
 - [✓] Cache pe conținut: cadrele-cheie (conținutul scenei + codul de randare), mixul, preview-ul; motorul de impact între versiuni (teste).
 - [✓] Scorul `quality-v1`, 11 categorii, verdict PASS / POLISH / FIX / FAIL, configurabil per proiect; rubrica regulii 7 păstrată și inclusă în PASS (teste).
 - [✓] Probleme structurate cu toate câmpurile cerute; problemele lui Claude (`claude-visual`) și ale utilizatorului intră în același sistem.
@@ -165,7 +170,7 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 
 ## 15. Documentație
 
-- [✓] README, ARHITECTURA, CALITATE, TESTARE, BIBLIOTECA / INVENTAR / SISTEM (generate din cod), DECIZII (1–96), DEPANARE, GLOSAR, LICENTE, FLUX, AUDIT (inițial + etapa „Video Production OS”), CHANGELOG, acest fișier.
+- [✓] README, ARHITECTURA, CALITATE, TESTARE, BIBLIOTECA / INVENTAR / SISTEM (generate din cod), DECIZII (1–97), DEPANARE, GLOSAR, LICENTE, FLUX, AUDIT (inițial + etapa „Video Production OS”), CHANGELOG, acest fișier.
 
 ## 16. Inginerie
 
@@ -182,7 +187,7 @@ Inventarul complet de design și producție (201 elemente, cu stare și priorita
 | [ ] | Importul celor 96 de sunete din proiectul anterior | Ca materiale ale tale, după verificarea licenței (poarta de drepturi) |
 | [ ] | Licența proiectului: repo-ul e public, fără fișier de licență (drepturi rezervate) | Decizia autorului (`docs/LICENTE.md`) |
 | [ ] | Publicarea: push pe GitHub, ștergerea ramurilor remote vechi, eticheta de versiune (de ex. `v0.2.0`) | Cu acordul autorului |
-| [ ] | Pe site-ul real: hook-ul de 4,3 s și ritmul TikTok (~3,9 s pe plan) vin din replicile lungi citate de pe site | Decizie de script (Claude în `/make-ad` și utilizatorul): un hook sub 3 s, replici mai scurte |
+| [ ] | Pe site-ul real: hook-ul de 4,3 s și ritmul TikTok (~4,1 s pe plan) vin din replicile lungi citate de pe site | Decizie de script (Claude în `/make-ad` și utilizatorul): un hook sub 3 s, replici mai scurte |
 | [ ] | Elementele P2/P3 rămase (morph de text și de forme, graphic match, tranziția prin obiect, obiecțiile, stilul ilustrațiilor) | `docs/INVENTAR.md`; doar când un proiect le cere |
 | [~] | Linia de bază comună a textelor (grila are doar coloane) | Doar dacă un proiect o cere |
 | [~] | Zonele sigure ale platformelor din surse secundare | Verificarea în Ads Manager, cu contul tău |

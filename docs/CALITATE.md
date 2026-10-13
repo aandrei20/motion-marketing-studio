@@ -36,7 +36,7 @@ O verificare mai scumpă decât adâncimea e raportată „sărită”, cu motiv
 | --- | --- |
 | 0 Plan | `timeline.validate` (footage real, drepturi, cifre, zone sigure, 360 px, flash-uri, goluri, date personale), `claims.script`, `claims.confidence` (graful de afirmații: conflict sau afirmație despre concurent → critică) |
 | 1 Poveste | `critique.rubric` (rubrica regulii 7), `story.structure`, `story.energy-arc`, `story.brand-reveal`, `story.pacing`, `creative.concept` |
-| 2 Vizual | `visual.pixels`: contrast WCAG măsurat pe pixelii randați, densitatea marginilor, ocuparea, ponderea culorilor brandului |
+| 2 Vizual | `visual.pixels`: contrast WCAG măsurat pe pixelii randați, densitatea marginilor, ocuparea, ponderea culorilor brandului; `visual.text-placement`: locul textului principal pe scene, din timeline (același loc în trei scene la rând = problemă medie) |
 | 3 Mișcare | `motion.grammar` (odihnă vizuală, varietatea animațiilor de text, raportul dintre tranziții și tăieturi simple), `motion.scene` (mișcarea reală dintre cadre, înghețări) |
 | 4 Interfață | `ui.legibility` (interfața la testul de 360 px), `ui.caption-occlusion` (subtitrări peste zona demonstrată), `ui.material-over-text` (materialul mărit de cameră peste titlu) |
 | 5 Tipografie | `typography.caption-redundancy`, `typography.consistency` |

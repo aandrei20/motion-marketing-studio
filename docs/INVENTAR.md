@@ -6,8 +6,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 173 | 85 | 51 | 33 | 4 |
-| PARTIAL | 22 | 0 | 9 | 8 | 5 |
+| IMPLEMENTED | 174 | 85 | 52 | 33 | 4 |
+| PARTIAL | 21 | 0 | 8 | 8 | 5 |
 | MISSING | 6 | 0 | 0 | 3 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
@@ -18,7 +18,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Element | Prioritate | Stare | Implementare | Ce lipsește / pasul următor |
 | --- | --- | --- | --- | --- |
 | Layout pe orientare și compoziție | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#zones` | — |
-| Compoziție (treimi, centru, split, full-bleed, stivă) | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#zones`, `check:visual.pixels` | — |
+| Compoziție (treimi, centru, split, full-bleed, stivă), aleasă pe scenă și format | P0 | IMPLEMENTED | `module:src/recipes/kit.ts#zones`, `module:src/recipes/layout.ts#planCompositions`, `op:set-composition`, `check:visual.pixels`, `check:visual.text-placement` | — |
 | Grilă de layout (coloane, linie de bază) | P2 | PARTIAL | `module:src/recipes/kit.ts#columns`, `module:src/recipes/kit.ts#zones` | Coloanele există: grila de 12 coloane, cu șanțul egal cu unitatea de spațiere a brandului, așază treimile de pe orizontal (verticalul are o singură coloană). Linia de bază nu există. **Următorul pas:** Linia de bază comună pentru textele așezate unul sub altul, doar dacă un proiect o cere. |
 | Spațiere consecventă | P1 | IMPLEMENTED | `module:src/recipes/kit.ts#spaceUnit`, `module:src/recipes/kit.ts#columns`, `module:src/timeline/compile.ts#groupText` | — |
 | Aliniere (stânga, centru, dreapta; sus/mijloc/jos) | P0 | IMPLEMENTED | `module:src/motion/typography/shared.tsx#TextBase` | — |
@@ -29,7 +29,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Spațiu negativ intenționat vs. spațiu gol | P1 | PARTIAL | `check:visual.pixels` | Spațiul gol e detectat euristic (încredere 0,5), fără intenție declarată în storyboard. **Următorul pas:** Câmp „negativeSpace” în compoziție; criticul îl tolerează când e intenționat. |
 | Adâncime: prim-plan, plan mediu, fundal (parallax) | P0 | IMPLEMENTED | `module:src/motion/camera/rig.ts#layerTransform`, `cap:camera.parallax-drift` | — |
 | Punct focal (din captură, automat sau dat de utilizator) | P0 | IMPLEMENTED | `module:src/assets/analyze.ts#focalPoint`, `cap:camera.focus-track` | — |
-| Ritm vizual (alternanță calm/activ) | P1 | PARTIAL | `check:motion.grammar`, `check:critique.rubric` | Se detectează lipsa de odihnă vizuală și monotonia; nu se planifică alternanța în storyboard. **Următorul pas:** Profil de energie țintă pe scene, folosit de constructorul de storyboard. |
+| Ritm vizual (alternanță calm/activ) | P1 | IMPLEMENTED | `module:src/recipes/layout.ts#planCompositions`, `module:src/timeline/compile.ts#compileTimeline`, `check:motion.grammar`, `check:visual.text-placement` | — |
 | Încadrare (rame de dispozitiv, decupaj pe vertical) | P0 | IMPLEMENTED | `cap:frame.browser`, `cap:frame.phone`, `module:src/recipes/kit.ts#focusCrop` | — |
 | Zone de siguranță și zone excluse pe platformă | P0 | IMPLEMENTED | `module:src/core/formats.ts#resolveSafeZone`, `check:timeline.validate` | — |
 | Decupare (zonă din captură, crop pe format) | P0 | IMPLEMENTED | `cap:media.screen`, `module:src/recipes/kit.ts#focusCrop` | — |
