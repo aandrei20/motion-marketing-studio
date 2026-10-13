@@ -148,7 +148,7 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
         title={`Probleme (${run.issues.length})`}
         aside={
           <div className="row small">
-            <select value={sev} onChange={(e) => setSev(e.target.value)}>
+            <select aria-label="Filtrează după gravitate" value={sev} onChange={(e) => setSev(e.target.value)}>
               <option value="all">toate gravitățile</option>
               {Object.entries(SEV_LABEL).map(([k, l]) => (
                 <option key={k} value={k}>
@@ -156,7 +156,7 @@ export function QualityPanel({ ctx }: { ctx: Ctx }) {
                 </option>
               ))}
             </select>
-            <select value={cat} onChange={(e) => setCat(e.target.value)}>
+            <select aria-label="Filtrează după categorie" value={cat} onChange={(e) => setCat(e.target.value)}>
               <option value="all">toate categoriile</option>
               {Object.entries(CAT_LABEL).map(([k, l]) => (
                 <option key={k} value={k}>
@@ -398,7 +398,9 @@ export function SceneEditor({
     <div className="editor">
       <h3>Editare {ctx.version?.meta.frozen ? <span className="muted small">(versiune înghețată: editarea creează versiunea următoare)</span> : null}</h3>
       <div className="row small">
-        durata <input className="num" value={sec} onChange={(e) => setSec(e.target.value)} /> s
+        <label>
+          durata <input className="num" value={sec} onChange={(e) => setSec(e.target.value)} /> s
+        </label>
         <button type="button" className="btn tiny" onClick={() => run([{ op: "scene-duration", sceneId: scene.id, sec: Number(sec) || null }])}>
           aplică
         </button>
@@ -457,8 +459,9 @@ export function SceneEditor({
         </button>
       </div>
       <div className="row small">
-        tranziție
+        <label htmlFor={`tr-${scene.id}`}>tranziție</label>
         <select
+          id={`tr-${scene.id}`}
           value={sb.transitionIn?.capability ?? ""}
           onChange={(e) => run([{ op: "set-transition", sceneId: scene.id, capability: e.target.value || null, durationFrames: null }])}
           disabled={idx === 0}
@@ -470,8 +473,9 @@ export function SceneEditor({
             </option>
           ))}
         </select>
-        cameră
+        <label htmlFor={`cam-${scene.id}`}>cameră</label>
         <select
+          id={`cam-${scene.id}`}
           value={sb.camera?.capability ?? ""}
           onChange={(e) => e.target.value && run([{ op: "set-camera", sceneId: scene.id, capability: e.target.value, params: {} }])}
         >
@@ -484,7 +488,8 @@ export function SceneEditor({
         </select>
       </div>
       <div className="row small">
-        text <input className="wide" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="titlul scenei" />
+        <label htmlFor={`txt-${scene.id}`}>text</label>
+        <input id={`txt-${scene.id}`} className="wide" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="titlul scenei" />
         <button type="button" className="btn tiny" onClick={() => run([{ op: "scene-text", sceneId: scene.id, headline }])}>
           schimbă
         </button>

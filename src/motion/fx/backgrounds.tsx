@@ -159,6 +159,7 @@ export const bgImage = defineLayer({
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#000" }}>
         <Img
+          alt=""
           src={url(p.src)}
           style={{
             position: "absolute",

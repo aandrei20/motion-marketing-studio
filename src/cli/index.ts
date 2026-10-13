@@ -5,6 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { ingestFile, setRights, updateAsset } from "../assets/ingest";
 import { listVoices } from "../audio/voice";
 import { SFX } from "../audio/sfx";
@@ -175,8 +176,9 @@ BIBLIOTECĂ
   check-projects [<id>]                  proiectele existente față de schemele de acum (și fișierele lipsă)
 `;
 
-async function main(): Promise<void> {
-  const a = parseArgs(process.argv.slice(2));
+/** Rulează o comandă `mms` (argumentele fără „node” și scriptul). Exportată ca să poată fi testată direct. */
+export async function runCli(argv: string[]): Promise<void> {
+  const a = parseArgs(argv);
   const cmd = a._[0] ?? "help";
   const id = a._[1];
   switch (cmd) {
@@ -777,13 +779,16 @@ function progressBar(): (p: number) => void {
   };
 }
 
-main()
-  .then(async () => {
-    const a = parseArgs(process.argv.slice(2));
-    if (a._[0] !== "studio" && a._[0] !== "remotion-studio") await shutdown();
-  })
-  .catch(async (e) => {
-    console.error(`\nEroare: ${formatError(e)}`);
-    await shutdown().catch(() => undefined);
-    process.exit(1);
-  });
+// pornit ca program (npm run mms), nu importat de teste
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  const argv = process.argv.slice(2);
+  runCli(argv)
+    .then(async () => {
+      if (argv[0] !== "studio" && argv[0] !== "remotion-studio") await shutdown();
+    })
+    .catch(async (e) => {
+      console.error(`\nEroare: ${formatError(e)}`);
+      await shutdown().catch(() => undefined);
+      process.exit(1);
+    });
+}

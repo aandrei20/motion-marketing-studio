@@ -19,6 +19,8 @@
   --muted: #8a90a6;
   --accent: #7c6cff;
   --accent-2: #2de2b0;
+  /* fundalul butoanelor principale: textul alb are contrast ≥ 4,5:1 (WCAG AA) */
+  --accent-strong: #7061e6;
   --warn: #ffb547;
   --err: #ff5c7a;
   --ok: #3ddc97;
@@ -338,12 +340,12 @@ label.check {
   cursor: not-allowed;
 }
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
   color: #fff;
 }
 .btn.primary:hover:not(:disabled) {
-  filter: brightness(1.1);
+  filter: brightness(0.9);
 }
 .btn.ghost {
   background: transparent;
@@ -845,34 +847,42 @@ blockquote {
   color: #cfd3e6;
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
+/* culorile pistelor sunt opace, cu text alb la contrast ≥ 4,5:1 (WCAG AA) */
 .track-scene .tbar {
-  background: rgba(124, 108, 255, 0.35);
+  background: #524aa5;
   color: #fff;
 }
 .track-transitions .tbar {
-  background: rgba(255, 181, 71, 0.35);
+  background: #956d35;
   color: #fff;
 }
 .track-text .tbar {
-  background: rgba(45, 226, 176, 0.25);
+  background: #21826c;
+  color: #fff;
 }
 .track-ui .tbar {
-  background: rgba(70, 160, 255, 0.3);
+  background: #3269a5;
+  color: #fff;
 }
 .track-voice .tbar {
-  background: rgba(61, 220, 151, 0.35);
+  background: #2b8361;
   color: #fff;
 }
 .track-sfx .tbar {
-  background: rgba(255, 92, 122, 0.6);
+  background: #a14056;
   padding: 0;
 }
 .track-captions .tbar {
-  background: rgba(255, 255, 255, 0.12);
+  background: #727379;
+  color: #fff;
 }
+/* straturile de fundal și overlay sunt secundare: chenar punctat și culoare stinsă, cu text încă lizibil (≥ 4,5:1) */
 .tbar.k-background,
 .tbar.k-overlay {
-  opacity: 0.55;
+  background: #1f2336;
+  color: #aeb3c9;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 .playhead {
   position: absolute;

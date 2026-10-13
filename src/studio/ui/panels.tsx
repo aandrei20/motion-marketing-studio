@@ -750,7 +750,7 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
             <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
           </label>
           <div className="row">
-            <select value={viewport} onChange={(e) => setViewport(e.target.value)}>
+            <select aria-label="Viewport-ul capturii" value={viewport} onChange={(e) => setViewport(e.target.value)}>
               {["desktop", "laptop", "tablet", "mobile"].map((v) => (
                 <option key={v}>{v}</option>
               ))}
@@ -791,6 +791,7 @@ export function AssetsPanel({ ctx }: { ctx: Ctx }) {
             <input type="checkbox" checked={third} onChange={(e) => setThird(e.target.checked)} /> materialele sunt ale altcuiva (întreb de drepturi)
           </label>
           <input
+            aria-label="Încarcă fișiere"
             type="file"
             multiple
             disabled={busy}
@@ -1064,6 +1065,7 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
                 <td>
                   <textarea
                     rows={2}
+                    aria-label={`Textul pe ecran, replica ${l.id}`}
                     value={l.onScreen}
                     onChange={(e) => upLine(i, { onScreen: e.target.value, origin: l.origin === "user-verbatim" ? "user-polished" : l.origin })}
                   />
@@ -1071,12 +1073,14 @@ export function ScriptPanel({ ctx }: { ctx: Ctx }) {
                 <td>
                   <textarea
                     rows={2}
+                    aria-label={`Vocea, replica ${l.id}`}
                     value={l.voiceover}
                     onChange={(e) => upLine(i, { voiceover: e.target.value, origin: l.origin === "user-verbatim" ? "user-polished" : l.origin })}
                   />
                 </td>
                 <td>
                   <input
+                    aria-label={`Cuvintele accentuate, replica ${l.id}`}
                     value={l.emphasis.join(", ")}
                     onChange={(e) =>
                       upLine(i, {
@@ -1374,7 +1378,8 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
       </Section>
       <Section title={`Cue sheet (${ctx.version?.cueSheet?.length ?? 0})`}>
         <p className="muted small">Fiecare efect vizual își declară sunetul; vocea și efectele au momentul exact.</p>
-        <div className="scroll">
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: zona derulabilă trebuie să se poată derula și din tastatură (WCAG 2.1.1, axe „scrollable-region-focusable”) */}
+        <section className="scroll" aria-label="Cue sheet: momentele sonore" tabIndex={0}>
           <table className="table">
             <thead>
               <tr>
@@ -1399,7 +1404,7 @@ export function AudioPanel({ ctx }: { ctx: Ctx }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
       </Section>
     </div>
   );

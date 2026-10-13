@@ -53,6 +53,7 @@ export const uiZoomLens = defineLayer({
         }}
       >
         <Img
+          alt=""
           src={url(p.src)}
           style={{
             position: "absolute",

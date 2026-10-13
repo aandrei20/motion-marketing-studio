@@ -53,7 +53,7 @@ function SourceMedia({
     }
     return video;
   }
-  return <Img src={url(src)} style={style} />;
+  return <Img alt="" src={url(src)} style={style} />;
 }
 
 export interface ScreenParams {
@@ -225,6 +225,7 @@ export const mediaImage = defineLayer({
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: p.radius }}>
         <Img
+          alt=""
           src={url(p.src)}
           style={{
             width: "100%",
@@ -356,9 +357,9 @@ export const mediaCompare = defineLayer({
       ) : null;
     return (
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: p.radius }}>
-        <Img src={url(p.before)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        <Img alt="" src={url(p.before)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 0 0 ${(pos * 100).toFixed(2)}%)` }}>
-          <Img src={url(p.after)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <Img alt="" src={url(p.after)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         <div
           style={{
@@ -448,7 +449,7 @@ export const mediaStack3d = defineLayer({
                 boxShadow: "0 40px 80px rgba(0,0,0,0.45)",
               }}
             >
-              <Img src={url(src)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+              <Img alt="" src={url(src)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
             </div>
           ))}
         </div>
@@ -502,7 +503,7 @@ export const mediaDevice3d = defineLayer({
           }}
         >
           <DeviceFrame kind={p.device as FrameKind} box={box} geo={geo}>
-            <Img src={url(p.src)} style={{ position: "absolute", left: 0, top: 0, width: p.imageWidth * k, height: p.imageHeight * k }} />
+            <Img alt="" src={url(p.src)} style={{ position: "absolute", left: 0, top: 0, width: p.imageWidth * k, height: p.imageHeight * k }} />
             <div style={{ position: "absolute", inset: 0, background: `linear-gradient(${115 + ry}deg, rgba(255,255,255,0.18), transparent 40%)` }} />
           </DeviceFrame>
         </div>
@@ -560,7 +561,7 @@ export const mediaCards = defineLayer({
                 opacity: clamp(s * 3, 0, 1),
               }}
             >
-              <Img src={url(src)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+              <Img alt="" src={url(src)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
             </div>
           );
         })}

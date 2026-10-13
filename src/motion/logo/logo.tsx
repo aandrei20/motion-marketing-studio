@@ -23,7 +23,7 @@ const hex = (c: string) => (c.startsWith("#") ? c : "#ffffff");
 
 function LogoImg({ src, style }: { src: string; style?: React.CSSProperties }) {
   const url = useAssetUrl();
-  return <Img src={url(src)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", ...style }} />;
+  return <Img alt="" src={url(src)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", ...style }} />;
 }
 
 export const logoReveal = defineLayer({

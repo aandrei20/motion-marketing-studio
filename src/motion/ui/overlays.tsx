@@ -552,6 +552,7 @@ export const uiDrag = defineLayer({
             }}
           >
             <Img
+              alt=""
               src={url(p.src)}
               style={{ position: "absolute", left: -p.from.x, top: -p.from.y, width: p.imageWidth, height: p.imageHeight, maxWidth: "none" }}
             />

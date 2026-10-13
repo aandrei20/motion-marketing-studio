@@ -22,7 +22,7 @@ export const ContactSheet: React.FC<ContactSheetProps> = ({ images, labels, cols
         const r = Math.floor(i / cols);
         return (
           <div key={i} style={{ position: "absolute", left: pad + c * (cellWidth + pad), top: header + r * (cellHeight + pad + 26), width: cellWidth }}>
-            <Img src={staticFile(src)} style={{ width: cellWidth, height: cellHeight, objectFit: "cover", display: "block", borderRadius: 4 }} />
+            <Img alt="" src={staticFile(src)} style={{ width: cellWidth, height: cellHeight, objectFit: "cover", display: "block", borderRadius: 4 }} />
             <div style={{ color: "#9aa0b8", fontSize: 18, marginTop: 4 }}>{labels[i] ?? ""}</div>
           </div>
         );

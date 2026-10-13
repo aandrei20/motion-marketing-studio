@@ -17,6 +17,7 @@
     "doctor": "tsx scripts/doctor.ts",
     "test": "vitest run",
     "test:render": "vitest run --config vitest.render.config.ts",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "biome check . && tsx scripts/lint-rules.ts",
     "format": "biome format --write .",

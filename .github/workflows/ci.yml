@@ -30,7 +30,8 @@ jobs:
       - run: npx playwright install chromium
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      # testele cu acoperirea măsurată; sub pragul din vitest.config.ts pasul eșuează
+      - run: npm run test:coverage
       - run: npm run e2e -- --fresh --no-render
 
   render:
