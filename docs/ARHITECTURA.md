@@ -62,7 +62,7 @@ Fiecare fișier de proiect are `schemaVersion` în schema lui. O schimbare compa
 | `src/audio/` | WAV, DSP, efecte sintetizate, muzică generativă, voce (TTS), decodare, beat grid, loudness BS.1770, mixer. |
 | `src/renderer/` | Compoziția Remotion (`TimelineComposition`), foaia de contact, randarea din Node (bundle cache-uit, folder public pregătit doar cu fișierele folosite), analiza video-ului randat. |
 | `src/critique/` | Rubrica fixă a regulii 7 (`auto.ts`), criticul pe pixeli (`pixel.ts`), pachetul de revizuire vizuală pentru Claude (`pack.ts`). |
-| `src/quality/` | Bucla de calitate: verificările pe pase și metode (`checks.ts`), rularea cu cache (`run.ts`), problemele (`issues.ts`), scorul `quality-v1` (`score.ts`), corecturile automate cu rollback (`autofix.ts`). |
+| `src/quality/` | Bucla de calitate: verificările pe pase și metode (tipurile și lista în `checks.ts`, câte un fișier pe pasă în `passes/`), rularea cu cache (`run.ts`), problemele (`issues.ts`), scorul `quality-v1` (`score.ts`), corecturile automate cu rollback (`autofix.ts`). |
 | `src/platform/` | Profilurile de platformă (durată, hook, subtitrări, densitate), ajustabile per proiect. |
 | `src/inventory/` | Inventarul de design și producție (stare, prioritate, referințe spre cod verificate de lint) → `docs/INVENTAR.md`. |
 | `src/iterate/` | Comenzile în limbaj natural → operații locale pe storyboard/script. |

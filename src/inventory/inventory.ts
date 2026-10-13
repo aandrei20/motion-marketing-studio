@@ -5,7 +5,7 @@
  *   cap:<id>       capabilitate de mișcare din registry (src/motion/registry.ts)
  *   recipe:<id>    rețetă (lista din src/recipes/recipes.ts)
  *   sfx:<id>       efect sonor sintetizat (src/audio/sfx.ts)
- *   check:<id>     verificare a buclei de calitate (src/quality/checks.ts)
+ *   check:<id>     verificare a buclei de calitate (src/quality/passes/, lista în checks.ts)
  *   op:<op>        operație de editare (src/core/schema/edit.ts)
  *   template:<id>  șablon de structură (templates/)
  *   module:<cale>#<export>   funcție sau constantă exportată
