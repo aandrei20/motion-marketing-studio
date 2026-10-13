@@ -120,6 +120,42 @@ describe("lanțul de producție pe produsul demo", () => {
     }
   }, 120_000);
 
+  it("L-cut: imaginea trece la scena următoare mai devreme, iar vocea rămâne exact pe loc", async () => {
+    const store = await import("../../src/projects/store");
+    const { makeFormat } = await import("../../src/core/formats");
+    const { compileTimeline } = await import("../../src/timeline/compile");
+    const id = "it-e2e";
+    const v = store.loadProject(id).currentVersion!;
+    const voice = JSON.parse(fs.readFileSync(path.join(tmp, id, "versions", v, "audio", "voice.json"), "utf8"));
+    const sb = store.loadStoryboard(id, v);
+    const base = {
+      project: store.loadProject(id),
+      versionId: v,
+      brief: store.loadBrief(id),
+      brand: store.loadBrand(id),
+      research: store.loadResearch(id),
+      assets: store.loadAssets(id),
+      script: store.loadScript(id, v),
+      voice,
+      beatGrid: store.loadTimeline(id, v, "9x16").audio.beatGrid,
+      format: makeFormat("9x16", { platform: "tiktok", durationSec: 24, fps: 30 }),
+    };
+    // o scenă de funcție (vocea îi dictează durata), urmată de alta: trece mai devreme la ea cu 0,5 s
+    const k = sb.scenes.findIndex((s, i) => i > 0 && i < sb.scenes.length - 2 && s.narrativeRole === "feature" && s.lineIds.length > 0);
+    expect(k).toBeGreaterThan(0);
+    const plain = compileTimeline({ ...base, storyboard: sb }).timeline;
+    const lcut = structuredClone(sb);
+    lcut.scenes[k].audio = { ...lcut.scenes[k].audio, lCutSec: 0.5 };
+    const cut = compileTimeline({ ...base, storyboard: lcut }).timeline;
+    const voiceAt = (t: typeof plain) => t.audio.cues.filter((c) => c.kind === "voice").map((c) => c.atFrame);
+    expect(voiceAt(cut)).toEqual(voiceAt(plain));
+    // tăietura dintre scenele k și k+1 vine cu ~15 cadre mai devreme; restul reclamei rămâne la fel
+    expect(plain.scenes[k + 1].from - cut.scenes[k + 1].from).toBeGreaterThanOrEqual(13);
+    expect(plain.scenes[k + 1].from - cut.scenes[k + 1].from).toBeLessThanOrEqual(17);
+    expect(cut.scenes[k + 2].from).toBe(plain.scenes[k + 2].from);
+    expect(cut.durationInFrames).toBe(plain.durationInFrames);
+  }, 120_000);
+
   it("o cameră aleasă de o corectură păstrează zoom-ul limitat al rețetei: materialul nu intră peste titlu", async () => {
     const store = await import("../../src/projects/store");
     const { makeFormat } = await import("../../src/core/formats");

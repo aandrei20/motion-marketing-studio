@@ -6,9 +6,9 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 168 | 85 | 51 | 28 | 4 |
+| IMPLEMENTED | 169 | 85 | 51 | 29 | 4 |
 | PARTIAL | 23 | 0 | 9 | 9 | 5 |
-| MISSING | 10 | 0 | 0 | 7 | 3 |
+| MISSING | 9 | 0 | 0 | 6 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
 | **toate** | **201** | 85 | 60 | 44 | 12 |
@@ -151,7 +151,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Durata scenelor din voce, timp de citire, ritm și rețetă | P0 | IMPLEMENTED | `module:src/editing/grammar.ts#sceneDuration` | — |
 | Hold pe CTA (minimum 2,5 s) | P0 | IMPLEMENTED | `module:src/editing/grammar.ts#CTA_HOLD_SEC`, `check:platform.profile` | — |
 | J-cut (vocea începe înaintea imaginii) | P1 | IMPLEMENTED | `module:src/editing/grammar.ts#voiceLeadFrames` | — |
-| L-cut (vocea continuă peste imaginea următoare) | P2 | MISSING | — | **Următorul pas:** Opțiune în storyboard: replica scenei continuă peste începutul scenei următoare. |
+| L-cut (vocea continuă peste imaginea următoare) | P2 | IMPLEMENTED | `module:src/core/schema/storyboard.ts#StoryboardScene`, `module:src/timeline/compile.ts#compileTimeline` | — |
 | Construcție, escaladare, punct culminant, recompensă | P0 | IMPLEMENTED | `check:story.energy-arc`, `check:story.structure` | — |
 | Ritm și frecvența tăieturilor (pe platformă) | P0 | IMPLEMENTED | `check:story.pacing`, `module:src/platform/profiles.ts#platformProfile` | — |
 | Pattern interrupt / resetare vizuală | P2 | PARTIAL | `cap:tr.glitch`, `cap:tr.flash` | Există efectele, nu există primitivul de montaj („rupe tiparul aici”). **Următorul pas:** Rol de scenă „interrupt” cu reguli în gramatica de montaj. |

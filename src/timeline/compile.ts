@@ -213,18 +213,23 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const onScreen = sc.text.headline ?? lines.map((l) => l.onScreen).join(" ");
     const recipe = getRecipe(sc.recipe.id);
     const recipeMin = Math.max(recipe.minSec, recipe.minSecFor?.({ headline: sc.text.headline, sub: sc.text.sub, items: sc.text.items ?? [] }) ?? 0);
-    const d = sceneDuration({
-      voSec,
-      onScreen: [onScreen, sc.text.sub ?? ""].join(" ").trim(),
-      shot: sc.shot,
-      energy: sc.energy,
-      role: sc.narrativeRole,
-      recipeMinSec: recipeMin,
-      explicitSec: sc.durationSec,
-      dir,
-      pacing,
-    });
-    return { sc, lines, d, recipe };
+    const durationFor = (vo: number) =>
+      sceneDuration({
+        voSec: vo,
+        onScreen: [onScreen, sc.text.sub ?? ""].join(" ").trim(),
+        shot: sc.shot,
+        energy: sc.energy,
+        role: sc.narrativeRole,
+        recipeMinSec: recipeMin,
+        explicitSec: sc.durationSec,
+        dir,
+        pacing,
+      });
+    const d = durationFor(voSec);
+    // minimul cu L-cut: vocea poate continua `lCutSec` peste scena următoare
+    const lCut = sc.audio.lCutSec ?? 0;
+    const minSecLCut = lCut > 0 ? durationFor(Math.max(0, voSec - lCut)).minSec : d.minSec;
+    return { sc, lines, d, recipe, minSecLCut };
   });
   // 2. potrivire cu durata cerută: timpul în plus se împarte scenelor fără voce care pot crește
   const natural = plans.reduce((s, p) => s + p.d.sec, 0);
@@ -262,6 +267,8 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const dropRef = reliable ? (input.beatGrid?.drops ?? []).map((sec) => Math.round(sec * R)) : [];
   const durRef = plans.map((p) => Math.round(p.d.sec * R));
   const minRef = plans.map((p) => Math.ceil(p.d.minSec * R));
+  // L-cut (aplicat după alinierea pe bătăi, mai jos): vocea scenei următoare se decalează cu cât a câștigat scena
+  const voiceShiftRef = plans.map(() => 0);
   let previousTransition: string | null = null;
   const trRef: Array<{ capability: string; frames: number; params: Record<string, unknown> } | null> = plans.map((p, i) => {
     if (i === 0) return null;
@@ -290,20 +297,37 @@ export function compileTimeline(input: CompileInput): CompileResult {
     const d = trRef[i + 1]?.frames ?? 0;
     const snap = plans[i].sc.beat.snap;
     if (beatRef.length && snap !== "none" && i < plans.length - 1) {
+      // după un L-cut, scena a început mai devreme: alinierea se judecă față de începutul și durata ei fără L-cut
+      const start0 = cursor + voiceShiftRef[i];
+      const dur0 = durRef[i] - voiceShiftRef[i];
       const cut = end - d / 2;
       const nextRole = plans[i + 1].sc.narrativeRole;
       const toReveal = (nextRole === "reveal" || nextRole === "solution" || nextRole === "transformation") && dropRef.length > 0;
       const drop = toReveal ? dropRef.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), dropRef[0]) : null;
       const dropEnd = drop !== null ? Math.round(drop + d / 2) : null;
-      if (dropEnd !== null && dropEnd - cursor >= minRef[i] && Math.abs(dropEnd - end) <= Math.max(6, durRef[i] * 0.35)) end = dropEnd;
+      if (dropEnd !== null && dropEnd - start0 >= minRef[i] && Math.abs(dropEnd - end) <= Math.max(6, dur0 * 0.35)) end = dropEnd;
       else {
         const grid = snap === "bar" ? beatRef.filter((_, k) => k % (input.beatGrid?.beatsPerBar ?? 4) === 0) : beatRef;
         const nearest = grid.reduce((b, f) => (Math.abs(f - cut) < Math.abs(b - cut) ? f : b), grid[0]);
         const newEnd = Math.round(nearest + d / 2);
-        if (newEnd - cursor >= minRef[i] && Math.abs(newEnd - end) <= Math.max(4, durRef[i] * 0.25)) end = newEnd;
+        if (newEnd - start0 >= minRef[i] && Math.abs(newEnd - end) <= Math.max(4, dur0 * 0.25)) end = newEnd;
       }
     }
     durRef[i] = end - cursor;
+    // L-cut: imaginea trece la scena următoare cu `lCutSec` înainte de finalul replicii. Scena următoare începe mai
+    // devreme cu exact atât și își decalează vocea la fel: pista de voce și restul reclamei rămân pe loc.
+    const want = Math.round((plans[i].sc.audio.lCutSec ?? 0) * R);
+    if (want && i < plans.length - 1) {
+      const take = Math.min(want, durRef[i] - Math.ceil(plans[i].minSecLCut * R));
+      if (take <= 0) warnings.push(`L-cut-ul din ${plans[i].sc.id} nu încape: scena e deja la durata minimă (citire, rețetă sau hold).`);
+      else {
+        if (take < want) warnings.push(`L-cut-ul din ${plans[i].sc.id} e scurtat la ${(take / R).toFixed(2)} s: scena nu poate fi mai scurtă.`);
+        durRef[i] -= take;
+        durRef[i + 1] += take;
+        voiceShiftRef[i + 1] = take;
+        end -= take;
+      }
+    }
     cursor = end - d;
   }
   // conversia la FPS-ul formatului: începuturile și sfârșiturile se rotunjesc din secunde,
@@ -556,7 +580,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
     });
     // vocea: J-cut când energia crește, altfel după jumătatea tranziției
     const prevEnergy = i ? plans[i - 1].sc.energy : sc.energy;
-    let vAt = from + voiceLeadFrames(fps, tr?.frames ?? 0, sc.energy - prevEnergy);
+    let vAt = from + voiceLeadFrames(fps, tr?.frames ?? 0, sc.energy - prevEnergy) + toF(voiceShiftRef[i]);
     if (i === 0) vAt = Math.max(vAt, Math.round(fps * 0.15));
     for (const l of lines) {
       const v = input.voice[l.id];

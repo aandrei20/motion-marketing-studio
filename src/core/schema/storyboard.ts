@@ -91,6 +91,8 @@ export const StoryboardScene = z.object({
       sfx: z.union([z.literal("auto"), z.literal("none"), z.array(z.string())]).default("auto"),
       silence: z.boolean().default(false),
       musicSection: z.string().optional(),
+      /** L-cut: imaginea trece la scena următoare cu atâtea secunde înainte de finalul replicii; vocea rămâne pe loc */
+      lCutSec: z.number().min(0).max(1.5).optional(),
     })
     .default({ sfx: "auto", silence: false }),
   beat: z.object({ snap: z.enum(["none", "beat", "bar"]).default("beat") }).default({ snap: "beat" }),
