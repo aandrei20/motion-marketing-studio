@@ -45,12 +45,18 @@ export async function runRemotionStudio(o: { projectId?: string; version?: strin
     args.push(`--props=${props}`);
     console.log(`Remotion Studio pe ${p.id} ${v} ${f} (compoziția „Timeline”).`);
   } else console.log("Remotion Studio pe catalogul de efecte (compoziția „Catalog”).");
-  // Remotion Studio (4.0.534) ascultă pe toate interfețele de rețea, fără opțiune de a-l limita la acest calculator
-  console.log(
-    "Atenție: cât rulează, Remotion Studio e accesibil și din rețeaua locală (portul 3000). Pe rețele publice, folosește Studio-ul propriu (npm run studio, doar local) sau oprește-l cu Ctrl+C când termini.",
-  );
+  // Remotion Studio nu are opțiune pentru adresa de ascultare și ar asculta pe toate interfețele de rețea;
+  // preload-ul îl limitează la 127.0.0.1 (scripts/loopback-only.cjs)
+  console.log("Remotion Studio ascultă doar pe acest calculator (127.0.0.1). Oprește-l cu Ctrl+C când termini.");
+  const preload = path.join(PATHS.root, "scripts", "loopback-only.cjs").split(path.sep).join("/");
+  const env = { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require "${preload}"`.trim() };
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.platform === "win32" ? "npx.cmd" : "npx", args, { cwd: PATHS.root, stdio: "inherit", shell: process.platform === "win32" });
+    const child = spawn(process.platform === "win32" ? "npx.cmd" : "npx", args, {
+      cwd: PATHS.root,
+      env,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
     child.on("error", reject);
     child.on("exit", () => resolve());
   });

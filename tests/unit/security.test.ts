@@ -88,3 +88,16 @@ describe("id-urile care devin căi pe disc", () => {
       expect(await code(() => versionDir("reclama-mea", v)), v).toBe("VERSION_ID");
   });
 });
+
+describe("Remotion Studio doar pe acest calculator", () => {
+  it("preload-ul mută pe 127.0.0.1 orice server care ar asculta pe toate interfețele", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const fixture = path.join(PATHS.root, "tests", "fixtures", "listen-forms.cjs");
+    const run = (pre: string[]) =>
+      Object.fromEntries(JSON.parse(execFileSync(process.execPath, [...pre, fixture], { encoding: "utf8" })) as Array<[string, string]>);
+    const without = run([]);
+    expect(without.port).not.toBe("127.0.0.1");
+    const withPreload = run(["--require", path.join(PATHS.root, "scripts", "loopback-only.cjs")]);
+    expect(Object.values(withPreload)).toEqual(["127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"]);
+  });
+});
