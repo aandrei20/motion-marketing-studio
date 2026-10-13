@@ -62,7 +62,8 @@ Planul complet, cu toate deciziile, este în `PLAN.md`. Dacă o regulă de aici 
 - `npm run preview -- <proiect> [--format 9x16]` – preview randat (MP4 + foaie de contact) (PowerShell)
 - `npm run render -- <proiect> --version vN` – MP4 final, doar după „render final” înregistrat pentru acea versiune (PowerShell)
 - `npm run doctor` – verifică instalarea (PowerShell)
-- `npm test` – teste unitare și de integrare; `npm run test:render` – randare (catalog, determinism, MP4) (PowerShell)
+- `npm test` – teste unitare și de integrare; `npm run test:coverage` – aceleași, cu pragul de acoperire; `npm run test:render` – randare (catalog, determinism, MP4) (PowerShell)
+- `npm run bench -- <proiect>` – viteza randării la mai multe valori de concurență (PowerShell)
 - `npm run typecheck`, `npm run lint` (regulile verificabile automat), `npm run registry` (regenerează library/registry.json) (PowerShell)
 - `npm run e2e -- --fresh` – testul cap-coadă pe produsul demo fictiv (PowerShell)
 - `npm run update` – aduce versiunea nouă și instalează ce lipsește (PowerShell)
@@ -145,7 +146,7 @@ Regulile de mai sus au prioritate. Cele de mai jos spun cum se construiește și
 - Chei doar în `.env` (vezi `.env.example`); nu apar în cod, loguri, commit-uri. `npm run lint` caută chei în fișierele urmărite de Git.
 - Fără co-autori și fără atribuiri: niciun trailer `Co-authored-by`, „Generated with”, fișier sau secțiune de contribuitori. `.claude/settings.json` dezactivează atribuirea, iar `npm run lint` refuză commit-urile noi care o au.
 - Sesiunile de browser pentru capturi cu cont stau în `.browser-profiles/` (ignorat de Git); utilizatorul se autentifică singur.
-- Studio-ul ascultă doar pe 127.0.0.1, acceptă doar Host-ul local și cere Origin local + antetul `X-MMS` pe cererile care modifică. Remotion Studio (`npm run remotion`) ascultă pe toate interfețele (limită a Remotion): se pornește doar la nevoie și se oprește după.
+- Studio-ul ascultă doar pe 127.0.0.1, acceptă doar Host-ul local și cere Origin local + antetul `X-MMS` pe cererile care modifică. Remotion Studio (`npm run remotion`) ascultă tot doar pe 127.0.0.1, prin preload-ul `scripts/loopback-only.cjs` (Remotion nu are opțiune pentru adresă).
 
 ## Nu falsifica
 

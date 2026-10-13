@@ -60,7 +60,7 @@ Erorile studioului au un cod între paranteze drepte (de ex. `[FINAL_NOT_APPROVE
 
 | Simptom | Ce faci |
 | --- | --- |
-| Windows Firewall întreabă de acces la rețea când pornește `npm run remotion` | Remotion Studio ascultă pe toate interfețele. Alege „Anulează” / doar rețele private; funcționează și local |
+| Windows Firewall întreabă de acces la rețea când pornește `npm run remotion` | Nu ar trebui: Remotion Studio ascultă doar pe 127.0.0.1 (preload-ul `scripts/loopback-only.cjs`). Dacă apare, Remotion a fost pornit altfel decât prin `npm run remotion`; alege „Anulează” |
 | `EADDRINUSE` la pornire | Portul 4321 e ocupat: `npm run studio -- --port 4400` sau `MMS_STUDIO_PORT` în `.env` |
 | Pagina e goală | Reîncarcă (Ctrl+F5); în terminal vezi eroarea de construcție a interfeței |
 | Player-ul nu pornește un video | Proiectul nu are încă timeline: Studio → Producție → Compilează |

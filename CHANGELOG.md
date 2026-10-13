@@ -2,6 +2,41 @@
 
 Formatul: o secțiune pe versiune; în fiecare: Adăugat, Schimbat, Reparat. Versiunile stabile primesc o etichetă Git (`v0.1.0`…).
 
+## [Nelansat] – consolidarea (ramura `build/consolidare-10`, integrată în `main`)
+
+Etapa „10/10”: cele două tabele din auditul de calitate, vizual și tehnic. Motivele: `docs/DECIZII.md`, punctele 77–96.
+
+### Adăugat
+
+- **CI pe Windows** (`.github/workflows/ci.yml`): `npm audit`, typecheck, lint, testele cu acoperire, testul cap-coadă fără randare, apoi randarea (catalog, determinism, MP4, regresie vizuală) cu randare software.
+- **Biome** (lint și formatare) în `npm run lint`, plus `npm run format`; **acoperirea testelor** cu prag minim (`npm run test:coverage`).
+- **Teste noi**: CLI-ul apelat direct, producția automată, fiecare tab din Studio cu axe (WCAG 2 A/AA) și pe ecrane mici, crash-ul real în mijlocul unui job, oprirea și reluarea unei randări, proiectele existente față de schemele de acum, tăieturile interne, L-cut-ul, compresorul și ambianța.
+- **Tăieturi în interiorul scenelor lungi** (punch-in) pe platformele rapide, pe începutul unui cuvânt; verificarea ritmului numără planurile.
+- **Decupajul în jurul zonei demonstrate pe orice format**, doar când camera nu ajunge singură, cu marginile ferite de textul capturat.
+- **Spațierea din brand**: unitatea din CSS-ul site-ului, grila de 12 coloane pe orizontal, subtitlul la o unitate sub titlu.
+- **Bibliotecă**: `mod.blend`, anticipația în `mod.enter`, `shape.icon` (15 iconițe originale), L-cut (`audio.lCutSec`), compresorul pe voce (implicit), ambianța sintetizată (opțională, întrebările F6–F7).
+- `mms check-projects`, migrarea schemelor la citire, `npm run bench`, `MMS_RENDER_CONCURRENCY`, `MMS_CACHE_MAX_GB`.
+
+### Schimbat
+
+- Captura unei pagini publice trece printr-un proxy local de filtrare (redirecționările și DNS rebinding nu mai ajung în rețeaua locală).
+- Remotion Studio ascultă doar pe 127.0.0.1.
+- Randarea scrie atomic (fișier temporar, redenumit la final) și verifică spațiul liber; cache-urile care se pot reface au buget.
+- Storyboard-ul automat face energia să crească spre final; titlurile cu energie mare folosesc animația de impact a direcției; două scene la rând cu aceeași rețetă și aceeași mișcare au camera inversată.
+- La drag & drop, zona demonstrată e partea coloanei cu conținut (conturul, încadrarea și subtitrările se raportează la ea).
+- `panels.tsx`, `recipes.ts` și `quality/checks.ts` sunt împărțite pe fișiere, fără schimbări de logică.
+- `npm run update` instalează și browserele; `doctor` verifică versiunile fixate, cache-ul și proiectele.
+- Contrastul butoanelor principale și al pistelor timeline-ului din Studio (≥ 4,5:1), etichete pe câmpuri și filtre.
+
+### Reparat
+
+- STATE.md se afișa în Studio ca HTML (posibil XSS); acum e text.
+- Regex-ul butoanelor din captură avea caractere de control în loc de `\b` și nu potrivea niciodată.
+- Subtitrările `.srt` lipseau când nu erau arse în video; playerele din Studio au pista `.vtt`.
+- Două Studio-uri își marcau unul altuia joburile ca „întrerupte”.
+- Pe 9:16, un traseu de cursor cu zone care nu încap împreună tăia butonul pe margine.
+- Fixture-ul regresiei vizuale avea o regiune inventată, peste un spațiu gol.
+
 ## [Nelansat] – `main` (integrat din ramura `build/production-os`)
 
 Etapa „Video Production OS”: calitatea înaintea numărului de funcții. Auditul și motivele: `docs/AUDIT.md` (secțiunea 2); bucla: `docs/CALITATE.md`.
