@@ -1,9 +1,11 @@
 /**
  * Joburi de producție rulate pe rând (o randare odată), cu log, progres, etapă, anulare și timeout.
- * Fiecare job are un manifest pe disc (.cache/jobs/<id>.json: jobId, stare, etapă, progres, startedAt,
- * updatedAt, eroare, artefacte). Dacă procesul moare, la repornire joburile neterminate apar „întrerupte”
+ * Fiecare job are un manifest pe disc (`jobsDir()`/<id>.json: jobId, stare, etapă, progres, proces, startedAt,
+ * updatedAt, eroare, artefacte). Dacă procesul moare, la repornire joburile lui neterminate apar „întrerupte”
  * și se pot relua: pașii de producție sunt idempotenți și refolosesc tot ce s-a calculat deja (cache).
+ * Joburile unui alt proces care încă rulează nu se ating.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { formatError, MmsError, throwIfCancelled } from "../core/errors";
@@ -12,6 +14,28 @@ import { writeJson } from "../core/json";
 import { PATHS } from "../core/paths";
 
 export type JobState = "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
+
+/**
+ * Folderul manifestelor: unul pentru fiecare folder de proiecte (implicit .cache/jobs), ca două Studio-uri pe
+ * foldere diferite (de ex. cu MMS_PROJECTS_DIR) să nu-și vadă și să nu-și marcheze joburile unul altuia.
+ */
+export function jobsDir(): string {
+  const base = path.join(PATHS.cache, "jobs");
+  if (path.resolve(PATHS.projects) === path.join(PATHS.root, "projects")) return base;
+  return path.join(base, crypto.createHash("sha256").update(path.resolve(PATHS.projects).toLowerCase()).digest("hex").slice(0, 12));
+}
+
+/** Procesul încă rulează (semnalul 0 doar verifică existența). */
+function alive(pid: number | undefined): boolean {
+  if (!pid || pid === process.pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    // EPERM: procesul există, dar e al altui utilizator
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
 
 export interface Job {
   id: string;
@@ -27,6 +51,8 @@ export interface Job {
   /** rezumatul artefactelor produse (versiune, fișiere) */
   artifacts: Record<string, unknown>;
   error: string | null;
+  /** procesul (Studio-ul) care a primit jobul; lipsește în manifestele vechi */
+  pid?: number;
   createdAt: string;
   startedAt: string | null;
   updatedAt: string;
@@ -56,7 +82,7 @@ export class JobQueue {
   private dir: string;
 
   constructor(o: { dir?: string } = {}) {
-    this.dir = o.dir ?? path.join(PATHS.cache, "jobs");
+    this.dir = o.dir ?? jobsDir();
     this.recover();
   }
 
@@ -67,7 +93,8 @@ export class JobQueue {
     for (const f of files) {
       try {
         const j = JSON.parse(fs.readFileSync(path.join(this.dir, f), "utf8")) as Job;
-        if (j.state === "running" || j.state === "queued") {
+        // jobul unui proces care încă rulează (alt Studio pe același folder) nu e întrerupt
+        if ((j.state === "running" || j.state === "queued") && !alive(j.pid)) {
           j.state = "interrupted";
           j.error = "Studio-ul s-a oprit în timpul jobului. Poți relua: pașii deja făcuți se refolosesc.";
           j.updatedAt = new Date().toISOString();
@@ -124,6 +151,7 @@ export class JobQueue {
       result: null,
       artifacts: {},
       error: null,
+      pid: process.pid,
       createdAt: t,
       startedAt: null,
       updatedAt: t,

@@ -59,7 +59,7 @@ describe("joburile după un crash", () => {
   it("o captură întreruptă de oprirea procesului apare „întreruptă”, se reia și lasă proiectul valid", async () => {
     const store = await import("../../src/projects/store");
     const { makeFormat } = await import("../../src/core/formats");
-    const { PATHS } = await import("../../src/core/paths");
+    const { jobsDir } = await import("../../src/studio/jobs");
     const id = "crash-test";
     store.createProject({
       id,
@@ -78,7 +78,7 @@ describe("joburile după un crash", () => {
     });
     crash(child);
     await until("procesul s-a oprit", async () => child?.exitCode !== null || child?.signalCode !== null);
-    const manifest = path.join(PATHS.cache, "jobs", `${job.id}.json`);
+    const manifest = path.join(jobsDir(), `${job.id}.json`);
     expect(JSON.parse(fs.readFileSync(manifest, "utf8")).state).toBe("running");
 
     child = await startStudio();

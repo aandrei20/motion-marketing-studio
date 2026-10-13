@@ -100,8 +100,8 @@ describe("Studio: protecții și joburi", () => {
       if (list.find((x) => x.id === j.id)?.state !== "queued" && list.find((x) => x.id === j.id)?.state !== "running") break;
       await new Promise((r) => setTimeout(r, 100));
     }
-    const { PATHS } = await import("../../src/core/paths");
-    const manifest = JSON.parse(fs.readFileSync(path.join(PATHS.cache, "jobs", `${j.id}.json`), "utf8"));
+    const { jobsDir } = await import("../../src/studio/jobs");
+    const manifest = JSON.parse(fs.readFileSync(path.join(jobsDir(), `${j.id}.json`), "utf8"));
     expect(manifest).toMatchObject({ id: j.id, type: "concepts" });
     expect(["done", "failed"]).toContain(manifest.state);
     expect(manifest.updatedAt).toBeTruthy();
