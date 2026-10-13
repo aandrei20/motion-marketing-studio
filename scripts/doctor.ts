@@ -68,6 +68,19 @@ async function main() {
   );
   if (remotionVersions.size > 1)
     add("fail", "Versiuni Remotion", `diferite: ${[...remotionVersions].join(", ")}`, "Toate pachetele @remotion/* trebuie să aibă aceeași versiune: npm ci");
+  // versiunile instalate sunt exact cele fixate în package.json (un `npm install <pachet>` de mână le schimbă)
+  const manifest = JSON.parse(fs.readFileSync(path.join(PATHS.root, "package.json"), "utf8")) as {
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  const drift = Object.entries({ ...manifest.dependencies, ...manifest.devDependencies }).flatMap(([p, want]) => {
+    const f = path.join(PATHS.root, "node_modules", ...p.split("/"), "package.json");
+    if (!fs.existsSync(f)) return [];
+    const have = (JSON.parse(fs.readFileSync(f, "utf8")) as { version: string }).version;
+    return have === want ? [] : [`${p} ${have} (fixat ${want})`];
+  });
+  if (drift.length) add("warn", "Versiuni fixate", drift.join(", "), "Rulează: npm ci (instalează exact versiunile din package-lock.json)");
+  else if (!missing.length) add("ok", "Versiuni fixate", "cele instalate sunt exact cele din package.json");
   // FFmpeg/FFprobe incluse în Remotion
   const ff = binaryVersion("ffmpeg");
   const fp = binaryVersion("ffprobe");

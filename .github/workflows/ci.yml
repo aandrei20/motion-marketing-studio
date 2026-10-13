@@ -27,6 +27,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # vulnerabilitățile cunoscute în dependențele care ajung la utilizator (fără uneltele de dezvoltare)
+      - run: npm audit --omit=dev --audit-level=high
       - run: npx playwright install chromium
       - run: npm run typecheck
       - run: npm run lint

@@ -133,3 +133,14 @@ Un șablon (`templates/<id>.json`, schema în `src/creative/templates.ts`) descr
 ## Randarea
 
 `src/renderer/node/render.ts`: bundle-ul Remotion se construiește o dată pentru o versiune a codului (hash pe surse) în `.cache/bundles/`; înainte de fiecare randare, în folderul public al bundle-ului se pun legături (hard links) doar spre fișierele folosite de timeline. Video: H.264, yuv420p, BT.709, AAC 320k. Cadre: PNG/JPEG. Foaia de contact e o compoziție Remotion separată.
+
+Randarea scrie într-un fișier temporar din același folder, redenumit doar la final; o oprire nu lasă un MP4 pe jumătate. Înainte de randare se verifică spațiul liber. Concurența (cadre în paralel) e cea implicită a Remotion, reglabilă cu `MMS_RENDER_CONCURRENCY`; măsurătorile sunt în `docs/DECIZII.md`, punctul 77, iar `npm run bench -- <proiect>` le repetă pe altă mașină.
+
+## Dependențele și actualizarea lor
+
+- Toate versiunile sunt fixate exact în `package.json` (fără `^` sau `~`), iar `package-lock.json` e în Git. Instalarea folosește `npm ci`, deci aceleași versiuni pe orice mașină. `npm run doctor` avertizează dacă ce e instalat diferă de ce e fixat (de ex. după un `npm install <pachet>` făcut de mână).
+- Pachetele `remotion` și `@remotion/*` se actualizează **împreună**, la aceeași versiune; `doctor` refuză versiuni diferite. O versiune nouă de Remotion poate schimba rasterizarea, deci cere și regresia vizuală.
+- O actualizare se face pe o ramură separată, nu în timpul producției unei reclame: `npm outdated` → versiunile noi în `package.json` → `npm install` → porțile complete (`npm run typecheck`, `npm run lint`, `npm run test:coverage`, `npm run test:render`, `npm run e2e -- --fresh`) → o notă în `CHANGELOG.md`. Referințele vizuale (`tests/golden/`) se actualizează doar după ce te uiți la cadrele schimbate (`docs/TESTARE.md`).
+- Playwright vine cu browserul lui: după actualizare, `npx playwright install chromium` (îl face și `npm run update`). Pe mașina ta nu se instalează nimic în timpul lucrului (regula 11); `npm run update` aduce versiunea nouă și instalează ce lipsește.
+- `npm audit` rulează în CI (dependențele de producție, prag „high”). O vulnerabilitate se rezolvă prin actualizarea pachetului, cu aceleași porți.
+- Licența Remotion pentru companii: `docs/LICENTE.md`.
