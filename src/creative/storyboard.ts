@@ -253,6 +253,19 @@ export function buildStoryboard(inp: StoryboardInput): Storyboard {
   scenes.forEach((s, i) => {
     s.id = s.id.replace(/^s\d+/, `s${i + 1}`);
   });
+  // arcul de energie: un șablon care urcă în pași mici lasă corpul reclamei plat (abatere < 0,06, cât cere
+  // verificarea story.energy-arc); atunci energia crește de la 0,5 la 0,85 spre ultima scenă dinaintea CTA-ului
+  const body = scenes.filter((s) => s.narrativeRole !== "hook" && s.narrativeRole !== "cta");
+  if (body.length >= 3) {
+    const mean = body.reduce((a, s) => a + s.energy, 0) / body.length;
+    const std = Math.sqrt(body.reduce((a, s) => a + (s.energy - mean) ** 2, 0) / body.length);
+    if (std < 0.06) {
+      body.forEach((s, k) => {
+        s.energy = Math.round((0.5 + (0.35 * k) / (body.length - 1)) * 100) / 100;
+      });
+      rationale.push(`Energia crește pe corpul reclamei (${body.map((s) => s.energy.toFixed(2)).join(" → ")}): șablonul o lăsa aproape plată.`);
+    }
+  }
   const unusable = inp.research.claims.filter((c) => !isClaimUsable(c)).length;
   if (unusable) rationale.push(`${unusable} afirmații nu sunt confirmate și nu au fost folosite.`);
   return {

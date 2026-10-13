@@ -43,7 +43,7 @@ import { nodeMeasure } from "./measure-node";
 import { applyDna, type DnaAspect, type ReferenceDNA } from "../references/dna";
 import { LAYOUT_TEXT_CAPS, LAYOUT_TEXT_CAPS as TEXT_CAPS } from "../motion/text-caps";
 import { focusRects, holdFrame, overlapArea } from "./geometry";
-import { innerCut } from "./inner-cuts";
+import { innerCut, varyCamera } from "./inner-cuts";
 import { platformProfile } from "../platform/profiles";
 
 export interface VoiceClipRef {
@@ -663,6 +663,14 @@ export function compileTimeline(input: CompileInput): CompileResult {
     sfx = density === "medium" ? kept.map((c) => ({ ...c, gainDb: c.gainDb - 2 })) : kept;
   }
   const finalCues = [...cues.filter((c) => c.kind !== "sfx"), ...sfx].sort((a, b) => a.atFrame - b.atFrame || a.id.localeCompare(b.id));
+
+  // 5a. varietate: o scenă cu aceeași rețetă și aceeași mișcare de cameră ca precedenta își inversează mișcarea
+  // (pull-out în loc de push): același zoom maxim, deci aceeași geometrie față de titlu; camera aleasă explicit rămâne
+  scenes.forEach((sc, i) => {
+    const prev = scenes[i - 1];
+    if (!prev || innerInfo.get(sc.id)?.explicit || sc.meta.narrativeRole === "cta" || sc.meta.recipe !== prev.meta.recipe) return;
+    sc.camera = { ...sc.camera, keys: varyCamera(sc.camera.keys, prev.camera.keys, sc.durationInFrames) };
+  });
 
   // 5b. tăieturi directe în interiorul scenelor mai lungi decât planul tipic al platformei (punch-in, pe cuvânt)
   const maxShotSec = platformProfile(format.platform, project).avgShotSec[1];

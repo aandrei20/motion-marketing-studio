@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { TimelineLayer, TimelineScene } from "../../src/core/schema";
-import { innerCut, pickCutFrame } from "../../src/timeline/inner-cuts";
+import { innerCut, pickCutFrame, varyCamera } from "../../src/timeline/inner-cuts";
 import { cameraCuts, cameraMotionBlur } from "../../src/motion/camera/rig";
 
 const layer = (o: Partial<TimelineLayer> & Pick<TimelineLayer, "id" | "capability" | "box">): TimelineLayer => ({
@@ -120,5 +120,19 @@ describe("tăieturile din interiorul scenelor", () => {
     const cta = scene(1.06);
     cta.meta.narrativeRole = "cta";
     expect(innerCut({ ...base, scene: cta }).meta.cuts).toBeUndefined();
+  });
+
+  it("varietate: aceeași rețetă și același push la rând → a doua scenă face pull-out, cu aceleași zoom-uri", () => {
+    const k = scene(1.5).camera.keys;
+    const v = varyCamera(k, k, 150);
+    expect(v.map((x) => [x.at, x.zoom])).toEqual([
+      [9, 1.5],
+      [149, 1],
+    ]);
+    expect(Math.max(...v.map((x) => x.zoom))).toBe(Math.max(...k.map((x) => x.zoom)));
+    // mișcare diferită față de scena anterioară sau traseu prin mai multe zone: rămâne neschimbată
+    expect(varyCamera(k, scene(1.2).camera.keys, 150)).toBe(k);
+    const track = [...k, { ...k[1], at: 145, zoom: 1.3 }];
+    expect(varyCamera(track, track, 150)).toBe(track);
   });
 });

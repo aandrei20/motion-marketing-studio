@@ -157,3 +157,18 @@ export function innerCut(i: InnerCutInput): TimelineScene {
   ];
   return { ...s, camera: { ...s.camera, keys }, meta: { ...s.meta, cuts: [cut] } };
 }
+
+/** Mișcarea camerei, pe scurt: zoom-ul de la început și de la final (aceeași semnătură ca la critica automată). */
+const motion = (keys: CameraKey[]) => (keys.length > 1 ? `${keys[0].zoom.toFixed(2)}→${keys[keys.length - 1].zoom.toFixed(2)}` : "fix");
+
+/**
+ * Varietatea între două scene la rând cu aceeași rețetă: dacă și mișcarea camerei e aceeași, a doua scenă o
+ * parcurge invers (un push devine pull-out care dezvăluie contextul). Cheile rămân aceleași puncte și zoom-uri,
+ * doar ordinea în timp se inversează, deci zoom-ul maxim și geometria față de titlu nu se schimbă.
+ */
+export function varyCamera(keys: CameraKey[], prev: CameraKey[], duration: number): CameraKey[] {
+  // doar mișcările simple (două chei): un traseu prin mai multe zone trebuie să urmeze ordinea cursorului
+  if (keys.length !== 2 || motion(keys) !== motion(prev) || keys[0].zoom === keys[1].zoom) return keys;
+  const n = keys.length;
+  return [...keys].reverse().map((k, j) => ({ ...k, at: Math.max(0, duration - 1 - k.at), ease: j === 0 ? keys[0].ease : keys[n - j].ease }));
+}

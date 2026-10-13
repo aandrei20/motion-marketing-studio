@@ -7,6 +7,17 @@ import type { RecipeContext } from "./types";
 export const cam = (capability: string, params: Record<string, unknown> = {}) => ({ capability, params });
 export const pick = (ctx: RecipeContext, id: string, fallback: string) => (ctx.forbidden.includes(id) ? fallback : id);
 
+/**
+ * Animația titlului: cea obișnuită a direcției, iar pe scenele cu energie mare (≥ 0,8, în afara CTA-ului) animația
+ * de impact a aceleiași direcții (a hook-ului sau a listelor, alta decât cea obișnuită; mașina de scris nu, fiindcă
+ * întârzie citirea). Textul variază între scene după arcul de energie, fără să iasă din stilul direcției.
+ */
+export function headlineAnimation(ctx: RecipeContext): string {
+  const base = ctx.dir.text.headline;
+  if (ctx.energy < 0.8 || ctx.scene.narrativeRole === "cta") return base;
+  return [ctx.dir.text.hook, ctx.dir.text.list, "text.mask-reveal"].find((c) => c !== base && c !== "text.typewriter" && c !== "text.body") ?? base;
+}
+
 export function headline(
   ctx: RecipeContext,
   box: Rect,
@@ -22,7 +33,7 @@ export function headline(
 ): TimelineLayer | null {
   const t = opts.text ?? ctx.text.headline;
   if (!t) return null;
-  const capability = pick(ctx, opts.capability ?? ctx.dir.text.headline, "text.word-reveal");
+  const capability = pick(ctx, opts.capability ?? headlineAnimation(ctx), "text.word-reveal");
   const short = t.split(/\s+/).length <= 3;
   return layer(
     ctx,

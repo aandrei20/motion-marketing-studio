@@ -59,6 +59,12 @@ describe("producția automată", () => {
     const sb = store.loadStoryboard(id, v);
     expect(sb.scenes.length).toBeGreaterThanOrEqual(4);
     expect(sb.scenes.some((s) => Object.values(s.slots).flat().length > 0)).toBe(true);
+    // arcul de energie al corpului reclamei nu e plat (story.energy-arc cere o abatere de cel puțin 0,06)
+    const body = sb.scenes.filter((s) => s.narrativeRole !== "hook" && s.narrativeRole !== "cta").map((s) => s.energy);
+    if (body.length >= 3) {
+      const mean = body.reduce((a, b) => a + b, 0) / body.length;
+      expect(Math.sqrt(body.reduce((a, b) => a + (b - mean) ** 2, 0) / body.length)).toBeGreaterThanOrEqual(0.06);
+    }
     // storyboard-ul comun formatelor folosește capturile desktop, nu perechile lor de telefon
     const phoneIds = new Set(
       store
