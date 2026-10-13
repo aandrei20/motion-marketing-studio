@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/schema";
 import { api, type Job, type Meta, type ProjectBundle, type VersionBundle } from "./api";
-import {
-  AssetsPanel,
-  AudioPanel,
-  BrandPanel,
-  BriefPanel,
-  CritiquePanel,
-  ExportPanel,
-  OverviewPanel,
-  ResearchPanel,
-  ScriptPanel,
-  StoryboardPanel,
-  VersionsPanel,
-} from "./panels";
+import { AssetsPanel } from "./panels/assets";
+import { AudioPanel } from "./panels/audio";
+import { BrandPanel } from "./panels/brand";
+import { BriefPanel } from "./panels/brief";
+import { CritiquePanel } from "./panels/critique";
+import { ExportPanel } from "./panels/export";
+import { OverviewPanel } from "./panels/overview";
+import { ResearchPanel } from "./panels/research";
+import { ScriptPanel } from "./panels/script";
+import { StoryboardPanel } from "./panels/storyboard";
+import { VersionsPanel } from "./panels/versions";
 import { PreviewPanel } from "./preview";
 import { ConceptsPanel, QualityPanel } from "./quality";
 import { NewProject } from "./new-project";
