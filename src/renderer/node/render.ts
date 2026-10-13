@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { makeCancelSignal, openBrowser, renderMedia, renderStill, selectComposition, type HeadlessBrowser } from "@remotion/renderer";
@@ -115,6 +116,27 @@ export function stageFiles(serveUrl: string, files: string[]): void {
 /** Randarea grafică: „angle” (GPU, implicit) sau „swangle” (software, mai lentă). Se alege cu MMS_GL. */
 const GL = (["angle", "swangle", "swiftshader", "egl"] as const).find((g) => g === process.env.MMS_GL) ?? "angle";
 
+/**
+ * Câte cadre se randează în paralel: MMS_RENDER_CONCURRENCY (număr sau procent din nuclee, de ex. „6” sau „50%”),
+ * altfel valoarea Remotion, min(8, nuclee/2). Pe laptopul de referință aceasta e și cea mai rapidă: limita e
+ * procesul GPU al browserului, nu procesorul (docs/DECIZII.md, punctul 77). Se măsoară cu `npm run bench`.
+ */
+export function renderConcurrency(raw = process.env.MMS_RENDER_CONCURRENCY?.trim()): number | string | null {
+  if (!raw) return null;
+  if (/^[1-9]\d*$/.test(raw)) {
+    const cpus = os.cpus().length;
+    if (Number(raw) > cpus)
+      throw new MmsError("ENV_INVALID", `MMS_RENDER_CONCURRENCY=${raw} e mai mare decât nucleele logice (${cpus}).`, `Folosește cel mult ${cpus}.`);
+    return Number(raw);
+  }
+  if (/^([1-9]\d?|100)%$/.test(raw)) return raw;
+  throw new MmsError(
+    "ENV_INVALID",
+    `MMS_RENDER_CONCURRENCY=${raw} nu e un număr sau un procent.`,
+    "Exemple: 6 sau 50%. Măsoară pe mașina ta: npm run bench -- <proiect>",
+  );
+}
+
 let browser: HeadlessBrowser | null = null;
 export async function getBrowser(): Promise<HeadlessBrowser> {
   if (!browser) browser = await openBrowser("chrome", { chromiumOptions: { gl: GL } });
@@ -138,7 +160,8 @@ export interface RenderVideoOptions {
   out: string;
   frameRange?: [number, number];
   crf?: number;
-  concurrency?: number | null;
+  /** cadre în paralel; implicit `renderConcurrency()` */
+  concurrency?: number | string | null;
   muted?: boolean;
   /** scara randării (1 = rezoluția formatului); analiza mișcării folosește video mic */
   scale?: number;
@@ -183,7 +206,7 @@ export async function renderTimelineVideo(t: Timeline, o: RenderVideoOptions): P
       audioBitrate: "320k",
       x264Preset: "medium",
       frameRange: o.frameRange ?? null,
-      concurrency: o.concurrency ?? null,
+      concurrency: o.concurrency ?? renderConcurrency(),
       muted: o.muted ?? false,
       enforceAudioTrack: !o.muted,
       scale: o.scale ?? 1,

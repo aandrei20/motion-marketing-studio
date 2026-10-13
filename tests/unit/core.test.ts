@@ -185,3 +185,14 @@ describe("migrarea schemelor", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe("concurența randării", () => {
+  it("se citește din MMS_RENDER_CONCURRENCY ca număr sau procent, cu eroare clară altfel", async () => {
+    const { renderConcurrency } = await import("../../src/renderer/node/render");
+    expect(renderConcurrency("")).toBeNull();
+    expect(renderConcurrency(undefined)).toBeNull();
+    expect(renderConcurrency("1")).toBe(1);
+    expect(renderConcurrency("50%")).toBe("50%");
+    for (const bad of ["0", "-2", "patru", "150%", "4.5", String(os.cpus().length + 1)]) expect(() => renderConcurrency(bad), bad).toThrow(MmsError);
+  });
+});
