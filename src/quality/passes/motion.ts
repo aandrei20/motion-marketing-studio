@@ -6,7 +6,7 @@ import type { CheckDef } from "../checks";
 export const MOTION_CHECKS: CheckDef[] = [
   {
     id: "motion.grammar",
-    version: 2,
+    version: 3,
     pass: "motion",
     title: "Gramatica mișcării: odihnă vizuală, varietate de animații, tranziții",
     categories: ["motion"],
@@ -59,7 +59,9 @@ export const MOTION_CHECKS: CheckDef[] = [
             confidence: 0.65,
           });
       const nonCut = t.scenes.slice(1).filter((s) => s.transitionIn && s.transitionIn.capability !== "tr.cut").length;
-      if (t.scenes.length > 4 && nonCut === t.scenes.length - 1 && ctx.brief.pacing !== "slow")
+      // tăieturile directe din interiorul scenelor (punch-in) sunt și ele hard cut-uri
+      const innerCuts = t.scenes.reduce((n, s) => n + (s.meta.cuts?.length ?? 0), 0);
+      if (t.scenes.length > 4 && nonCut === t.scenes.length - 1 && !innerCuts && ctx.brief.pacing !== "slow")
         out.push({
           frame: null,
           sceneId: null,

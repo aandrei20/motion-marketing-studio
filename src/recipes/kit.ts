@@ -403,7 +403,8 @@ export function focusCrop(ctx: RecipeContext, a: ResolvedAsset, zone: Rect, regi
       h = a.h;
       w = h * aspect;
     }
-    return placeCrop(a, region, w, h, 0.42);
+    const c = placeCrop(a, region, w, h, 0.42);
+    return region ? clearCutEdges(c, a.regions, a, region) : c;
   }
   if (!region || !desktop) return undefined;
   const dpr = a.asset.capture?.deviceScaleFactor ?? 1;
@@ -422,38 +423,44 @@ export function focusCrop(ctx: RecipeContext, a: ResolvedAsset, zone: Rect, regi
     h = a.h;
     w = h * aspect;
   }
-  return clearCutEdges(placeCrop(a, region, w, h, 0.45), a, region);
+  return clearCutEdges(placeCrop(a, region, w, h, 0.45), a.regions, a, region);
 }
 
 /**
- * Marginile verticale ale unui decupaj nu trec prin textul capturat (titluri, butoane, câmpuri, carduri): fiecare
- * margine care taie o astfel de regiune se mută ca s-o includă sau s-o lase afară, cu deplasarea cea mai mică
- * la care zona demonstrată rămâne întreagă în cadru. Containerele late (peste 40% din decupaj) se pot tăia.
- * Dacă nicio poziție nu le ocolește pe toate, decupajul rămâne centrat pe zonă.
+ * Marginile unui decupaj nu trec prin textul capturat (titluri, butoane, câmpuri, carduri): fiecare margine care
+ * taie o astfel de regiune se mută ca s-o includă sau s-o lase afară, cu deplasarea cea mai mică la care zona
+ * demonstrată rămâne întreagă în cadru; întâi stânga/dreapta, apoi sus/jos. Containerele mari (peste 40% din
+ * decupaj pe axa respectivă) se pot tăia. Dacă nicio poziție nu le ocolește pe toate, marginea rămâne pe loc.
  */
-function clearCutEdges(c: Rect, a: ResolvedAsset, focus: Region): Rect {
+export function clearCutEdges(c: Rect, regions: Region[], image: { w: number; h: number }, focus: Region): Rect {
   const m = 12;
   const f = focus.rect;
-  // textul propriu-zis (titluri, butoane, câmpuri, linkuri) contează la orice lățime; cardurile și panourile, doar
-  // cele înguste (cele late sunt containere, iar marginea trece oricum prin ele)
-  const textual = (r: Region) =>
-    ["heading", "button", "input", "link", "text"].includes(r.kind) || (r.kind !== "image" && r.kind !== "pii" && r.rect.w < c.w * 0.4);
-  const text = a.regions.filter((r) => r.id !== focus.id && textual(r) && r.rect.y < c.y + c.h && r.rect.y + r.rect.h > c.y);
-  const ok = (x: number) => x >= 0 && x + c.w <= a.w && f.x >= x + m && f.x + f.w <= x + c.w - m;
-  const cuts = (x: number) => text.filter((r) => (r.rect.x < x && r.rect.x + r.rect.w > x) || (r.rect.x < x + c.w && r.rect.x + r.rect.w > x + c.w));
-  let x = c.x;
-  for (let pass = 0; pass < 3 && cuts(x).length; pass++) {
-    const options = cuts(x).flatMap((r) => [
-      r.rect.x - m, // marginea stângă înainte de regiune
-      r.rect.x + r.rect.w + m, // marginea stângă după regiune
-      r.rect.x - m - c.w, // marginea dreaptă înainte de regiune
-      r.rect.x + r.rect.w + m - c.w, // marginea dreaptă după regiune
-    ]);
-    const best = options.filter(ok).sort((p, q) => Math.abs(p - c.x) - Math.abs(q - c.x))[0];
-    if (best === undefined) break;
-    x = best;
-  }
-  return { ...c, x };
+  const snap = (cur: Rect, axis: "x" | "y"): Rect => {
+    const [pos, size, imageSize] = axis === "x" ? (["x", "w", image.w] as const) : (["y", "h", image.h] as const);
+    const [opos, osize] = axis === "x" ? (["y", "h"] as const) : (["x", "w"] as const);
+    // textul propriu-zis (titluri, butoane, câmpuri, linkuri) contează la orice mărime; cardurile și panourile,
+    // doar cele mici față de decupaj (cele mari sunt containere, iar marginea trece oricum prin ele)
+    const textual = (r: Region) =>
+      ["heading", "button", "input", "link", "text"].includes(r.kind) || (r.kind !== "image" && r.kind !== "pii" && r.rect[size] < cur[size] * 0.4);
+    const text = regions.filter((r) => r.id !== focus.id && textual(r) && r.rect[opos] < cur[opos] + cur[osize] && r.rect[opos] + r.rect[osize] > cur[opos]);
+    const ok = (v: number) => v >= 0 && v + cur[size] <= imageSize && f[pos] >= v + m && f[pos] + f[size] <= v + cur[size] - m;
+    const cuts = (v: number) =>
+      text.filter((r) => (r.rect[pos] < v && r.rect[pos] + r.rect[size] > v) || (r.rect[pos] < v + cur[size] && r.rect[pos] + r.rect[size] > v + cur[size]));
+    let v = cur[pos];
+    for (let pass = 0; pass < 3 && cuts(v).length; pass++) {
+      const options = cuts(v).flatMap((r) => [
+        r.rect[pos] - m, // marginea de început înainte de regiune
+        r.rect[pos] + r.rect[size] + m, // marginea de început după regiune
+        r.rect[pos] - m - cur[size], // marginea de final înainte de regiune
+        r.rect[pos] + r.rect[size] + m - cur[size], // marginea de final după regiune
+      ]);
+      const best = options.filter(ok).sort((p, q) => Math.abs(p - cur[pos]) - Math.abs(q - cur[pos]))[0];
+      if (best === undefined) break;
+      v = best;
+    }
+    return { ...cur, [pos]: v };
+  };
+  return snap(snap(c, "x"), "y");
 }
 
 /** Așază fereastra de decupaj centrată pe zonă (sus/jos după `bias`), fără să iasă din captură. */

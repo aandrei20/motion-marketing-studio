@@ -76,7 +76,8 @@ Fiecare fișier de proiect are `schemaVersion` în schema lui. O schimbare compa
 
 - **Scenele** se suprapun exact pe durata tranziției: scena nouă începe cu `d` cadre înainte de finalul celei vechi. Fără goluri, deci fără cadre negre.
 - **Straturile** au capabilitate, cadru de start, durată, cutie (pixeli), parametri, adâncime (0 = fix pe ecran, 1 = planul scenei, altele = parallax), rol, modificatori și copii. Copiii unui `media.screen` sunt în pixelii capturii (de aceea un spotlight urmărește zoom-ul și scroll-ul).
-- **Camera** e o pistă de chei (punct, zoom, rotații) plus mână liberă, tremur, punch pe ritm, profunzime de câmp și blur de mișcare calculat din viteză.
+- **Camera** e o pistă de chei (punct, zoom, rotații) plus mână liberă, tremur, punch pe ritm, profunzime de câmp și blur de mișcare calculat din viteză. Două chei la un cadru distanță sunt o tăietură directă: salt, fără interpolare și fără blur.
+- **Tăieturile din interiorul scenelor** (`src/timeline/inner-cuts.ts`, `meta.cuts`): pe platformele rapide, o demonstrație mai lungă decât planul tipic al platformei primește un punch-in pe începutul unui cuvânt, fie prin camera rețetei (plan larg, apoi prim-planul ei), fie, când camera nu mărește, printr-un decupaj mai strâns al aceleiași capturi în aceeași casetă, cu zona deasupra subtitrărilor. Verificarea ritmului numără planurile, nu scenele.
 
 ## Registry-ul și fișa unei capabilități
 

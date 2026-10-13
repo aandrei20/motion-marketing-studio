@@ -43,6 +43,8 @@ import { nodeMeasure } from "./measure-node";
 import { applyDna, type DnaAspect, type ReferenceDNA } from "../references/dna";
 import { LAYOUT_TEXT_CAPS, LAYOUT_TEXT_CAPS as TEXT_CAPS } from "../motion/text-caps";
 import { focusRects, holdFrame, overlapArea } from "./geometry";
+import { innerCut } from "./inner-cuts";
+import { platformProfile } from "../platform/profiles";
 
 export interface VoiceClipRef {
   lineId: string;
@@ -324,6 +326,11 @@ export function compileTimeline(input: CompileInput): CompileResult {
   const cues: AudioCue[] = [];
   const voiceCues: Array<{ lineId: string; at: number; src: string; durationSec: number; words: VoiceWord[] }> = [];
   let uidCounter = 0;
+  // ce trebuie tăieturilor din interiorul scenelor (pasul 5b): focusul rețetei, camera explicită, bătăile
+  const innerInfo = new Map<
+    string,
+    { focus: { x: number; y: number; zoom: number; target?: { x: number; y: number } } | undefined; explicit: boolean; beats: number[] }
+  >();
   plans.forEach((plan, i) => {
     const sc: StoryboardScene = plan.sc;
     const duration = durFrames[i];
@@ -533,6 +540,7 @@ export function compileTimeline(input: CompileInput): CompileResult {
       ...(built.depthOfField ? { depthOfField: built.depthOfField } : {}),
     };
     const tr = transitions[i];
+    innerInfo.set(sc.id, { focus: out.focus, explicit: !!sc.camera, beats: sceneBeats });
     scenes.push({
       id: sc.id,
       from,
@@ -655,6 +663,39 @@ export function compileTimeline(input: CompileInput): CompileResult {
     sfx = density === "medium" ? kept.map((c) => ({ ...c, gainDb: c.gainDb - 2 })) : kept;
   }
   const finalCues = [...cues.filter((c) => c.kind !== "sfx"), ...sfx].sort((a, b) => a.atFrame - b.atFrame || a.id.localeCompare(b.id));
+
+  // 5b. tăieturi directe în interiorul scenelor mai lungi decât planul tipic al platformei (punch-in, pe cuvânt)
+  const maxShotSec = platformProfile(format.platform, project).avgShotSec[1];
+  // banda implicită a subtitrărilor (aceeași ca la pasul 6), cu marginea folosită la ocolirea zonelor
+  const capBand = (() => {
+    if (!brief.captions.burnIn || !voiceCues.length) return undefined;
+    const h = orientation === "portrait" ? H * 0.075 : H * 0.11;
+    const pad = Math.round(h * 0.15);
+    return { x: safe.rect.x, y: safe.rect.y + safe.rect.h - h - pad, w: safe.rect.w, h: h + 2 * pad };
+  })();
+  scenes.forEach((sc, i) => {
+    const info = innerInfo.get(sc.id);
+    if (!info) return;
+    const wordStarts = voiceCues
+      .flatMap((v) => (input.voice[v.lineId]?.words ?? []).map((w) => v.at + Math.round(w.startSec * fps) - sc.from))
+      .filter((f) => f > 0 && f < sc.durationInFrames);
+    const hero = sc.layers.find((l) => l.capability === "media.screen" && l.role === "hero");
+    const regions = hero?.assets.map((p) => assetByPublicPath.get(p)?.capture?.regions).find((r) => r?.length) ?? [];
+    scenes[i] = innerCut({
+      scene: sc,
+      fps,
+      width: W,
+      height: H,
+      maxShotSec,
+      wordStarts,
+      beats: info.beats,
+      focus: info.focus,
+      regions,
+      explicitCamera: info.explicit,
+      pacing,
+      avoid: capBand,
+    });
+  });
 
   // 6. subtitrări din cuvintele vocii
   let captions: Timeline["captions"] = null;

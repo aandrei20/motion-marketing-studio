@@ -100,6 +100,8 @@ export const TimelineScene = z.object({
     recipe: z.string(),
     shot: z.string(),
     energy: z.number(),
+    /** tăieturile directe din interiorul scenei (punch-in), cadre relative la scenă; fiecare începe un plan nou */
+    cuts: z.array(z.number().int()).optional(),
   }),
 });
 export type TimelineScene = z.infer<typeof TimelineScene>;

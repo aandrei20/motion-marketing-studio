@@ -40,7 +40,15 @@ function sampleKeys(keys: CameraKey[], f: number, fps: number): Omit<CamState, "
     const a = keys[i - 1];
     const b = keys[i];
     if (f <= b.at) {
-      const t = b.ease === "spring" ? clamp(spring({ frame: f - a.at, fps, config: SPRINGS.cam }), 0, 1.2) : prog(f, a.at, b.at, easeFor(b.ease));
+      // două chei la un cadru distanță sunt o tăietură directă (punch-in): salt, fără interpolare
+      const t =
+        b.at - a.at <= 1
+          ? f >= b.at
+            ? 1
+            : 0
+          : b.ease === "spring"
+            ? clamp(spring({ frame: f - a.at, fps, config: SPRINGS.cam }), 0, 1.2)
+            : prog(f, a.at, b.at, easeFor(b.ease));
       return {
         fx: a.x + (b.x - a.x) * t,
         fy: a.y + (b.y - a.y) * t,
@@ -101,8 +109,15 @@ export function layerTransform(s: CamState, d: number, W: number, H: number, per
 }
 
 /** Blur de mișcare din viteza camerei: [x, y] px pentru un filtru direcțional. */
+/** Cadrele la care camera sare (două chei la un cadru distanță): tăieturi, fără mișcare între ele. */
+export function cameraCuts(cam: TimelineCamera): number[] {
+  return cam.keys.flatMap((k, i) => (i > 0 && k.at - cam.keys[i - 1].at <= 1 ? [k.at] : []));
+}
+
 export function cameraMotionBlur(cam: TimelineCamera, frame: number, fps: number, seed: string, d = 1): [number, number] {
   if (!cam.motionBlur) return [0, 0];
+  // pe cadrul unei tăieturi nu există mișcare de estompat (saltul nu e o mișcare)
+  if (cameraCuts(cam).some((c) => c > frame - 0.5 && c <= frame + 0.5)) return [0, 0];
   const a = sampleCamera(cam, frame - 0.5, fps, seed);
   const b = sampleCamera(cam, frame + 0.5, fps, seed);
   const vx = Math.abs((b.fx - a.fx) * b.zoom + (b.ox - a.ox)) * d;

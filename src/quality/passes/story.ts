@@ -182,16 +182,17 @@ export const STORY_CHECKS: CheckDef[] = [
   },
   {
     id: "story.pacing",
-    version: 1,
+    version: 2,
     pass: "story",
-    title: "Ritmul: durata medie a scenelor față de platformă și direcție",
+    title: "Ritmul: durata medie a planurilor (scene și tăieturile din interiorul lor) față de platformă și direcție",
     categories: ["story", "motion"],
     method: "timeline",
     perFormat: true,
     run: (ctx, fid) => {
       const t = ctx.timelines[fid];
       const prof = ctx.profiles[fid];
-      const avg = t.durationInFrames / t.fps / t.scenes.length;
+      const shots = t.scenes.reduce((n, s) => n + 1 + (s.meta.cuts?.length ?? 0), 0);
+      const avg = t.durationInFrames / t.fps / shots;
       const [lo, hi] = prof.avgShotSec;
       if (avg > hi * 1.15)
         return [
@@ -201,7 +202,7 @@ export const STORY_CHECKS: CheckDef[] = [
             formatId: fid,
             dimension: "pacing",
             severity: "medium",
-            problem: `Ritm lent pentru ${prof.label}: ${avg.toFixed(1)} s pe scenă în medie (recomandat ${lo}–${hi} s).`,
+            problem: `Ritm lent pentru ${prof.label}: ${avg.toFixed(1)} s pe plan în medie (recomandat ${lo}–${hi} s).`,
             recommendation: "Împarte scenele lungi sau taie din hold-uri (vocea dictează minimul).",
             confidence: 0.6,
           },
@@ -214,7 +215,7 @@ export const STORY_CHECKS: CheckDef[] = [
             formatId: fid,
             dimension: "pacing",
             severity: "medium",
-            problem: `Ritm foarte rapid: ${avg.toFixed(1)} s pe scenă (recomandat ${lo}–${hi} s).`,
+            problem: `Ritm foarte rapid: ${avg.toFixed(1)} s pe plan (recomandat ${lo}–${hi} s).`,
             recommendation: "Lasă mesajele să respire: comasează scenele sau prelungește-le.",
             confidence: 0.6,
           },
