@@ -149,3 +149,39 @@ describe("bugetul cache-ului și spațiul pe disc", () => {
     expect(() => assertDiskSpace(".", 100 * GB, "randarea video", null)).not.toThrow();
   });
 });
+
+describe("migrarea schemelor", () => {
+  it("aduce un fișier vechi la schema de acum, în memorie, și refuză clar un fișier mai nou", async () => {
+    const { z } = await import("zod");
+    const { readJson } = await import("../../src/core/json");
+    const { registerMigrations, schemaVersionOf } = await import("../../src/core/migrate");
+    const S = z.object({ schemaVersion: z.literal(3), name: z.string(), tags: z.array(z.string()) });
+    registerMigrations(S, [
+      { from: 1, describe: "title → name", up: ({ title, ...r }) => ({ ...r, name: title }) },
+      { from: 2, describe: "tags obligatorii", up: (r) => ({ ...r, tags: r.tags ?? [] }) },
+    ]);
+    expect(schemaVersionOf(S)).toBe(3);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mms-migrate-"));
+    const f = path.join(dir, "x.json");
+    const v1 = `${JSON.stringify({ schemaVersion: 1, title: "Vechi" })}\n`;
+    fs.writeFileSync(f, v1);
+    expect(readJson(f, S)).toEqual({ schemaVersion: 3, name: "Vechi", tags: [] });
+    // fișierul de pe disc rămâne neatins (versiunile înghețate nu se rescriu)
+    expect(fs.readFileSync(f, "utf8")).toBe(v1);
+    const code = (raw: unknown, schema: Parameters<typeof readJson>[1] = S) => {
+      fs.writeFileSync(f, JSON.stringify(raw));
+      try {
+        readJson(f, schema);
+        return null;
+      } catch (e) {
+        return (e as MmsError).code;
+      }
+    };
+    expect(code({ schemaVersion: 4, name: "Nou", tags: [] })).toBe("SCHEMA_NEWER");
+    expect(code({ schemaVersion: 0, title: "Prea vechi" })).toBe("SCHEMA_OLD");
+    // schemele reale: un timeline scris de un studio mai nou primește indicația de actualizare
+    const { Timeline } = await import("../../src/core/schema");
+    expect(code({ schemaVersion: 2 }, Timeline)).toBe("SCHEMA_NEWER");
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});

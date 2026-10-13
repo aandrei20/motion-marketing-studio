@@ -2,8 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { z } from "zod";
 import { MmsError } from "./errors";
+import { migrateRaw } from "./migrate";
 
-/** Citește și validează un JSON. Erorile de schemă arată exact câmpul greșit. */
+/**
+ * Citește și validează un JSON. Un fișier cu o versiune de schemă mai veche trece întâi prin migrări (în memorie,
+ * vezi core/migrate.ts). Erorile de schemă arată exact câmpul greșit.
+ */
 export function readJson<S extends z.ZodType>(file: string, schema: S): z.infer<S> {
   if (!fs.existsSync(file)) throw new MmsError("FILE_MISSING", `Lipsește fișierul ${file}`);
   let raw: unknown;
@@ -12,7 +16,7 @@ export function readJson<S extends z.ZodType>(file: string, schema: S): z.infer<
   } catch (e) {
     throw new MmsError("JSON_INVALID", `JSON invalid în ${file}: ${(e as Error).message}`);
   }
-  return parseWith(schema, raw, file);
+  return parseWith(schema, migrateRaw(schema, raw, file), file);
 }
 
 export function parseWith<S extends z.ZodType>(schema: S, raw: unknown, where: string): z.infer<S> {

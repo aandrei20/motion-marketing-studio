@@ -38,6 +38,10 @@ brief.json ──┐     │  capturi 2× + zone din DOM + înregistrări + text
 
 Înainte de script, conceptul creativ (`src/creative/concepts.ts`) alege structura și direcția din dovezi; conceptul utilizatorului are prioritate (regula 14). `mms make` (`src/pipeline/produce.ts`) leagă pașii: concepte → script → storyboard → voce → compilare → mix → calitate (standard) → corecturi automate → Final QA cu un singur preview. Detaliile buclei: `docs/CALITATE.md`.
 
+### Schemele și proiectele vechi
+
+Fiecare fișier de proiect are `schemaVersion` în schema lui. O schimbare compatibilă (câmp nou opțional sau cu valoare implicită) nu o schimbă. O schimbare incompatibilă crește `schemaVersion` în schemă și înregistrează migrarea de la versiunea anterioară (`registerMigrations` din `src/core/migrate.ts`), cu un test pe un fișier vechi. `readJson` aplică migrările la citire, în memorie: versiunile înghețate nu se rescriu, iar fișierul ajunge în forma nouă doar când e salvat din nou. Un fișier scris de un studio mai nou e refuzat cu indicația `npm run update`. `mms check-projects` (și `npm run doctor`) citește toate proiectele existente cu schemele de acum și verifică fișierele la care trimit manifestul și timeline-urile.
+
 ## Modulele
 
 | Folder | Rol |
