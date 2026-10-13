@@ -41,12 +41,19 @@ export const modEnter = defineModifier({
     exit: z.enum(["snap", "none"]).default("snap"),
     exitFrames: z.number().int().min(1).max(30).default(5),
     motionBlur: z.boolean().default(true),
+    /** anticipație: un recul scurt (~0,15 s) în sens opus mișcării, înainte de arc (0 = fără) */
+    anticipate: z.number().min(0).max(1).default(0),
   }),
   apply: ({ params: p, frame, duration, env, id }) => {
     const cfg = SPRINGS[p.spring as SpringName];
+    // anticipația doar la mișcările cu direcție și la scară (la pop și fade nu există o poziție de pornire vizibilă)
+    const windFrames = p.anticipate > 0 && p.style !== "pop" && p.style !== "fade" ? Math.max(3, Math.round(env.fps * 0.15)) : 0;
+    const wind = (f: number) => (windFrames && f >= p.at && f < p.at + windFrames ? Math.sin((Math.PI * (f - p.at)) / windFrames) * p.anticipate : 0);
     const offset = (f: number): [number, number, number] => {
-      const s = sp(f, env.fps, p.at, cfg);
-      const d = (1 - s) * p.distance;
+      const s = sp(f, env.fps, p.at + windFrames, cfg);
+      // în timpul reculului, stratul se depărtează puțin mai mult de poziția finală, apoi pornește arcul
+      const d = (1 - s) * p.distance + wind(f) * p.distance * 0.15;
+      if (p.style === "scale") return [0, 0, 0.85 + 0.15 * s - wind(f) * 0.05];
       switch (p.style) {
         case "rise":
           return [0, d, 1];
@@ -58,8 +65,6 @@ export const modEnter = defineModifier({
           return [-d, 0, 1];
         case "pop":
           return [0, 0, s];
-        case "scale":
-          return [0, 0, 0.85 + 0.15 * s];
         default:
           return [0, 0, 1];
       }
@@ -89,7 +94,7 @@ export const modEnter = defineModifier({
         : undefined,
     };
   },
-  example: modExample({ style: "rise", exit: "snap" }),
+  example: modExample({ style: "rise", exit: "snap", anticipate: 0.6 }),
 });
 
 export const modGlow = defineModifier({
@@ -386,8 +391,30 @@ export const modTilt3d = defineModifier({
   example: modExample({}),
 });
 
+/** Modurile de amestec CSS permise (cele care arată bine peste fundaluri și capturi). */
+export const BLEND_MODES = ["screen", "multiply", "overlay", "soft-light", "lighten", "darken", "difference", "color-dodge"] as const;
+
+export const modBlend = defineModifier({
+  ...base,
+  id: "mod.blend",
+  title: "Mod de amestec (blend)",
+  description:
+    "Amestecă stratul cu tot ce e sub el în scenă (screen, multiply, overlay, soft-light, lighten, darken, difference, color-dodge), cu opacitate. Pentru lumini și texturi integrate în imagine, grafică „topită” în fundal. Compoziția îl aplică pe containerul stratului, singurul care vede straturile de dedesubt.",
+  tags: ["blend", "mix-blend-mode", "screen", "multiply", "overlay", "composite", "integrate"],
+  performance: "light",
+  sfx: [],
+  params: z.object({
+    mode: z.enum(BLEND_MODES).default("screen"),
+    opacity: z.number().min(0).max(1).default(1),
+  }),
+  // în interiorul stratului (de ex. un copil al unei capturi) amestecul se face cu conținutul părintelui
+  apply: ({ params: p }) => ({ style: { mixBlendMode: p.mode as React.CSSProperties["mixBlendMode"], opacity: p.opacity } }),
+  example: modExample({ mode: "overlay" }),
+});
+
 export const MODIFIERS = [
   modEnter,
+  modBlend,
   modGlow,
   modShadow,
   modReflection,

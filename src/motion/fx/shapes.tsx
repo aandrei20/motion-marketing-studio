@@ -162,4 +162,86 @@ export const shapeRingPulse = defineLayer({
   example: { params: { at: 2 }, durationInFrames: 30, box: "center" },
 });
 
-export const SHAPES = [shapePanel, shapeLine, shapeRingPulse];
+/**
+ * Setul de iconițe: trasee originale (licență proprie), desenate pe o grilă de 24 × 24, cu linie, fără umplere.
+ * Fiecare iconiță e o listă de trasee; animația le desenează pe rând.
+ */
+export const ICONS = {
+  check: ["M5 12.5l4.5 4.5L19 7.5"],
+  x: ["M6 6l12 12", "M18 6L6 18"],
+  plus: ["M12 5v14", "M5 12h14"],
+  "arrow-right": ["M4 12h15", "M13 6l6 6-6 6"],
+  star: ["M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"],
+  bolt: ["M13 3L5 13.5h6L10 21l8-10.5h-6z"],
+  clock: ["M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z", "M12 7.5V12l3 2"],
+  lock: ["M6.5 11h11v9h-11z", "M9 11V8a3 3 0 0 1 6 0v3"],
+  shield: ["M12 3l7 3v5.5c0 4.2-3 7.6-7 9.5-4-1.9-7-5.3-7-9.5V6z"],
+  chart: ["M4 20h16", "M7 16v-5", "M12 16V7", "M17 16v-8"],
+  users: ["M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5", "M16 11a2.5 2.5 0 1 0 0-5", "M17.5 14.5c1.6.5 2.6 1.9 3 4.5"],
+  bell: ["M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z", "M10 20.5a2 2 0 0 0 4 0"],
+  search: ["M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z", "M15.5 15.5L20 20"],
+  heart: ["M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"],
+  sparkle: ["M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"],
+} as const;
+export type IconName = keyof typeof ICONS;
+
+export const shapeIcon = defineLayer({
+  ...base,
+  id: "shape.icon",
+  title: "Iconiță desenată (set original)",
+  description:
+    "O iconiță din setul propriu (bifă, x, plus, săgeată, stea, fulger, ceas, lacăt, scut, grafic, oameni, clopoțel, căutare, inimă, scânteie) care se desenează din linie, apoi se așază cu un mic arc; opțional pe un disc colorat. Pentru liste de beneficii, pași și dovezi, niciodată în locul interfeței reale.",
+  tags: ["icon", "pictogram", "symbol", "check", "benefit", "list", "draw"],
+  sfx: [{ sound: "tick-soft", at: "start", gainDb: -8 }],
+  params: z.object({
+    name: z.enum(Object.keys(ICONS) as [IconName, ...IconName[]]).default("check"),
+    color: z.string().default("accent"),
+    /** grosimea liniei, în unitățile grilei de 24 */
+    stroke: z.number().min(0.5).max(4).default(2),
+    drawFrames: z.number().int().min(2).default(18),
+    /** disc colorat sub iconiță (culoarea, translucidă) */
+    disc: z.boolean().default(false),
+  }),
+  Component: ({ params: p, frame, box, env }) => {
+    const c = hex(resolveColor(env.palette, p.color, "accent"));
+    const paths = ICONS[p.name as IconName];
+    const s = Math.min(box.w, box.h);
+    const settle = sp(frame, env.fps, Math.round(p.drawFrames * 0.6), SPRINGS.pop);
+    const scale = 0.9 + 0.1 * settle;
+    return (
+      <svg
+        width={box.w}
+        height={box.h}
+        viewBox={`${(24 - (24 * box.w) / s) / 2} ${(24 - (24 * box.h) / s) / 2} ${(24 * box.w) / s} ${(24 * box.h) / s}`}
+        style={{ position: "absolute", inset: 0, overflow: "visible" }}
+      >
+        <title>{p.name}</title>
+        <g transform={`translate(12 12) scale(${scale.toFixed(4)}) translate(-12 -12)`}>
+          {p.disc ? <circle cx={12} cy={12} r={11.5} fill={withAlpha(c, 0.16 * Math.min(1, settle + 0.2))} /> : null}
+          {paths.map((d, i) => {
+            // traseele se desenează pe rând, fiecare în partea lui din timpul de desen
+            const t = prog(frame, (i * p.drawFrames) / paths.length, ((i + 1) * p.drawFrames) / paths.length, EASE.inOut);
+            return (
+              <path
+                key={d}
+                d={d}
+                fill="none"
+                stroke={c}
+                strokeWidth={p.stroke}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pathLength={1}
+                strokeDasharray={1}
+                strokeDashoffset={1 - t}
+                transform={p.disc ? "translate(12 12) scale(0.62) translate(-12 -12)" : undefined}
+              />
+            );
+          })}
+        </g>
+      </svg>
+    );
+  },
+  example: { params: { name: "check", disc: true }, durationInFrames: 30, box: "center" },
+});
+
+export const SHAPES = [shapePanel, shapeLine, shapeRingPulse, shapeIcon];

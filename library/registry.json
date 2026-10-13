@@ -1928,6 +1928,104 @@
       }
     },
     {
+      "id": "shape.icon",
+      "kind": "layer",
+      "category": "shape",
+      "title": "Iconiță desenată (set original)",
+      "description": "O iconiță din setul propriu (bifă, x, plus, săgeată, stea, fulger, ceas, lacăt, scut, grafic, oameni, clopoțel, căutare, inimă, scânteie) care se desenează din linie, apoi se așază cu un mic arc; opțional pe un disc colorat. Pentru liste de beneficii, pași și dovezi, niciodată în locul interfeței reale.",
+      "tags": [
+        "icon",
+        "pictogram",
+        "symbol",
+        "check",
+        "benefit",
+        "list",
+        "draw"
+      ],
+      "compatibleMedia": [
+        "none"
+      ],
+      "timing": {
+        "model": "duration",
+        "defaultFrames": 45,
+        "minFrames": 4
+      },
+      "sfx": [
+        {
+          "sound": "tick-soft",
+          "at": "start",
+          "gainDb": -8
+        }
+      ],
+      "status": "tested",
+      "performance": "light",
+      "license": {
+        "source": "Motion Marketing Studio (cod original)",
+        "license": "proprietar, același cu repo-ul"
+      },
+      "recipes": [],
+      "implementation": "src/motion/fx/shapes.tsx",
+      "tests": [
+        "tests/render/catalog.test.ts (randare + determinism)",
+        "tests/unit/registry.test.ts (schemă și exemplu)"
+      ],
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "default": "check",
+            "type": "string",
+            "enum": [
+              "check",
+              "x",
+              "plus",
+              "arrow-right",
+              "star",
+              "bolt",
+              "clock",
+              "lock",
+              "shield",
+              "chart",
+              "users",
+              "bell",
+              "search",
+              "heart",
+              "sparkle"
+            ]
+          },
+          "color": {
+            "default": "accent",
+            "type": "string"
+          },
+          "stroke": {
+            "default": 2,
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 4
+          },
+          "drawFrames": {
+            "default": 18,
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 9007199254740991
+          },
+          "disc": {
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "example": {
+        "params": {
+          "name": "check",
+          "disc": true
+        },
+        "durationInFrames": 30,
+        "box": "center"
+      }
+    },
+    {
       "id": "text.word-reveal",
       "kind": "layer",
       "category": "typography",
@@ -8846,13 +8944,98 @@
           "motionBlur": {
             "default": true,
             "type": "boolean"
+          },
+          "anticipate": {
+            "default": 0,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           }
         }
       },
       "example": {
         "params": {
           "style": "rise",
-          "exit": "snap"
+          "exit": "snap",
+          "anticipate": 0.6
+        },
+        "durationInFrames": 45,
+        "box": "center",
+        "needs": [
+          "screenshot"
+        ]
+      }
+    },
+    {
+      "id": "mod.blend",
+      "kind": "modifier",
+      "category": "modifier",
+      "title": "Mod de amestec (blend)",
+      "description": "Amestecă stratul cu tot ce e sub el în scenă (screen, multiply, overlay, soft-light, lighten, darken, difference, color-dodge), cu opacitate. Pentru lumini și texturi integrate în imagine, grafică „topită” în fundal. Compoziția îl aplică pe containerul stratului, singurul care vede straturile de dedesubt.",
+      "tags": [
+        "blend",
+        "mix-blend-mode",
+        "screen",
+        "multiply",
+        "overlay",
+        "composite",
+        "integrate"
+      ],
+      "compatibleMedia": [
+        "layer",
+        "image",
+        "screenshot",
+        "text",
+        "logo",
+        "video"
+      ],
+      "timing": {
+        "model": "duration",
+        "defaultFrames": 60,
+        "minFrames": 1
+      },
+      "sfx": [],
+      "status": "tested",
+      "performance": "light",
+      "license": {
+        "source": "Motion Marketing Studio (cod original)",
+        "license": "proprietar, același cu repo-ul"
+      },
+      "recipes": [],
+      "implementation": "src/motion/modifiers/modifiers.tsx",
+      "tests": [
+        "tests/render/catalog.test.ts (randare + determinism)",
+        "tests/unit/registry.test.ts (schemă și exemplu)"
+      ],
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "default": "screen",
+            "type": "string",
+            "enum": [
+              "screen",
+              "multiply",
+              "overlay",
+              "soft-light",
+              "lighten",
+              "darken",
+              "difference",
+              "color-dodge"
+            ]
+          },
+          "opacity": {
+            "default": 1,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "example": {
+        "params": {
+          "mode": "overlay"
         },
         "durationInFrames": 45,
         "box": "center",

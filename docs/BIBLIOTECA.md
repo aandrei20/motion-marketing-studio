@@ -2,7 +2,7 @@
 
 Fișier generat din cod de `scripts/build-docs.ts` – nu îl edita de mână. Sursa de adevăr: `src/motion/registry.ts` și `library/registry.json`.
 
-**124 capabilități** · **16 rețete** · **8 șabloane** · **35 sunete sintetizate** · **6 direcții creative**
+**126 capabilități** · **16 rețete** · **8 șabloane** · **35 sunete sintetizate** · **6 direcții creative**
 
 Fiecare capabilitate are implementare reală, parametri validați (zod), sunet declarat și un exemplu randat de testul de catalog (`tests/render/catalog.test.ts`), care verifică și determinismul. Starea „tested” înseamnă că exemplul a fost randat și a trecut testele.
 
@@ -49,13 +49,14 @@ Vezi catalogul vizual: `npm run remotion` (compoziția „Catalog”).
 | `fx.shapes` | **Forme geometrice plutitoare.** Cercuri, pătrate și triunghiuri contur care plutesc și se rotesc lent. Decor grafic, nu interfață. | — | tested |
 | `fx.trails` | **Puncte cu urme.** Puncte care se mișcă pe curbe și lasă urme care se sting (traiectorii calculate din cadru). | — | tested |
 
-## Forme (3)
+## Forme (4)
 
 | Id | Ce face | Sunet | Stare |
 | --- | --- | --- | --- |
 | `shape.panel` | **Panou / bloc de culoare.** Un dreptunghi (cu colțuri) în culoarea brandului care intră pe o direcție. Bază pentru text, separator grafic sau card de CTA. | swipe (start) | tested |
 | `shape.line-draw` | **Linie / săgeată desenată.** O linie sau o curbă care se trasează între puncte, opțional cu vârf de săgeată. Pentru legături și indicații. | marker (start) | tested |
 | `shape.ring-pulse` | **Inel de impact.** Unul sau mai multe inele care se extind și se sting dintr-un punct, la un impact (logo, buton, drop). | impact-small (param:at) | tested |
+| `shape.icon` | **Iconiță desenată (set original).** O iconiță din setul propriu (bifă, x, plus, săgeată, stea, fulger, ceas, lacăt, scut, grafic, oameni, clopoțel, căutare, inimă, scânteie) care se desenează din linie, apoi se așază cu un mic arc; opțional pe un disc colorat. Pentru liste de beneficii, pași și dovezi, niciodată în locul interfeței reale. | tick-soft (start) | tested |
 
 ## Tipografie (16)
 
@@ -146,11 +147,12 @@ Vezi catalogul vizual: `npm run remotion` (compoziția „Catalog”).
 | `data.pie` | **Grafic circular (donut).** Segmente care se desenează pe rând într-un donut, cu legendă. | tick (each) | tested |
 | `data.timeline` | **Linie de timp / pași.** O linie se desenează și dezvăluie pe rând etape (pași ai unui flux sau momente dintr-o lansare). | pop (each) | tested |
 
-## Modificatori (se aplică pe orice strat) (8)
+## Modificatori (se aplică pe orice strat) (9)
 
 | Id | Ce face | Sunet | Stare |
 | --- | --- | --- | --- |
 | `mod.enter` | **Intrare și ieșire cu arc.** Intrarea standard a oricărui strat (pop, urcare, cădere, alunecare, scară), cu motion blur din viteză și ieșire rapidă. Fade-ul simplu e doar alegere conștientă. | — | tested |
+| `mod.blend` | **Mod de amestec (blend).** Amestecă stratul cu tot ce e sub el în scenă (screen, multiply, overlay, soft-light, lighten, darken, difference, color-dodge), cu opacitate. Pentru lumini și texturi integrate în imagine, grafică „topită” în fundal. Compoziția îl aplică pe containerul stratului, singurul care vede straturile de dedesubt. | — | tested |
 | `mod.glow` | **Glow / neon cu puls.** Aură luminoasă în jurul stratului (drop-shadow colorat), opțional pulsând ca un neon. | — | tested |
 | `mod.shadow` | **Umbră (moale sau de contact).** Umbră care așază stratul în spațiu: moale și largă, sau scurtă și densă (umbră de contact). | — | tested |
 | `mod.reflection` | **Reflexie pe suprafață lucioasă.** O copie oglindită, estompată spre jos, sub strat (ca pe o masă lucioasă). | — | tested |

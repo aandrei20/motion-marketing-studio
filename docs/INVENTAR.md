@@ -6,9 +6,9 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 169 | 85 | 51 | 29 | 4 |
-| PARTIAL | 23 | 0 | 9 | 9 | 5 |
-| MISSING | 9 | 0 | 0 | 6 | 3 |
+| IMPLEMENTED | 173 | 85 | 51 | 33 | 4 |
+| PARTIAL | 22 | 0 | 9 | 8 | 5 |
+| MISSING | 6 | 0 | 0 | 3 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
 | **toate** | **201** | 85 | 60 | 44 | 12 |
@@ -46,7 +46,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Vignetă | P2 | IMPLEMENTED | `cap:fx.vignette` | — |
 | Tratament de culoare / color grading | P1 | IMPLEMENTED | `cap:mod.color-grade` | — |
 | Overlay-uri (ceață, sticlă, scurgeri de lumină) | P2 | IMPLEMENTED | `cap:fx.fog`, `cap:fx.glass`, `cap:fx.light-leak` | — |
-| Moduri de amestec (blend) | P2 | MISSING | — | **Următorul pas:** Modificator generic mod.blend (mix-blend-mode), randat și testat în catalog. |
+| Moduri de amestec (blend) | P2 | IMPLEMENTED | `cap:mod.blend` | — |
 | Carduri, panouri, containere | P1 | IMPLEMENTED | `cap:shape.panel`, `cap:media.cards` | — |
 | Fundaluri (plin, gradient, mesh, grilă, imagine, valuri) | P0 | IMPLEMENTED | `cap:bg.solid`, `cap:bg.mesh`, `cap:bg.image`, `cap:bg.waves` | — |
 | Elemente decorative | P2 | IMPLEMENTED | `cap:fx.shapes`, `cap:shape.line-draw`, `cap:shape.ring-pulse` | — |
@@ -110,7 +110,7 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Înclinare (skew) | P3 | PARTIAL | `cap:mod.tilt-3d` | Înclinare 3D, fără skew 2D. **Următorul pas:** Parametru skew în mod.enter, doar la cerere. |
 | Perspectivă 3D (CSS) | P1 | IMPLEMENTED | `cap:mod.tilt-3d`, `cap:media.device-3d`, `cap:media.stack-3d` | — |
 | Easing, spring, overshoot, elastic | P0 | IMPLEMENTED | `module:src/motion/core/easing.ts#SPRINGS`, `module:src/motion/core/easing.ts#EASE` | — |
-| Anticipație (mișcare inversă scurtă înainte de acțiune) | P2 | MISSING | — | **Următorul pas:** Opțiune „anticipate” în mod.enter (recul de 4–6 cadre). |
+| Anticipație (mișcare inversă scurtă înainte de acțiune) | P2 | IMPLEMENTED | `cap:mod.enter` | — |
 | Follow-through / settle | P2 | IMPLEMENTED | `module:src/motion/core/easing.ts#SPRINGS` | — |
 | Stagger și cascadă | P0 | IMPLEMENTED | `cap:text.word-reveal`, `cap:media.cards` | — |
 | Morph de forme | P3 | MISSING | — | **Următorul pas:** Doar dacă o direcție creativă îl cere (SVG path morph). |
@@ -206,8 +206,8 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Element | Prioritate | Stare | Implementare | Ce lipsește / pasul următor |
 | --- | --- | --- | --- | --- |
-| Iconițe (set original, licență proprie) | P2 | MISSING | — | **Următorul pas:** Set mic de iconițe SVG originale ca strat generic (icon.<nume>). |
-| Linii, conectori, săgeți | P2 | PARTIAL | `cap:shape.line-draw` | Linii desenate; fără vârf de săgeată. **Următorul pas:** Parametru arrowhead în shape.line-draw. |
+| Iconițe (set original, licență proprie) | P2 | IMPLEMENTED | `cap:shape.icon` | — |
+| Linii, conectori, săgeți | P2 | IMPLEMENTED | `cap:shape.line-draw` | — |
 | Diagrame / cronologii | P2 | PARTIAL | `cap:data.timeline` | Doar cronologie. **Următorul pas:** Diagramă de flux generică (noduri + conectori). |
 | Grafice (bare, linie, inel, comparație, pie) | P1 | IMPLEMENTED | `cap:data.bars`, `cap:data.line`, `cap:data.ring`, `cap:data.compare`, `cap:data.pie` | — |
 | Indicatori de progres | P2 | IMPLEMENTED | `cap:ui.progress` | — |
@@ -286,6 +286,6 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 ## Capabilități folosite de rețete
 
-Din 124 capabilități, 46 sunt folosite direct de rețete; tranzițiile și camerele se aleg de gramatica de montaj și de direcții. Celelalte se folosesc doar când Claude le alege explicit în storyboard (suprascrieri), deci nu sunt „moarte”, dar nici nu intră automat:
+Din 126 capabilități, 46 sunt folosite direct de rețete; tranzițiile și camerele se aleg de gramatica de montaj și de direcții. Celelalte se folosesc doar când Claude le alege explicit în storyboard (suprascrieri), deci nu sunt „moarte”, dar nici nu intră automat:
 
-`bg.solid` · `bg.gradient` · `bg.mesh` · `bg.grid` · `bg.waves` · `bg.beat-bars` · `fx.grain` · `fx.scanlines` · `fx.particles` · `fx.shapes` · `fx.fog` · `fx.glass` · `fx.lens-flare` · `fx.light-leak` · `fx.trails` · `shape.line-draw` · `text.char-reveal` · `text.tracking` · `text.split` · `text.outline-fill` · `text.glitch` · `text.captions` · `media.video` · `media.cards` · `frame.browser` · `frame.phone` · `frame.laptop` · `frame.desktop` · `ui.click` · `ui.hover` · `ui.tooltip` · `ui.blur-region` · `ui.zoom-lens` · `ui.notification` · `ui.progress` · `ui.toggle` · `logo.lockup` · `data.bars` · `data.line` · `data.ring` · `data.compare` · `data.pie` · `mod.glow` · `mod.blur` · `mod.chromatic` · `mod.ripple` · `mod.pixelate` · `mod.mask-reveal` · `mod.float` · `mod.tilt-3d`
+`bg.solid` · `bg.gradient` · `bg.mesh` · `bg.grid` · `bg.waves` · `bg.beat-bars` · `fx.grain` · `fx.scanlines` · `fx.particles` · `fx.shapes` · `fx.fog` · `fx.glass` · `fx.lens-flare` · `fx.light-leak` · `fx.trails` · `shape.line-draw` · `shape.icon` · `text.char-reveal` · `text.tracking` · `text.split` · `text.outline-fill` · `text.glitch` · `text.captions` · `media.video` · `media.cards` · `frame.browser` · `frame.phone` · `frame.laptop` · `frame.desktop` · `ui.click` · `ui.hover` · `ui.tooltip` · `ui.blur-region` · `ui.zoom-lens` · `ui.notification` · `ui.progress` · `ui.toggle` · `logo.lockup` · `data.bars` · `data.line` · `data.ring` · `data.compare` · `data.pie` · `mod.blend` · `mod.glow` · `mod.blur` · `mod.chromatic` · `mod.ripple` · `mod.pixelate` · `mod.mask-reveal` · `mod.float` · `mod.tilt-3d`

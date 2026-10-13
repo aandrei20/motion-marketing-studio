@@ -89,8 +89,13 @@ function SceneContent({ scene }: { scene: TimelineScene }) {
         const filters: string[] = [];
         if (mb[0] > 0 || mb[1] > 0) filters.push(`url(#${mbId})`);
         if (dof > 0.3) filters.push(`blur(${dof.toFixed(2)}px)`);
+        // mod.blend se aplică pe containerul stratului: doar el se amestecă cu straturile de dedesubt din scenă
+        const blend = layer.modifiers.find((m) => m.capability === "mod.blend")?.params.mode as React.CSSProperties["mixBlendMode"] | undefined;
         return (
-          <AbsoluteFill key={layer.id} style={{ transform, transformOrigin: "0 0", filter: filters.length ? filters.join(" ") : undefined }}>
+          <AbsoluteFill
+            key={layer.id}
+            style={{ transform, transformOrigin: "0 0", filter: filters.length ? filters.join(" ") : undefined, mixBlendMode: blend }}
+          >
             {mb[0] > 0 || mb[1] > 0 ? <DirBlurDefs id={mbId} x={mb[0]} y={mb[1]} /> : null}
             <CameraZoomContext.Provider value={layerZoom(cam, d)}>
               <LayerNode layer={layer} />
