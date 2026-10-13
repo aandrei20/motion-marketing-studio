@@ -270,6 +270,8 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
   A("f2", "muzică originală sintetizată pe structura reclamei", "default", "high", "fără licențe externe");
   A("f4", dir.direction ? DIRECTIONS[dir.direction].sfxDensity : "medium", "inferred", "medium", "densitatea direcției");
   A("f5", "nu", "default", "medium", "fără tăceri intenționate cerute");
+  A("f6", "fără", "default", "medium", "la cerere; se judecă la ascultare");
+  A("f7", "da (recomandat)", "default", "high", "vocea uniformă, aceeași balanță cu muzica; se judecă la ascultare");
   // G. livrare
   A("g1", "nu", "default", "medium", "la cerere");
   A("g2", "0", "default", "medium", "la cerere");
@@ -302,6 +304,8 @@ export function inferIntake(req: IntakeRequest, page: PageData | null): IntakeRe
       music: { mode: "synth", mood: dir.direction ? DIRECTIONS[dir.direction].mood : "driving" },
       sfxDensity: dir.direction ? DIRECTIONS[dir.direction].sfxDensity : "medium",
       intentionalSilence: false,
+      voiceCompression: true,
+      ambience: "none",
     },
     captions: { burnIn: true, srt: true },
   };

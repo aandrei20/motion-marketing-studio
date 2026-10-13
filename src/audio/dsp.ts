@@ -416,3 +416,86 @@ export function limit(s: Stereo, ceilingDb = -1.5, lookaheadMs = 3, releaseMs = 
   }
   return out;
 }
+
+/**
+ * Compresor pe o pistă (vocea): urmărește nivelul (vârful stereo, atac și eliberare exponențiale) și reduce ce
+ * trece de prag cu raportul dat, cu genunchi moale. Pragul implicit e adaptiv: nivelul RMS al părților active
+ * plus `aboveRmsDb`, ca vocea să fie uniformizată indiferent de nivelul de înregistrare. Câștigul de recuperare
+ * readuce nivelul RMS activ la cel de dinainte, deci echilibrul cu muzica rămâne același; doar vârfurile scad.
+ */
+export function compress(
+  s: Stereo,
+  o: { thresholdDb?: number; aboveRmsDb?: number; ratio?: number; kneeDb?: number; attackMs?: number; releaseMs?: number } = {},
+): { out: Stereo; thresholdDb: number; maxReductionDb: number } {
+  const n = s.L.length;
+  const level = new Float32Array(n);
+  for (let i = 0; i < n; i++) level[i] = Math.max(Math.abs(s.L[i]), Math.abs(s.R[i]));
+  // nivelul RMS doar pe părțile active (peste −50 dBFS), ca pauzele să nu coboare pragul
+  const activeRms = (x: Stereo) => {
+    let acc = 0;
+    let k = 0;
+    for (let i = 0; i < x.L.length; i++) {
+      const v = Math.max(Math.abs(x.L[i]), Math.abs(x.R[i]));
+      if (v > 0.003) {
+        acc += v * v;
+        k++;
+      }
+    }
+    return k ? gainToDb(Math.sqrt(acc / k)) : -240;
+  };
+  const before = activeRms(s);
+  const out = makeStereo(n, s.sr);
+  if (before <= -200) return { out: s, thresholdDb: 0, maxReductionDb: 0 };
+  const thr = o.thresholdDb ?? before + (o.aboveRmsDb ?? 4);
+  const ratio = o.ratio ?? 3;
+  const knee = o.kneeDb ?? 6;
+  const att = Math.exp(-1 / Math.max(1, samples((o.attackMs ?? 5) / 1000, s.sr)));
+  const rel = Math.exp(-1 / Math.max(1, samples((o.releaseMs ?? 90) / 1000, s.sr)));
+  const reduction = (db: number) => {
+    const over = db - thr;
+    if (over <= -knee / 2) return 0;
+    if (over >= knee / 2) return over * (1 - 1 / ratio);
+    // genunchi moale: tranziție pătratică pe lățimea `knee`
+    return ((1 - 1 / ratio) * (over + knee / 2) ** 2) / (2 * knee);
+  };
+  let env = 0;
+  let maxRed = 0;
+  for (let i = 0; i < n; i++) {
+    const x = level[i];
+    env = x > env ? x + (env - x) * att : x + (env - x) * rel;
+    const red = reduction(gainToDb(env));
+    if (red > maxRed) maxRed = red;
+    const g = dbToGain(-red);
+    out.L[i] = s.L[i] * g;
+    out.R[i] = s.R[i] * g;
+  }
+  const makeup = dbToGain(before - activeRms(out));
+  for (let i = 0; i < n; i++) {
+    out.L[i] *= makeup;
+    out.R[i] *= makeup;
+  }
+  return { out, thresholdDb: thr, maxReductionDb: maxRed };
+}
+
+/**
+ * Ambianță sintetizată (room tone), pe toată durata: zgomot filtrat, stereo decorelat, cu o respirație lentă a
+ * nivelului. „room” = încăpere caldă (sub 1,8 kHz), „air” = aer deschis, mai luminos (200 Hz – 6 kHz). Umple
+ * liniștea dintre replici fără să se audă ca un efect; nivelul îl dă mixul.
+ */
+export function roomTone(n: number, seed: string, kind: "room" | "air"): Stereo {
+  const [lo, hi] = kind === "room" ? [60, 1800] : [200, 6000];
+  const side = (ch: string) => normalize(band(noise(n, `${seed}:${kind}:${ch}`), lo, hi, 2), 0.25);
+  const L = side("L");
+  const R = side("R");
+  // respirația: ±1,5 dB, sub 0,1 Hz, aceeași pe ambele canale
+  const r = mulberry32(hashString(`${seed}:${kind}:drift`));
+  const p1 = r() * Math.PI * 2;
+  const p2 = r() * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const g = dbToGain(1.5 * (0.6 * Math.sin(2 * Math.PI * 0.07 * t + p1) + 0.4 * Math.sin(2 * Math.PI * 0.031 * t + p2)));
+    L[i] *= g;
+    R[i] *= g;
+  }
+  return fadeEdges({ L, R, sr: SR }, 0.4, 0.6);
+}

@@ -258,7 +258,7 @@ Regulile care fac ca reclama să aibă sens vizual, nu să pară o suită de sli
 | C. Poveste și creativ | Povestea ta sau 3 concepte, ideile tale de hook, structură, ton, ritm, chipuri sau nu, stil vizual, nivel de efecte, 3D, referințe |
 | D. Materiale și footage real | Ce ai deja, autentificare, funcții de arătat, date personale, drepturi pe materialele altora |
 | E. Text și limbă | Limba textului, limba vocii, subtitrări, fonturi și culori, cifre cu sursă |
-| F. Audio | Voce, muzică, audio-ul tău (moment și mod), efecte sonore, tăcere intenționată |
+| F. Audio | Voce, muzică, audio-ul tău (moment și mod), efecte sonore, tăcere intenționată, ambianță, compresor pe voce |
 | G. Livrare | Pachet de postare (opțional), variante de hook (opțional), previewuri, mod de preview, efort și buget |
 | H. Confirmare | Rezumatul planului; începe doar după „aprob” |
 

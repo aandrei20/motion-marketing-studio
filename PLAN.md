@@ -382,7 +382,7 @@ Limite 3D: arată foarte bine stilizat; fotorealismul de film nu se atinge din c
 - [x] C. Poveste și creativ: povestea utilizatorului sau 3 concepte propuse, ideile lui de hook, structură, ton, ritm, cu sau fără chipuri, stil vizual, nivel de efecte și efecte interzise, 3D permis, videouri de referință
 - [x] D. Materiale și footage real: ce există deja, ce face sistemul, autentificare, funcții de arătat în ordinea importanței, date personale în capturi, materialele altora și dreptul de folosire
 - [x] E. Text și limbă: limba textului, limba vocii, subtitrări, fonturi și culori, cifre cu sursă
-- [x] F. Audio: voce (a utilizatorului, TTS, fără), muzică (a utilizatorului, bibliotecă, sintetizată, fără), audio-ul utilizatorului cu moment și mod de folosire, densitatea efectelor sonore, tăcere intenționată
+- [x] F. Audio: voce (a utilizatorului, TTS, fără), muzică (a utilizatorului, bibliotecă, sintetizată, fără), audio-ul utilizatorului cu moment și mod de folosire, densitatea efectelor sonore, tăcere intenționată, ambianță (room tone), compresor pe voce
 - [x] G. Livrare: pachet de postare (opțional), variante de hook (opțional: 0, 2 sau 3), număr de previewuri, mod de preview, nivel de efort și buget de tokeni
 - [x] H. Confirmare: rezumatul planului și aprobarea utilizatorului înainte de orice lucru
 

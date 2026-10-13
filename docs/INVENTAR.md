@@ -6,9 +6,9 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 
 | Stare | Total | P0 | P1 | P2 | P3 |
 | --- | --- | --- | --- | --- | --- |
-| IMPLEMENTED | 166 | 85 | 51 | 26 | 4 |
+| IMPLEMENTED | 168 | 85 | 51 | 28 | 4 |
 | PARTIAL | 23 | 0 | 9 | 9 | 5 |
-| MISSING | 12 | 0 | 0 | 9 | 3 |
+| MISSING | 10 | 0 | 0 | 7 | 3 |
 | REDUNDANT | 0 | 0 | 0 | 0 | 0 |
 | PLANNED | 0 | 0 | 0 | 0 | 0 |
 | **toate** | **201** | 85 | 60 | 44 | 12 |
@@ -189,11 +189,11 @@ Priorități: **P0** esențial pentru un rezultat profesional · **P1** valoare 
 | Beat grid: tempo, fază, măsuri, încredere | P0 | IMPLEMENTED | `module:src/audio/beat.ts#detectBeatGrid`, `check:audio.mix` | — |
 | Secțiuni muzicale, energie pe măsuri, drop-uri (dezvăluirea pe drop) | P1 | IMPLEMENTED | `module:src/audio/beat.ts#musicStructure` | — |
 | Efecte sonore originale (impact, whoosh, riser, click, UI, notificare) | P0 | IMPLEMENTED | `sfx:impact`, `sfx:whoosh`, `sfx:riser`, `sfx:click`, `sfx:notification` | — |
-| Ambianță (room tone) | P2 | MISSING | — | **Următorul pas:** Strat de ambianță sintetizat discret, opțional în brief. |
+| Ambianță (room tone) | P2 | IMPLEMENTED | `module:src/audio/dsp.ts#roomTone`, `module:src/audio/mixer.ts#mix` | — |
 | Ducking al muzicii sub voce (rampă 500 ms) | P0 | IMPLEMENTED | `module:src/audio/mixer.ts#duckEnvelope` | — |
 | Efectele sub voce (−4 dB, rampă scurtă) | P1 | IMPLEMENTED | `module:src/audio/mixer.ts#mix` | — |
 | EQ / filtre | P2 | IMPLEMENTED | `module:src/audio/dsp.ts#eq`, `module:src/audio/dsp.ts#band` | — |
-| Compresie pe voce | P2 | MISSING | — | **Următorul pas:** Compresor simplu pe stem-ul de voce înainte de mix. |
+| Compresie pe voce | P2 | IMPLEMENTED | `module:src/audio/dsp.ts#compress`, `module:src/audio/mixer.ts#mix` | — |
 | Loudness −14 LUFS, true peak ≤ −1 dBTP, limitator | P0 | IMPLEMENTED | `module:src/audio/dsp.ts#limit`, `check:audio.mix` | — |
 | Tăceri neintenționate peste 1 s | P0 | IMPLEMENTED | `check:audio.mix` | — |
 | Pauze în voce | P1 | IMPLEMENTED | `module:src/core/schema/script.ts#ScriptLine` | — |

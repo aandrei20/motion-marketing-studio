@@ -4,7 +4,7 @@
  * (loudness, true peak, clipping, tăceri neintenționate peste 1 s).
  */
 import type { MixReport } from "../core/schema";
-import { dbToGain, limit, place, samples } from "./dsp";
+import { compress, dbToGain, limit, place, samples } from "./dsp";
 import { countClipped, findSilences, integratedLoudness, rmsDb, samplePeakDb, truePeakDb } from "./loudness";
 import { SR, makeStereo, type Stereo } from "./wav";
 
@@ -30,6 +30,13 @@ export interface MixInput {
   targetLufs: number;
   truePeakCeiling: number;
   stemGainsDb?: { voice?: number; music?: number; sfx?: number };
+  /** compresorul pe voce (implicit pornit): vârfurile replicilor scad, nivelul mediu rămâne */
+  voiceCompression?: boolean;
+  /**
+   * ambianța (room tone) sub tot mixul, fără ducking; tace în liniștile intenționate. Nivelul e relativ: `belowDb`
+   * sub nivelul mediu activ al vocii (sau al muzicii, fără voce), implicit 30 dB (~34 dB sub partea plină a replicilor)
+   */
+  ambience?: { audio: Stereo; belowDb?: number };
 }
 
 /** Anvelopa de ducking: 1 fără voce, `amount` sub voce, cu rampe liniare de `rampMs`. */
@@ -72,6 +79,11 @@ export function mix(input: MixInput): MixOutput {
   const sfx = makeStereo(n);
   const sg = input.stemGainsDb ?? {};
   for (const v of input.voice) place(voice, v.audio, v.atSec, dbToGain((v.gainDb ?? 0) + (sg.voice ?? 0)));
+  if (input.voiceCompression !== false && input.voice.length) {
+    const c = compress(voice);
+    voice.L.set(c.out.L);
+    voice.R.set(c.out.R);
+  }
   for (const s of input.sfx) place(sfx, s.audio, s.atSec, dbToGain((s.gainDb ?? 0) + (sg.sfx ?? -8)));
   const voiceIv = input.voice.map((v) => ({ startSec: v.atSec, endSec: v.atSec + v.audio.L.length / v.audio.sr }));
   // vocea are prioritate: efectele sonore scad ușor peste replici (rampă scurtă, ca impacturile să rămână)
@@ -112,6 +124,37 @@ export function mix(input: MixInput): MixOutput {
     for (let i = 0; i < n; i++) {
       music.L[i] *= duck[i];
       music.R[i] *= duck[i];
+    }
+  }
+  // ambianța intră în pista de fundal după ducking: rămâne constantă, ca să umple liniștea dintre replici
+  if (input.ambience) {
+    const a = input.ambience.audio;
+    const activeDb = (x: Stereo) => {
+      let acc = 0;
+      let k = 0;
+      for (let i = 0; i < x.L.length; i++) {
+        const v = Math.max(Math.abs(x.L[i]), Math.abs(x.R[i]));
+        if (v > 0.003) {
+          acc += v * v;
+          k++;
+        }
+      }
+      return k ? 20 * Math.log10(Math.sqrt(acc / k)) : null;
+    };
+    const ref = activeDb(voice) ?? activeDb(music) ?? -20;
+    const own = activeDb(a) ?? -20;
+    const g = dbToGain(ref - own - (input.ambience.belowDb ?? 30));
+    const fade = samples(0.25);
+    for (let i = 0; i < n && i < a.L.length; i++) {
+      // în liniștile intenționate tace, cu rampe scurte
+      let k = 1;
+      for (const x of input.intentionalSilences) {
+        const s0 = samples(x.startSec);
+        const s1 = samples(x.endSec);
+        if (i >= s0 - fade && i <= s1 + fade) k = Math.min(k, i < s0 ? (s0 - i) / fade : i > s1 ? (i - s1) / fade : 0);
+      }
+      music.L[i] += a.L[i] * g * k;
+      music.R[i] += a.R[i] * g * k;
     }
   }
   const sum = makeStereo(n);

@@ -52,7 +52,8 @@ export function timelineRenderKey(t: Timeline, mixHash: string | null): string {
 export function audioKey(t: Timeline, sb: Storyboard, brief: Brief, voiceFiles: Record<string, string | null>): string {
   const silences = t.scenes.filter((s) => sb.scenes.find((x) => x.id === s.id)?.audio.silence).map((s) => [s.from, s.durationInFrames]);
   return fingerprint({
-    v: 2,
+    // 3: compresorul pe voce și ambianța (mixul se refăcea altfel din cache cu regulile vechi)
+    v: 3,
     duration: t.durationInFrames,
     fps: t.fps,
     cues: t.audio.cues.map((c) => [c.kind, c.atFrame, c.sound, c.gainDb, c.pan, c.kind === "voice" ? (voiceFiles[c.sound] ?? null) : null]),
@@ -62,6 +63,8 @@ export function audioKey(t: Timeline, sb: Storyboard, brief: Brief, voiceFiles: 
     sb: sb.audio,
     music: brief.audio.music,
     sfx: brief.audio.sfxDensity,
+    voiceCompression: brief.audio.voiceCompression,
+    ambience: brief.audio.ambience,
     direction: sb.direction ?? brief.direction,
   });
 }

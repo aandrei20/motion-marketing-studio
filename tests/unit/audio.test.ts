@@ -118,3 +118,47 @@ describe("subtitrările ca fișier (.srt pentru livrare, .vtt pentru Studio)", (
     expect(toVtt(words, 30)).toBe("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nPlanifică săptămâna.\n\n00:00:01.500 --> 00:00:02.500\nÎncearcă gratuit.\n");
   });
 });
+
+describe("compresorul pe voce și ambianța", () => {
+  it("compresorul reduce vârfurile peste prag și păstrează nivelul mediu activ", async () => {
+    const { compress } = await import("../../src/audio/dsp");
+    const { SR } = await import("../../src/audio/wav");
+    // o „replică”: 1 s la −20 dBFS, cu un vârf de 0,2 s la −6 dBFS
+    const n = SR;
+    const L = new Float32Array(n);
+    for (let i = 0; i < n; i++) L[i] = Math.sin((2 * Math.PI * 220 * i) / SR) * (i > SR * 0.4 && i < SR * 0.6 ? 0.5 : 0.1);
+    const s = { sr: SR, L, R: L.slice() };
+    const peak = (x: Float32Array, a: number, b: number) => x.slice(a, b).reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    const rms = (x: Float32Array) => Math.sqrt(x.reduce((a, v) => a + v * v, 0) / x.length);
+    const c = compress(s);
+    expect(c.maxReductionDb).toBeGreaterThan(3);
+    // vârful scade față de restul (diferența dintre vârf și corp se micșorează)
+    const ratioBefore = peak(L, SR * 0.45, SR * 0.55) / peak(L, 0, SR * 0.3);
+    const ratioAfter = peak(c.out.L, SR * 0.45, SR * 0.55) / peak(c.out.L, 0, SR * 0.3);
+    expect(ratioAfter).toBeLessThan(ratioBefore * 0.8);
+    // nivelul mediu (RMS) rămâne în 1 dB
+    expect(Math.abs(20 * Math.log10(rms(c.out.L) / rms(L)))).toBeLessThan(1);
+    // determinist
+    expect(compress(s).out.L).toEqual(c.out.L);
+  });
+
+  it("ambianța umple liniștea dintre replici, tace în liniștea intenționată, iar mixul rămâne la −14 LUFS", async () => {
+    const { roomTone, sineOsc, mul, perc } = await import("../../src/audio/dsp");
+    const { mix } = await import("../../src/audio/mixer");
+    const { SR } = await import("../../src/audio/wav");
+    const line = mul(sineOsc(180, SR), perc(SR, 0.02, 0.6));
+    const voice = [0.5, 4.5].map((atSec) => ({ audio: { sr: SR, L: line, R: line.slice() }, atSec }));
+    const base = { durationSec: 8, voice, sfx: [], duck: { amountDb: -10, rampMs: 500, padMs: 120 }, targetLufs: -14, truePeakCeiling: -1 };
+    const silences = [{ startSec: 5.5, endSec: 8 }];
+    const without = mix({ ...base, intentionalSilences: silences });
+    // fără ambianță: liniștea dintre replici (1,5–4,5 s) e raportată
+    expect(without.report.problems.some((p) => p.startsWith("Tăcere neintenționată"))).toBe(true);
+    const tone = roomTone(8 * SR, "test", "room");
+    const withAmb = mix({ ...base, intentionalSilences: silences, ambience: { audio: tone } });
+    expect(withAmb.report.problems.filter((p) => p.startsWith("Tăcere neintenționată"))).toEqual([]);
+    expect(Math.abs((withAmb.report.integratedLufs ?? 0) + 14)).toBeLessThan(0.6);
+    // în liniștea intenționată, ambianța tace
+    const tail = withAmb.master.L.slice(7 * SR, 8 * SR).reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    expect(tail).toBe(0);
+  });
+});

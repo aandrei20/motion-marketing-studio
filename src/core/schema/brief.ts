@@ -72,6 +72,10 @@ export const Brief = z.object({
     }),
     sfxDensity: z.enum(["none", "low", "medium", "high"]).default("medium"),
     intentionalSilence: z.boolean().default(false),
+    /** compresorul pe voce: vârfurile replicilor scad, nivelul mediu rămâne (se judecă la ascultare, regula 15) */
+    voiceCompression: z.boolean().default(true),
+    /** ambianța sintetizată sub mix: „room” (încăpere caldă), „air” (aer deschis) sau deloc */
+    ambience: z.enum(["none", "room", "air"]).default("none"),
   }),
   references: z.array(z.object({ assetId: Slug, aspects: z.array(z.string()).default([]), note: z.string().default("") })).default([]),
   /** subtitrări arse în video și/sau fișier .srt */

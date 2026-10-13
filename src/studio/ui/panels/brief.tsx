@@ -26,6 +26,8 @@ const EMPTY_BRIEF: Brief = {
     music: { mode: "synth", mood: "driving" },
     sfxDensity: "medium",
     intentionalSilence: false,
+    voiceCompression: true,
+    ambience: "none",
   },
   references: [],
   captions: { burnIn: true, srt: true },
@@ -356,6 +358,24 @@ export function BriefPanel({ ctx }: { ctx: Ctx }) {
                     <option key={o}>{o}</option>
                   ))}
                 </select>
+              </label>
+              <label>
+                Ambianță
+                <select value={b.audio.ambience} onChange={(e) => up({ audio: { ...b.audio, ambience: e.target.value as Brief["audio"]["ambience"] } })}>
+                  {[
+                    ["none", "fără"],
+                    ["room", "încăpere caldă"],
+                    ["air", "aer deschis"],
+                  ].map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={b.audio.voiceCompression} onChange={(e) => up({ audio: { ...b.audio, voiceCompression: e.target.checked } })} />{" "}
+                compresor pe voce
               </label>
               <label className="check">
                 <input type="checkbox" checked={b.captions.burnIn} onChange={(e) => up({ captions: { ...b.captions, burnIn: e.target.checked } })} /> subtitrări

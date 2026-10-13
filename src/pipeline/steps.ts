@@ -10,6 +10,7 @@ import { PHONE_MAX_CSS_WIDTH, samePageKey } from "../assets/counterpart";
 import { ingestCapture } from "../assets/ingest";
 import { detectBeatGrid, musicStructure } from "../audio/beat";
 import { decodeAudio } from "../audio/decode";
+import { roomTone, samples } from "../audio/dsp";
 import { mix } from "../audio/mixer";
 import { composeMusic } from "../audio/music";
 import { getSfx } from "../audio/sfx";
@@ -482,6 +483,9 @@ export async function stepAudio(projectId: string, versionId: string, log: Log =
       intentionalSilences: silences,
       targetLufs: -14,
       truePeakCeiling: -1,
+      voiceCompression: brief.audio.voiceCompression,
+      // ambianța stă cu ~34 dB sub partea plină a vocii: umple liniștea, nu se aude ca efect
+      ambience: brief.audio.ambience === "none" ? undefined : { audio: roomTone(samples(durationSec), String(project.seed), brief.audio.ambience) },
     });
     writeWav(mixFile, out.master, 24);
     return MixReportSchema.parse(out.report);

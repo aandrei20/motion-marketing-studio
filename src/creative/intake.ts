@@ -171,6 +171,22 @@ export const INTAKE_QUESTIONS: IntakeQuestion[] = [
   { id: "f4", group: "F", text: "Densitatea efectelor sonore?", options: ["none", "low", "medium", "high"], field: "brief.audio.sfxDensity", required: true },
   { id: "f5", group: "F", text: "Tăcere intenționată undeva?", options: ["nu", "da (spune unde)"], field: "brief.audio.intentionalSilence", required: false },
   {
+    id: "f6",
+    group: "F",
+    text: "Ambianță discretă sub mix (room tone), ca liniștea dintre replici să nu sune gol?",
+    options: ["fără", "încăpere caldă", "aer deschis"],
+    field: "brief.audio.ambience",
+    required: false,
+  },
+  {
+    id: "f7",
+    group: "F",
+    text: "Compresor pe voce (vârfurile scad, nivelul mediu rămâne)?",
+    options: ["da (recomandat)", "nu"],
+    field: "brief.audio.voiceCompression",
+    required: false,
+  },
+  {
     id: "g1",
     group: "G",
     text: "Pachet de postare (copertă, titlu, descriere, hashtag-uri)?",
